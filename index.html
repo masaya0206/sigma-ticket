@@ -134,7 +134,7 @@
 
       if (!data) {
 
-        resultBox.className = "invalid";
+        resultBox.className = "valid";
 
         resultBox.innerHTML = `
           <h2>❌ 無効なチケット</h2>
@@ -144,27 +144,28 @@
         return;
       }
 
-      if (data.status === "unused") {
+     if (data.status === "unused") {
 
-        resultBox.className = "valid";
+  resultBox.className = "valid";
 
-        resultBox.innerHTML = `
-          <h2>🟢 有効</h2>
+  resultBox.innerHTML = `
+    <h2>🟢 有効</h2>
 
-          <p><strong>商品</strong><br>
-          ${data.product_name}</p>
+    <p><strong>商品</strong><br>
+    ${data.product_name}</p>
 
-          <p><strong>販売者</strong><br>
-          ${data.seller_name}</p>
+    <p><strong>販売者</strong><br>
+    ${data.seller_name}</p>
 
-          <p><strong>チケットID</strong><br>
-          ${data.ticket_code}</p>
+    <p><strong>チケットID</strong><br>
+    ${data.ticket_code}</p>
 
-          <p><strong>状態</strong><br>
-          未使用</p>
-        `;
+    <button onclick="useTicket('${data.ticket_code}')">
+      使用する
+    </button>
+  `;
 
-      } else if (data.status === "used") {
+} else if (data.status === "used") {
 
         resultBox.className = "invalid";
 
@@ -186,7 +187,67 @@
         `;
       }
     }
+}
 
+async function useTicket(ticketCode) {
+
+  const resultBox = document.getElementById("result");
+
+  resultBox.innerHTML = "使用処理中...";
+
+  const { data, error } = await supabaseClient
+    .from("tickets")
+    .update({
+      status: "used",
+      used_at: new Date().toISOString()
+    })
+    .eq("ticket_code", ticketCode)
+    .eq("status", "unused")
+    .select()
+    .maybeSingle();
+
+  if (error) {
+
+    resultBox.className = "invalid";
+
+    resultBox.innerHTML = `
+      <h2>⚠️ エラー</h2>
+      <p>${error.message}</p>
+    `;
+
+    return;
+  }
+
+  if (!data) {
+
+    resultBox.className = "invalid";
+
+    resultBox.innerHTML = `
+      <h2>🔴 使用できません</h2>
+      <p>すでに使用済み、または無効なチケットです。</p>
+    `;
+
+    return;
+  }
+
+  resultBox.className = "valid";
+
+  resultBox.innerHTML = `
+    <h2>✅ 使用完了</h2>
+
+    <p>${data.product_name}</p>
+
+    <p>
+      ${new Date(data.used_at).toLocaleString("ja-JP")}
+    </p>
+
+    <button onclick="startScanner()">
+      次のQRを読み取る
+    </button>
+  `;
+}
+
+</script>
   </script>
 
 </body>
