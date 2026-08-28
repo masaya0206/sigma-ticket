@@ -144,7 +144,7 @@
         return;
       }
 
-     if (data.status === "unused") {
+     if (data.status === "active") {
 
   resultBox.className = "valid";
 
@@ -201,7 +201,7 @@ async function useTicket(ticketCode) {
       used_at: new Date().toISOString()
     })
     .eq("ticket_code", ticketCode)
-    .eq("status", "unused")
+    .eq("status", "active")
     .select()
     .maybeSingle();
 
