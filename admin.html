@@ -307,9 +307,13 @@ async function resetPassword() {
 
       let statusText = "";
 
-      if (ticket.status === "unused") {
-        statusText = "🟢 未使用";
-      }
+      if (ticket.status === "pending") {
+  statusText = "🟡 受け取り待ち";
+}
+
+else if (ticket.status === "active") {
+  statusText = "🟢 有効";
+}
 
       else if (ticket.status === "used") {
         statusText = "🔴 使用済み";
@@ -375,7 +379,7 @@ async function resetPassword() {
         await supabaseClient
           .from("tickets")
           .update({
-            status: "unused",
+            status: "active",
             used_at: null
           })
           .eq("ticket_code", ticketCode)
@@ -425,7 +429,7 @@ await supabaseClient
         </p>
 
         <p>
-          状態：未使用
+          状態：有効
         </p>
       `;
     }
