@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 前売り券発行</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 15px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    #loginArea,
+    #sellerArea,
+    #ticketResult {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f2f2f2;
+      border-radius: 10px;
+    }
+
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .success {
+      background: #e8f7e8;
+    }
+
+    .danger {
+      background: #ffe8e8;
+    }
+
+    .ticket-code {
+      font-size: 20px;
+      font-weight: bold;
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>シグマ祭 前売り券発行</h1>
+
+
+  <div id="loginArea">
+
+    <h2>販売者ログイン</h2>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="メールアドレス"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="パスワード"
+    >
+
+    <button onclick="login()">
+      ログイン
+    </button>
+
+    <p id="loginMessage"></p>
+
+  </div>
+
+
+  <div id="sellerArea" style="display:none;">
+
+    <p>
+      販売者：
+      <strong id="sellerName"></strong>
+    </p>
+
+    <button onclick="issueTicket()">
+      チケットを1枚発行
+    </button>
+
+    <button onclick="logout()">
+      ログアウト
+    </button>
+
+    <div id="ticketResult">
+      まだチケットは発行されていません。
+    </div>
+
+  </div>
+
+
+  <script>
+
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
+
+    let currentSeller = null;
+
+
+    async function login() {
+
+      const email =
+        document.getElementById("email").value;
+
+      const password =
+        document.getElementById("password").value;
+
+      const loginMessage =
+        document.getElementById("loginMessage");
+
+      loginMessage.textContent =
+        "ログインしています...";
+
+      const { data, error } =
+        await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+      if (error) {
+
+        loginMessage.textContent =
+          "ログイン失敗：" + error.message;
+
+        return;
+      }
+
+      await loadSeller();
+    }
+
+
+    async function loadSeller() {
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      const { data, error } =
+        await supabaseClient
+          .from("sellers")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+      if (error) {
+
+        document.getElementById("loginMessage")
+          .textContent =
+          "販売者情報の取得に失敗：" +
+          error.message;
+
+        return;
+      }
+
+      if (!data) {
+
+        await supabaseClient.auth.signOut();
+
+        document.getElementById("loginMessage")
+          .textContent =
+          "このアカウントには販売者権限がありません。";
+
+        return;
+      }
+
+      if (!data.is_active) {
+
+        await supabaseClient.auth.signOut();
+
+        document.getElementById("loginMessage")
+          .textContent =
+          "この販売者アカウントは現在無効です。";
+
+        return;
+      }
+
+      currentSeller = data;
+
+      document.getElementById("sellerName")
+        .textContent =
+        data.seller_name;
+
+      document.getElementById("loginArea")
+        .style.display = "none";
+
+      document.getElementById("sellerArea")
+        .style.display = "block";
+    }
+
+
+    function createTicketCode() {
+
+      const randomPart =
+        crypto.randomUUID()
+          .replaceAll("-", "")
+          .substring(0, 12)
+          .toUpperCase();
+
+      return "SGM-" + randomPart;
+    }
+
+
+    async function issueTicket() {
+
+      if (!currentSeller) {
+        return;
+      }
+
+      const ticketResult =
+        document.getElementById("ticketResult");
+
+      ticketResult.className = "";
+      ticketResult.innerHTML =
+        "チケットを発行しています...";
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+
+        ticketResult.className = "danger";
+        ticketResult.innerHTML =
+          "ログイン情報を確認できませんでした。";
+
+        return;
+      }
+
+      const ticketCode =
+        createTicketCode();
+
+      const { data, error } =
+        await supabaseClient
+          .from("tickets")
+          .insert({
+            ticket_code: ticketCode,
+            product_name: "チャーハン前売り券",
+            seller_name: currentSeller.seller_name,
+            seller_id: user.id,
+            status: "unused"
+          })
+          .select()
+          .single();
+
+      if (error) {
+
+        ticketResult.className = "danger";
+
+        ticketResult.innerHTML =
+          "発行エラー：" + error.message;
+
+        return;
+      }
+
+      ticketResult.className = "success";
+
+      ticketResult.innerHTML = `
+        <h2>✅ 発行完了</h2>
+
+        <p>
+          商品：${data.product_name}
+        </p>
+
+        <p>
+          販売者：${data.seller_name}
+        </p>
+
+        <p class="ticket-code">
+          ${data.ticket_code}
+        </p>
+
+        <div id="qrcode"></div>
+
+        <p>
+          このQRコードを購入者に共有してください。
+        </p>
+      `;
+
+      new QRCode(
+        document.getElementById("qrcode"),
+        {
+          text: data.ticket_code,
+          width: 220,
+          height: 220
+        }
+      );
+    }
+
+
+    async function logout() {
+
+      await supabaseClient.auth.signOut();
+
+      currentSeller = null;
+
+      document.getElementById("sellerArea")
+        .style.display = "none";
+
+      document.getElementById("loginArea")
+        .style.display = "block";
+
+      document.getElementById("password")
+        .value = "";
+    }
+
+
+    async function checkLogin() {
+
+      const {
+        data: { session }
+      } =
+        await supabaseClient.auth.getSession();
+
+      if (session) {
+        await loadSeller();
+      }
+    }
+
+
+    checkLogin();
+
+  </script>
+
+</body>
+</html>
