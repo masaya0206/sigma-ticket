@@ -228,7 +228,15 @@ async function useTicket(ticketCode) {
 
     return;
   }
-
+  
+await supabaseClient
+  .from("ticket_logs")
+  .insert({
+    ticket_code: data.ticket_code,
+    action: "used",
+    actor_name: "受付スタッフ"
+  });
+  
   resultBox.className = "valid";
 
   resultBox.innerHTML = `
