@@ -281,7 +281,11 @@
 
       const ticketCode =
         createTicketCode();
-
+      
+      const claimToken =
+  crypto.randomUUID()
+    .replaceAll("-", "");
+      
       const { data, error } =
         await supabaseClient
           .from("tickets")
@@ -290,7 +294,8 @@
             product_name: "チャーハン前売り券",
             seller_name: currentSeller.seller_name,
             seller_id: user.id,
-            status: "unused"
+            status: "pending",
+            claim_token: claimToken
           })
           .select()
           .single();
@@ -313,39 +318,35 @@ await supabaseClient
     actor_id: user.id,
     actor_name: currentSeller.seller_name
   });
-      
+      const claimUrl =
+  "https://masaya0206.github.io/sigma-ticket/claim.html?token="
+  + encodeURIComponent(data.claim_token);
       ticketResult.className = "success";
 
       ticketResult.innerHTML = `
-        <h2>✅ 発行完了</h2>
+  <h2>✅ 発行完了</h2>
 
-        <p>
-          商品：${data.product_name}
-        </p>
+  <p>
+    商品：${data.product_name}
+  </p>
 
-        <p>
-          販売者：${data.seller_name}
-        </p>
+  <p>
+    販売者：${data.seller_name}
+  </p>
 
-        <p class="ticket-code">
-          ${data.ticket_code}
-        </p>
+  <p>
+    状態：受け取り待ち
+  </p>
 
-        <div id="qrcode"></div>
+  <p>
+    このURLを購入者に送ってください。
+  </p>
 
-        <p>
-          このQRコードを購入者に共有してください。
-        </p>
-      `;
+  <p style="word-break:break-all;">
+    ${claimUrl}
+  </p>
+`;
 
-      new QRCode(
-        document.getElementById("qrcode"),
-        {
-          text: data.ticket_code,
-          width: 220,
-          height: 220
-        }
-      );
     }
 
 
