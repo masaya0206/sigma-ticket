@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 管理者画面</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 15px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    #ticketArea,
+    #loginArea {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f2f2f2;
+      border-radius: 10px;
+    }
+
+    .danger {
+      background: #ffe8e8;
+    }
+
+    .success {
+      background: #e8f7e8;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>シグマ祭 管理者画面</h1>
+
+  <div id="loginArea">
+
+    <h2>管理者ログイン</h2>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="メールアドレス"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="パスワード"
+    >
+
+    <button onclick="login()">
+      ログイン
+    </button>
+
+    <p id="loginMessage"></p>
+
+  </div>
+
+
+  <div id="adminArea" style="display:none;">
+
+    <button onclick="logout()">
+      ログアウト
+    </button>
+
+    <h2>チケット検索</h2>
+
+    <input
+      id="ticketCode"
+      type="text"
+      placeholder="例：TEST-001"
+    >
+
+    <button onclick="searchTicket()">
+      検索
+    </button>
+
+    <div id="ticketArea">
+      チケットIDを入力してください。
+    </div>
+
+  </div>
+
+
+  <script>
+
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
+
+
+    async function login() {
+
+      const email =
+        document.getElementById("email").value;
+
+      const password =
+        document.getElementById("password").value;
+
+      const loginMessage =
+        document.getElementById("loginMessage");
+
+      loginMessage.textContent =
+        "ログインしています...";
+
+      const { data, error } =
+        await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+      if (error) {
+
+        loginMessage.textContent =
+          "ログイン失敗：" + error.message;
+
+        return;
+      }
+
+      loginMessage.textContent = "";
+
+      showAdminArea();
+    }
+
+
+    async function logout() {
+
+      await supabaseClient.auth.signOut();
+
+      document.getElementById("adminArea")
+        .style.display = "none";
+
+      document.getElementById("loginArea")
+        .style.display = "block";
+    }
+
+
+    function showAdminArea() {
+
+      document.getElementById("loginArea")
+        .style.display = "none";
+
+      document.getElementById("adminArea")
+        .style.display = "block";
+    }
+
+
+    async function searchTicket() {
+
+      const ticketCode =
+        document
+          .getElementById("ticketCode")
+          .value
+          .trim();
+
+      const ticketArea =
+        document.getElementById("ticketArea");
+
+      if (!ticketCode) {
+
+        ticketArea.innerHTML =
+          "チケットIDを入力してください。";
+
+        return;
+      }
+
+      ticketArea.innerHTML =
+        "検索しています...";
+
+      const { data, error } =
+        await supabaseClient
+          .from("tickets")
+          .select("*")
+          .eq("ticket_code", ticketCode)
+          .maybeSingle();
+
+      if (error) {
+
+        ticketArea.className = "danger";
+
+        ticketArea.innerHTML =
+          "エラー：" + error.message;
+
+        return;
+      }
+
+      if (!data) {
+
+        ticketArea.className = "danger";
+
+        ticketArea.innerHTML =
+          "該当するチケットがありません。";
+
+        return;
+      }
+
+      showTicket(data);
+    }
+
+
+    function showTicket(ticket) {
+
+      const ticketArea =
+        document.getElementById("ticketArea");
+
+      let statusText = "";
+
+      if (ticket.status === "unused") {
+        statusText = "🟢 未使用";
+      }
+
+      else if (ticket.status === "used") {
+        statusText = "🔴 使用済み";
+      }
+
+      else {
+        statusText = "⛔ 無効";
+      }
+
+      ticketArea.className = "";
+
+      ticketArea.innerHTML = `
+        <h2>${statusText}</h2>
+
+        <p>
+          <strong>商品</strong><br>
+          ${ticket.product_name}
+        </p>
+
+        <p>
+          <strong>販売者</strong><br>
+          ${ticket.seller_name}
+        </p>
+
+        <p>
+          <strong>チケットID</strong><br>
+          ${ticket.ticket_code}
+        </p>
+
+        ${
+          ticket.status === "used"
+          ? `
+            <button
+              onclick="reactivateTicket(
+                '${ticket.ticket_code}'
+              )"
+            >
+              再有効化する
+            </button>
+          `
+          : ""
+        }
+      `;
+    }
+
+
+    async function reactivateTicket(ticketCode) {
+
+      const confirmed =
+        confirm(
+          "このチケットを未使用に戻しますか？"
+        );
+
+      if (!confirmed) return;
+
+      const ticketArea =
+        document.getElementById("ticketArea");
+
+      ticketArea.innerHTML =
+        "再有効化しています...";
+
+      const { data, error } =
+        await supabaseClient
+          .from("tickets")
+          .update({
+            status: "unused",
+            used_at: null
+          })
+          .eq("ticket_code", ticketCode)
+          .eq("status", "used")
+          .select()
+          .maybeSingle();
+
+      if (error) {
+
+        ticketArea.className = "danger";
+
+        ticketArea.innerHTML =
+          "エラー：" + error.message;
+
+        return;
+      }
+
+      if (!data) {
+
+        ticketArea.className = "danger";
+
+        ticketArea.innerHTML =
+          "再有効化できませんでした。";
+
+        return;
+      }
+
+      ticketArea.className = "success";
+
+      ticketArea.innerHTML = `
+        <h2>✅ 再有効化しました</h2>
+
+        <p>
+          ${data.ticket_code}
+        </p>
+
+        <p>
+          状態：未使用
+        </p>
+      `;
+    }
+
+
+    async function checkLogin() {
+
+      const {
+        data: { session }
+      } =
+        await supabaseClient.auth.getSession();
+
+      if (session) {
+        showAdminArea();
+      }
+    }
+
+
+    checkLogin();
+
+  </script>
+
+</body>
+</html>
