@@ -407,7 +407,7 @@ async function loadMySummary() {
   const { data, error } =
     await supabaseClient
       .from("tickets")
-      .select("ticket_code,status,created_at")
+      .select("ticket_code,status,created_at,buyer_name")
       .eq("seller_id", user.id)
       .order("created_at", {
         ascending: false
@@ -475,9 +475,10 @@ else if (ticket.status === "active") {
     text-align:left;
   ">
 
-    ${ticket.ticket_code}<br>
-    状態：${ticket.status}<br>
-    発行日時：${date}
+  ${ticket.ticket_code}<br>
+購入者：${ticket.buyer_name ?? "未登録"}<br>
+状態：${ticket.status}<br>
+発行日時：${date}
 
     ${
       ticket.status === "pending"
