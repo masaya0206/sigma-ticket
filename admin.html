@@ -385,6 +385,18 @@ async function resetPassword() {
 
         return;
       }
+      const {
+  data: { user }
+} = await supabaseClient.auth.getUser();
+
+await supabaseClient
+  .from("ticket_logs")
+  .insert({
+    ticket_code: data.ticket_code,
+    action: "reactivated",
+    actor_id: user?.id ?? null,
+    actor_name: "管理者"
+  });
 
       ticketArea.className = "success";
 
