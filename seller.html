@@ -412,9 +412,13 @@ async function loadMySummary() {
 
     total++;
 
-    if (ticket.status === "unused") {
-      unused++;
-    }
+   if (ticket.status === "pending") {
+  pending++;
+}
+
+else if (ticket.status === "active") {
+  active++;
+}
 
     else if (ticket.status === "used") {
       used++;
