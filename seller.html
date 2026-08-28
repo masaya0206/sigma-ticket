@@ -104,6 +104,12 @@
       販売者：
       <strong id="sellerName"></strong>
     </p>
+    
+    <input
+  id="buyerName"
+  type="text"
+  placeholder="購入者の名前"
+>
 
     <button onclick="issueTicket()">
       チケットを1枚発行
@@ -257,6 +263,16 @@
       if (!currentSeller) {
         return;
       }
+      
+      const buyerName =
+  document.getElementById("buyerName")
+    .value
+    .trim();
+
+if (!buyerName) {
+  alert("購入者の名前を入力してください。");
+  return;
+}
 
       const ticketResult =
         document.getElementById("ticketResult");
@@ -294,6 +310,7 @@
             product_name: "チャーハン前売り券",
             seller_name: currentSeller.seller_name,
             seller_id: user.id,
+            buyer_name: buyerName,
             status: "pending",
             claim_token: claimToken
           })
@@ -346,7 +363,8 @@ await supabaseClient
     ${claimUrl}
   </p>
 `;
-
+document.getElementById("buyerName").value = "";
+      
     }
 
 
