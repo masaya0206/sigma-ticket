@@ -134,7 +134,7 @@
 
       if (!data) {
 
-        resultBox.className = "valid";
+        resultBox.className = "invalid";
 
         resultBox.innerHTML = `
           <h2>❌ 無効なチケット</h2>
@@ -187,7 +187,6 @@
         `;
       }
     }
-}
 
 async function useTicket(ticketCode) {
 
@@ -248,7 +247,6 @@ async function useTicket(ticketCode) {
 }
 
 </script>
-  </script>
 
 </body>
 </html>
