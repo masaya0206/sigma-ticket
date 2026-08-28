@@ -296,7 +296,16 @@
 
         return;
       }
-
+      
+await supabaseClient
+  .from("ticket_logs")
+  .insert({
+    ticket_code: data.ticket_code,
+    action: "issued",
+    actor_id: user.id,
+    actor_name: currentSeller.seller_name
+  });
+      
       ticketResult.className = "success";
 
       ticketResult.innerHTML = `
