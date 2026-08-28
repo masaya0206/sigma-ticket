@@ -38,7 +38,8 @@
 
     #loginArea,
     #sellerArea,
-    #ticketResult {
+    #ticketResult,
+    #mySummaryArea {
       margin-top: 20px;
       padding: 20px;
       background: #f2f2f2;
@@ -106,6 +107,13 @@
 
     <button onclick="issueTicket()">
       チケットを1枚発行
+      <button onclick="loadMySummary()">
+  自分の販売状況を見る
+</button>
+
+<div id="mySummaryArea">
+  販売状況はまだ表示されていません。
+</div>
     </button>
 
     <button onclick="logout()">
@@ -357,7 +365,101 @@ await supabaseClient
         .value = "";
     }
 
+async function loadMySummary() {
 
+  const mySummaryArea =
+    document.getElementById("mySummaryArea");
+
+  mySummaryArea.innerHTML =
+    "販売状況を集計しています...";
+
+  const {
+    data: { user }
+  } = await supabaseClient.auth.getUser();
+
+  if (!user) {
+    mySummaryArea.innerHTML =
+      "ログイン情報を確認できませんでした。";
+    return;
+  }
+
+  const { data, error } =
+    await supabaseClient
+      .from("tickets")
+      .select("ticket_code,status,created_at")
+      .eq("seller_id", user.id)
+      .order("created_at", {
+        ascending: false
+      });
+
+  if (error) {
+
+    mySummaryArea.className = "danger";
+
+    mySummaryArea.innerHTML =
+      "エラー：" + error.message;
+
+    return;
+  }
+
+  let total = 0;
+  let unused = 0;
+  let used = 0;
+  let invalid = 0;
+
+  for (const ticket of data) {
+
+    total++;
+
+    if (ticket.status === "unused") {
+      unused++;
+    }
+
+    else if (ticket.status === "used") {
+      used++;
+    }
+
+    else {
+      invalid++;
+    }
+  }
+
+  let html = `
+    <h2>自分の販売状況</h2>
+
+    発行：${total}枚<br>
+    🟢 未使用：${unused}枚<br>
+    🔴 使用済み：${used}枚<br>
+    ⛔ 無効：${invalid}枚
+
+    <h3>発行履歴</h3>
+  `;
+
+  for (const ticket of data) {
+
+    const date =
+      new Date(ticket.created_at)
+        .toLocaleString("ja-JP");
+
+    html += `
+      <div style="
+        border-top:1px solid #ccc;
+        padding:12px 0;
+        text-align:left;
+      ">
+
+        ${ticket.ticket_code}<br>
+        状態：${ticket.status}<br>
+        発行日時：${date}
+
+      </div>
+    `;
+  }
+
+  mySummaryArea.className = "";
+
+  mySummaryArea.innerHTML = html;
+}
     async function checkLogin() {
 
       const {
