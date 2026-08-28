@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 前売り券受け取り</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 20px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    #claimArea {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f2f2f2;
+      border-radius: 10px;
+    }
+
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .success {
+      background: #e8f7e8;
+    }
+
+    .danger {
+      background: #ffe8e8;
+    }
+
+    .ticket-code {
+      font-size: 18px;
+      font-weight: bold;
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>シグマ祭 前売り券</h1>
+
+  <div id="claimArea">
+
+    <h2>チケットを受け取る</h2>
+
+    <p>
+      下のボタンを押すと、
+      前売り券の受け取りが完了します。
+    </p>
+
+    <button id="claimButton" onclick="claimTicket()">
+      受け取り完了
+    </button>
+
+    <p id="message"></p>
+
+  </div>
+
+
+  <script>
+
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
+
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const claimToken =
+      params.get("token");
+
+
+    async function claimTicket() {
+
+      const claimArea =
+        document.getElementById("claimArea");
+
+      const claimButton =
+        document.getElementById("claimButton");
+
+      if (!claimToken) {
+
+        claimArea.className = "danger";
+
+        claimArea.innerHTML = `
+          <h2>❌ エラー</h2>
+
+          <p>
+            受け取り情報がありません。
+          </p>
+        `;
+
+        return;
+      }
+
+      claimButton.disabled = true;
+      claimButton.textContent =
+        "確認しています...";
+
+
+      const { data, error } =
+        await supabaseClient.rpc(
+          "claim_ticket",
+          {
+            p_token: claimToken
+          }
+        );
+
+
+      if (error) {
+
+        claimArea.className = "danger";
+
+        claimArea.innerHTML = `
+          <h2>⚠️ エラー</h2>
+
+          <p>
+            ${error.message}
+          </p>
+        `;
+
+        return;
+      }
+
+
+      if (!data || data.length === 0) {
+
+        claimArea.className = "danger";
+
+        claimArea.innerHTML = `
+          <h2>❌ 無効なURL</h2>
+
+          <p>
+            このチケットは存在しないか、
+            URLが正しくありません。
+          </p>
+        `;
+
+        return;
+      }
+
+
+      const ticket = data[0];
+
+
+      if (ticket.status === "used") {
+
+        claimArea.className = "danger";
+
+        claimArea.innerHTML = `
+          <h2>🔴 使用済み</h2>
+
+          <p>
+            このチケットはすでに使用されています。
+          </p>
+        `;
+
+        return;
+      }
+
+
+      if (ticket.status === "invalid") {
+
+        claimArea.className = "danger";
+
+        claimArea.innerHTML = `
+          <h2>⛔ 無効</h2>
+
+          <p>
+            このチケットは無効になっています。
+          </p>
+        `;
+
+        return;
+      }
+
+
+      if (ticket.status === "active") {
+
+        claimArea.className = "success";
+
+        claimArea.innerHTML = `
+          <h2>✅ 受け取り完了</h2>
+
+          <p>
+            <strong>商品</strong><br>
+            ${ticket.product_name}
+          </p>
+
+          <p>
+            <strong>販売者</strong><br>
+            ${ticket.seller_name}
+          </p>
+
+          <p class="ticket-code">
+            ${ticket.ticket_code}
+          </p>
+
+          <div id="qrcode"></div>
+
+          <p>
+            当日はこのQRコードを
+            店舗スタッフに提示してください。
+          </p>
+        `;
+
+
+        new QRCode(
+          document.getElementById("qrcode"),
+          {
+            text: ticket.ticket_code,
+            width: 220,
+            height: 220
+          }
+        );
+      }
+    }
+
+  </script>
+
+</body>
+</html>
