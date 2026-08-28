@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 チケット受付</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 24px;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 20px;
+      font-size: 18px;
+      border-radius: 10px;
+      border: none;
+    }
+
+    #reader {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    #result {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f2f2f2;
+      border-radius: 10px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>シグマ祭 チケット受付</h1>
+
+  <p>購入者のQRコードを読み取ってください。</p>
+
+  <button onclick="startScanner()">
+    QRコードを読み取る
+  </button>
+
+  <div id="reader"></div>
+
+  <div id="result">
+    まだQRコードは読み取られていません。
+  </div>
+
+  <script>
+    let scanner;
+
+    function startScanner() {
+      if (scanner) return;
+
+      scanner = new Html5Qrcode("reader");
+
+      scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: {
+            width: 250,
+            height: 250
+          }
+        },
+
+        function(decodedText) {
+          document.getElementById("result").innerHTML =
+            "<strong>読み取り成功</strong><br><br>" +
+            decodedText;
+
+          scanner.stop();
+          scanner = null;
+        },
+
+        function(error) {
+        }
+      );
+    }
+  </script>
+
+</body>
+</html>
