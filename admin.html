@@ -37,7 +37,8 @@
 
     #ticketArea,
     #loginArea,
-    #logArea {
+    #logArea,
+    #summaryArea {
       margin-top: 20px;
       padding: 20px;
       background: #f2f2f2;
@@ -125,6 +126,13 @@
     <button onclick="loadLogs()">
   操作履歴を見る
 </button>
+    <button onclick="loadSalesSummary()">
+  販売状況を見る
+</button>
+
+<div id="summaryArea">
+  販売状況はまだ表示されていません。
+</div>
 
 <div id="logArea">
   操作履歴はまだ表示されていません。
@@ -560,6 +568,108 @@ async function saveNewPassword() {
   }
 
   logArea.innerHTML = html;
+}
+    async function loadSalesSummary() {
+
+  const summaryArea =
+    document.getElementById("summaryArea");
+
+  summaryArea.innerHTML =
+    "販売状況を集計しています...";
+
+  const { data, error } =
+    await supabaseClient
+      .from("tickets")
+      .select("seller_name,status");
+
+  if (error) {
+
+    summaryArea.className = "danger";
+
+    summaryArea.innerHTML =
+      "エラー：" + error.message;
+
+    return;
+  }
+
+  if (!data || data.length === 0) {
+
+    summaryArea.className = "";
+
+    summaryArea.innerHTML =
+      "発行済みチケットはありません。";
+
+    return;
+  }
+
+  const summary = {};
+
+  for (const ticket of data) {
+
+    const seller =
+      ticket.seller_name || "不明";
+
+    if (!summary[seller]) {
+
+      summary[seller] = {
+        total: 0,
+        unused: 0,
+        used: 0,
+        invalid: 0
+      };
+    }
+
+    summary[seller].total++;
+
+    if (ticket.status === "unused") {
+      summary[seller].unused++;
+    }
+
+    else if (ticket.status === "used") {
+      summary[seller].used++;
+    }
+
+    else {
+      summary[seller].invalid++;
+    }
+  }
+
+  let html = `
+    <h2>販売状況</h2>
+  `;
+
+  for (const seller in summary) {
+
+    const item = summary[seller];
+
+    html += `
+      <div style="
+        border-top:1px solid #ccc;
+        padding:14px 0;
+        text-align:left;
+      ">
+
+        <strong>${seller}</strong><br><br>
+
+        発行：
+        ${item.total}枚<br>
+
+        🟢 未使用：
+        ${item.unused}枚<br>
+
+        🔴 使用済み：
+        ${item.used}枚<br>
+
+        ⛔ 無効：
+        ${item.invalid}枚
+
+      </div>
+    `;
+  }
+
+  summaryArea.className = "";
+
+  summaryArea.innerHTML = html;
 }
     
     async function checkLogin() {
