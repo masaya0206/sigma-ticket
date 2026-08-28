@@ -7,6 +7,7 @@
   <title>シグマ祭 チケット受付</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     body {
@@ -26,8 +27,9 @@
       padding: 16px;
       margin-top: 20px;
       font-size: 18px;
-      border-radius: 10px;
       border: none;
+      border-radius: 10px;
+      cursor: pointer;
     }
 
     #reader {
@@ -40,7 +42,14 @@
       padding: 20px;
       background: #f2f2f2;
       border-radius: 10px;
-      word-break: break-all;
+    }
+
+    .valid {
+      background: #e8f7e8;
+    }
+
+    .invalid {
+      background: #ffe8e8;
     }
   </style>
 </head>
@@ -48,8 +57,6 @@
 <body>
 
   <h1>シグマ祭 チケット受付</h1>
-
-  <p>購入者のQRコードを読み取ってください。</p>
 
   <button onclick="startScanner()">
     QRコードを読み取る
@@ -62,9 +69,17 @@
   </div>
 
   <script>
+
+    const SUPABASE_URL = "https://gsniytemgrbtgfywhqlu.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     let scanner;
 
     function startScanner() {
+
       if (scanner) return;
 
       scanner = new Html5Qrcode("reader");
@@ -79,19 +94,99 @@
           }
         },
 
-        function(decodedText) {
-          document.getElementById("result").innerHTML =
-            "<strong>読み取り成功</strong><br><br>" +
-            decodedText;
+        async function(decodedText) {
 
-          scanner.stop();
+          await scanner.stop();
           scanner = null;
+
+          checkTicket(decodedText);
         },
 
         function(error) {
         }
       );
     }
+
+    async function checkTicket(ticketCode) {
+
+      const resultBox = document.getElementById("result");
+
+      resultBox.className = "";
+      resultBox.innerHTML = "チケットを確認しています...";
+
+      const { data, error } = await supabaseClient
+        .from("tickets")
+        .select("*")
+        .eq("ticket_code", ticketCode)
+        .maybeSingle();
+
+      if (error) {
+
+        resultBox.className = "invalid";
+
+        resultBox.innerHTML = `
+          <h2>⚠️ エラー</h2>
+          <p>${error.message}</p>
+        `;
+
+        return;
+      }
+
+      if (!data) {
+
+        resultBox.className = "invalid";
+
+        resultBox.innerHTML = `
+          <h2>❌ 無効なチケット</h2>
+          <p>登録されていないチケットです。</p>
+        `;
+
+        return;
+      }
+
+      if (data.status === "unused") {
+
+        resultBox.className = "valid";
+
+        resultBox.innerHTML = `
+          <h2>🟢 有効</h2>
+
+          <p><strong>商品</strong><br>
+          ${data.product_name}</p>
+
+          <p><strong>販売者</strong><br>
+          ${data.seller_name}</p>
+
+          <p><strong>チケットID</strong><br>
+          ${data.ticket_code}</p>
+
+          <p><strong>状態</strong><br>
+          未使用</p>
+        `;
+
+      } else if (data.status === "used") {
+
+        resultBox.className = "invalid";
+
+        resultBox.innerHTML = `
+          <h2>🔴 使用済み</h2>
+
+          <p>${data.product_name}</p>
+          <p>チケットID：${data.ticket_code}</p>
+        `;
+
+      } else {
+
+        resultBox.className = "invalid";
+
+        resultBox.innerHTML = `
+          <h2>⛔ 無効</h2>
+
+          <p>このチケットは使用できません。</p>
+        `;
+      }
+    }
+
   </script>
 
 </body>
