@@ -36,7 +36,8 @@
     }
 
     #ticketArea,
-    #loginArea {
+    #loginArea,
+    #logArea {
       margin-top: 20px;
       padding: 20px;
       background: #f2f2f2;
@@ -120,6 +121,14 @@
     <button onclick="searchTicket()">
       検索
     </button>
+    
+    <button onclick="loadLogs()">
+  操作履歴を見る
+</button>
+
+<div id="logArea">
+  操作履歴はまだ表示されていません。
+</div>
 
     <div id="ticketArea">
       チケットIDを入力してください。
@@ -457,6 +466,101 @@ async function saveNewPassword() {
     }
   }
 );
+    async function loadLogs() {
+
+  const logArea =
+    document.getElementById("logArea");
+
+  logArea.innerHTML =
+    "履歴を読み込んでいます...";
+
+  const { data, error } =
+    await supabaseClient
+      .from("ticket_logs")
+      .select("*")
+      .order("created_at", {
+        ascending: false
+      })
+      .limit(50);
+
+  if (error) {
+
+    logArea.className = "danger";
+
+    logArea.innerHTML =
+      "エラー：" + error.message;
+
+    return;
+  }
+
+  if (!data || data.length === 0) {
+
+    logArea.className = "";
+
+    logArea.innerHTML =
+      "操作履歴はありません。";
+
+    return;
+  }
+
+  logArea.className = "";
+
+  let html = `
+    <h2>操作履歴</h2>
+  `;
+
+  for (const log of data) {
+
+    let actionText = "";
+
+    if (log.action === "issued") {
+      actionText = "🎫 発行";
+    }
+
+    else if (log.action === "used") {
+      actionText = "✅ 使用";
+    }
+
+    else if (log.action === "reactivated") {
+      actionText = "♻️ 再有効化";
+    }
+
+    else if (log.action === "invalidated") {
+      actionText = "⛔ 無効化";
+    }
+
+    else {
+      actionText = log.action;
+    }
+
+    const date =
+      new Date(log.created_at)
+        .toLocaleString("ja-JP");
+
+    html += `
+      <div style="
+        border-top:1px solid #ccc;
+        padding:12px 0;
+        text-align:left;
+      ">
+
+        <strong>${actionText}</strong><br>
+
+        チケット：
+        ${log.ticket_code}<br>
+
+        操作者：
+        ${log.actor_name ?? "不明"}<br>
+
+        日時：
+        ${date}
+
+      </div>
+    `;
+  }
+
+  logArea.innerHTML = html;
+}
     
     async function checkLogin() {
 
