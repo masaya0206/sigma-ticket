@@ -92,11 +92,32 @@
     <button onclick="login()">
       ログイン
     </button>
+    
+    <button onclick="resetPassword()">
+  パスワードを設定・再設定
+</button>
 
-    <p id="loginMessage"></p>
+<p id="loginMessage"></p>
+
 
   </div>
+<div id="newPasswordArea" style="display:none;">
 
+  <h2>新しいパスワードを設定</h2>
+
+  <input
+    id="newPassword"
+    type="password"
+    placeholder="新しいパスワード"
+  >
+
+  <button onclick="saveNewPassword()">
+    パスワードを保存
+  </button>
+
+  <p id="passwordMessage"></p>
+
+</div>
 
   <div id="sellerArea" style="display:none;">
 
@@ -183,6 +204,38 @@
       await loadSeller();
     }
 
+    async function resetPassword() {
+
+  const email =
+    document.getElementById("email").value;
+
+  const loginMessage =
+    document.getElementById("loginMessage");
+
+  if (!email) {
+    loginMessage.textContent =
+      "メールアドレスを入力してください。";
+    return;
+  }
+
+  const { error } =
+    await supabaseClient.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo:
+          "https://masaya0206.github.io/sigma-ticket/seller.html"
+      }
+    );
+
+  if (error) {
+    loginMessage.textContent =
+      "エラー：" + error.message;
+    return;
+  }
+
+  loginMessage.textContent =
+    "パスワード設定用メールを送信しました。";
+}
 
     async function loadSeller() {
 
@@ -560,6 +613,50 @@ else if (ticket.status === "active") {
 
   await loadMySummary();
 }
+    async function saveNewPassword() {
+
+  const newPassword =
+    document.getElementById("newPassword").value;
+
+  const passwordMessage =
+    document.getElementById("passwordMessage");
+
+  if (!newPassword) {
+    passwordMessage.textContent =
+      "新しいパスワードを入力してください。";
+    return;
+  }
+
+  const { error } =
+    await supabaseClient.auth.updateUser({
+      password: newPassword
+    });
+
+  if (error) {
+    passwordMessage.textContent =
+      "エラー：" + error.message;
+    return;
+  }
+
+  passwordMessage.textContent =
+    "パスワードを設定しました。";
+}
+    supabaseClient.auth.onAuthStateChange(
+  (event, session) => {
+
+    if (event === "PASSWORD_RECOVERY") {
+
+      document.getElementById("loginArea")
+        .style.display = "none";
+
+      document.getElementById("sellerArea")
+        .style.display = "none";
+
+      document.getElementById("newPasswordArea")
+        .style.display = "block";
+    }
+  }
+);
     async function checkLogin() {
 
       const {
