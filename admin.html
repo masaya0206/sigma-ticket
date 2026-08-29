@@ -871,6 +871,48 @@ document.getElementById("newSellerEmail").value = "";
       `;
     }).join("");
 }
+
+    async function toggleSeller(userId, currentStatus) {
+
+  const newStatus =
+    !currentStatus;
+
+  const actionText =
+    newStatus
+      ? "再開"
+      : "停止";
+
+  const confirmed =
+    confirm(
+      `この発行者を${actionText}しますか？`
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("sellers")
+      .update({
+        is_active: newStatus
+      })
+      .eq("user_id", userId);
+
+  if (error) {
+    alert(
+      "変更エラー：" +
+      error.message
+    );
+    return;
+  }
+
+  alert(
+    `発行者を${actionText}しました。`
+  );
+
+  await loadSellers();
+}
     
     async function checkLogin() {
 
