@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>発行者登録</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+  <h1>シグマ祭 発行者登録</h1>
+
+  <div id="loadingArea">
+    招待情報を確認しています...
+  </div>
+
+  <div
+    id="registerArea"
+    style="display:none;"
+  >
+
+    <h2>発行者アカウント登録</h2>
+
+    <p id="sellerInfo"></p>
+
+    <input
+      id="password"
+      type="password"
+      placeholder="パスワード"
+    >
+
+    <br><br>
+
+    <input
+      id="passwordConfirm"
+      type="password"
+      placeholder="パスワード確認"
+    >
+
+    <br><br>
+
+    <button onclick="registerSeller()">
+      登録する
+    </button>
+
+    <p id="message"></p>
+
+  </div>
+
+  <script>
+
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const token =
+      params.get("token");
+
+    async function loadInvite() {
+
+      const loadingArea =
+        document.getElementById(
+          "loadingArea"
+        );
+
+      if (!token) {
+        loadingArea.textContent =
+          "招待URLが正しくありません。";
+        return;
+      }
+
+      // 次の段階でここから
+      // Edge Functionを呼びます。
+
+      loadingArea.textContent =
+        "招待URLを確認できました。";
+
+      document.getElementById(
+        "registerArea"
+      ).style.display = "block";
+    }
+
+    async function registerSeller() {
+
+      const password =
+        document.getElementById(
+          "password"
+        ).value;
+
+      const passwordConfirm =
+        document.getElementById(
+          "passwordConfirm"
+        ).value;
+
+      const message =
+        document.getElementById(
+          "message"
+        );
+
+      if (!password) {
+        message.textContent =
+          "パスワードを入力してください。";
+        return;
+      }
+
+      if (password.length < 8) {
+        message.textContent =
+          "パスワードは8文字以上にしてください。";
+        return;
+      }
+
+      if (
+        password !==
+        passwordConfirm
+      ) {
+        message.textContent =
+          "パスワードが一致していません。";
+        return;
+      }
+
+      message.textContent =
+        "登録処理を準備しています...";
+    }
+
+    loadInvite();
+
+  </script>
+
+</body>
+</html>
