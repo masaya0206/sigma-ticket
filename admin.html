@@ -131,6 +131,14 @@
 
 <p id="sellerCreateMessage"></p>
 
+    <h2>発行者一覧</h2>
+
+<button onclick="loadSellers()">
+  発行者一覧を表示
+</button>
+
+<div id="sellerList"></div>
+
     <h2>チケット検索</h2>
 
     <input
@@ -785,6 +793,83 @@ async function saveNewPassword() {
       
       document.getElementById("newSellerName").value = "";
 document.getElementById("newSellerEmail").value = "";
+}
+
+    async function loadSellers() {
+
+  const sellerList =
+    document.getElementById("sellerList");
+
+  sellerList.innerHTML =
+    "読み込み中...";
+
+  const { data, error } =
+    await supabaseClient
+      .from("sellers")
+      .select(
+        "user_id,seller_name,is_active"
+      )
+      .order("seller_name");
+
+  if (error) {
+    sellerList.innerHTML =
+      "取得エラー：" + error.message;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    sellerList.innerHTML =
+      "発行者はまだ登録されていません。";
+    return;
+  }
+
+  sellerList.innerHTML =
+    data.map(seller => {
+
+      const statusText =
+        seller.is_active
+          ? "🟢 有効"
+          : "🔴 停止中";
+
+      const buttonText =
+        seller.is_active
+          ? "停止する"
+          : "再開する";
+
+      return `
+        <div
+          style="
+            border:1px solid #ccc;
+            padding:12px;
+            margin:10px 0;
+            border-radius:8px;
+          "
+        >
+
+          <strong>
+            ${seller.seller_name}
+          </strong>
+
+          <br>
+
+          状態：${statusText}
+
+          <br><br>
+
+          <button
+            onclick="
+              toggleSeller(
+                '${seller.user_id}',
+                ${seller.is_active}
+              )
+            "
+          >
+            ${buttonText}
+          </button>
+
+        </div>
+      `;
+    }).join("");
 }
     
     async function checkLogin() {
