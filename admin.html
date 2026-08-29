@@ -767,11 +767,24 @@ async function saveNewPassword() {
     return;
   }
 
-  message.textContent =
-    "✅ 発行者を追加しました。";
+  message.innerHTML = `
+  ✅ 登録URLを発行しました。<br><br>
 
-  document.getElementById("newSellerName").value = "";
-  document.getElementById("newSellerEmail").value = "";
+  <a
+    href="${data.invite_url}"
+    target="_blank"
+    style="word-break: break-all;"
+  >
+    ${data.invite_url}
+  </a>
+
+  <br><br>
+
+  このURLを発行者本人に送ってください。
+`;
+      
+      document.getElementById("newSellerName").value = "";
+document.getElementById("newSellerEmail").value = "";
 }
     
     async function checkLogin() {
