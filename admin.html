@@ -737,10 +737,29 @@ async function saveNewPassword() {
     );
 
   if (error) {
-    message.textContent =
-      "追加エラー：" + error.message;
-    return;
+
+  let errorMessage = error.message;
+
+  try {
+    const errorBody =
+      await error.context.json();
+
+    if (errorBody?.error) {
+      errorMessage = errorBody.error;
+    } else {
+      errorMessage =
+        JSON.stringify(errorBody);
+    }
+
+  } catch (e) {
+    console.log(e);
   }
+
+  message.textContent =
+    "追加エラー：" + errorMessage;
+
+  return;
+}
 
   if (data?.error) {
     message.textContent =
