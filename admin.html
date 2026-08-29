@@ -139,6 +139,47 @@
 
 <div id="sellerList"></div>
 
+    <h2>ポイント設定</h2>
+
+<input
+  id="pointDate"
+  type="date"
+>
+
+<select id="pointHour">
+  <option value="">時間を選択</option>
+  <option value="9">9:00〜9:59</option>
+  <option value="10">10:00〜10:59</option>
+  <option value="11">11:00〜11:59</option>
+  <option value="12">12:00〜12:59</option>
+  <option value="13">13:00〜13:59</option>
+  <option value="14">14:00〜14:59</option>
+  <option value="15">15:00〜15:59</option>
+  <option value="16">16:00〜16:59</option>
+  <option value="17">17:00〜17:59</option>
+  <option value="18">18:00〜18:59</option>
+</select>
+
+<input
+  id="pointValue"
+  type="number"
+  step="0.01"
+  min="0"
+  placeholder="1枚あたりpt 例：0.25"
+>
+
+<button onclick="savePointRule()">
+  ポイント設定を保存
+</button>
+
+<p id="pointMessage"></p>
+
+<button onclick="loadPointRules()">
+  ポイント設定一覧を見る
+</button>
+
+<div id="pointRuleList"></div>
+
     <h2>チケット検索</h2>
 
     <input
@@ -912,6 +953,139 @@ document.getElementById("newSellerEmail").value = "";
   );
 
   await loadSellers();
+}
+
+    async function savePointRule() {
+
+  const saleDate =
+    document.getElementById("pointDate").value;
+
+  const hourValue =
+    document.getElementById("pointHour").value;
+
+  const pointValue =
+    document.getElementById("pointValue").value;
+
+  const message =
+    document.getElementById("pointMessage");
+
+  if (
+    !saleDate ||
+    hourValue === "" ||
+    pointValue === ""
+  ) {
+    message.textContent =
+      "日付・時間・ポイントを入力してください。";
+    return;
+  }
+
+  const startHour =
+    Number(hourValue);
+
+  const pointPerTicket =
+    Number(pointValue);
+
+  if (pointPerTicket < 0) {
+    message.textContent =
+      "ポイントは0以上にしてください。";
+    return;
+  }
+
+  message.textContent =
+    "保存しています...";
+
+  const { error } =
+    await supabaseClient
+      .from("point_rules")
+      .upsert(
+        {
+          sale_date: saleDate,
+          start_hour: startHour,
+          point_per_ticket: pointPerTicket
+        },
+        {
+          onConflict:
+            "sale_date,start_hour"
+        }
+      );
+
+  if (error) {
+    message.textContent =
+      "保存エラー：" + error.message;
+    return;
+  }
+
+  message.textContent =
+    "✅ ポイント設定を保存しました。";
+
+  await loadPointRules();
+}
+
+    async function loadPointRules() {
+
+  const list =
+    document.getElementById(
+      "pointRuleList"
+    );
+
+  list.innerHTML =
+    "読み込み中...";
+
+  const { data, error } =
+    await supabaseClient
+      .from("point_rules")
+      .select(
+        "id,sale_date,start_hour,point_per_ticket"
+      )
+      .order("sale_date")
+      .order("start_hour");
+
+  if (error) {
+    list.innerHTML =
+      "取得エラー：" + error.message;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML =
+      "ポイント設定はまだありません。";
+    return;
+  }
+
+  list.innerHTML =
+    data.map(rule => {
+
+      const endHour =
+        rule.start_hour + 1;
+
+      return `
+        <div
+          style="
+            border:1px solid #ccc;
+            padding:10px;
+            margin:8px 0;
+            border-radius:8px;
+          "
+        >
+          <strong>
+            ${rule.sale_date}
+          </strong>
+
+          <br>
+
+          ${rule.start_hour}:00
+          〜
+          ${endHour}:00
+
+          <br>
+
+          1枚あたり
+          <strong>
+            ${rule.point_per_ticket} pt
+          </strong>
+        </div>
+      `;
+    }).join("");
 }
     
     async function checkLogin() {
