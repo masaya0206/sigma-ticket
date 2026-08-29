@@ -78,66 +78,177 @@
 
     async function loadInvite() {
 
-      const loadingArea =
-        document.getElementById(
-          "loadingArea"
-        );
+  const loadingArea =
+    document.getElementById("loadingArea");
 
-      if (!token) {
-        loadingArea.textContent =
-          "招待URLが正しくありません。";
-        return;
+  const registerArea =
+    document.getElementById("registerArea");
+
+  const sellerInfo =
+    document.getElementById("sellerInfo");
+
+  if (!token) {
+    loadingArea.textContent =
+      "招待URLが正しくありません。";
+    return;
+  }
+
+  loadingArea.textContent =
+    "招待情報を確認しています...";
+
+  const { data, error } =
+    await supabaseClient.functions.invoke(
+      "register-seller",
+      {
+        body: {
+          action: "check",
+          token: token
+        }
       }
+    );
 
-      // 次の段階でここから
-      // Edge Functionを呼びます。
+  if (error) {
 
-      loadingArea.textContent =
-        "招待URLを確認できました。";
+    let errorMessage = error.message;
 
-      document.getElementById(
-        "registerArea"
-      ).style.display = "block";
+    try {
+      const errorBody =
+        await error.context.json();
+
+      if (errorBody?.error) {
+        errorMessage = errorBody.error;
+      }
+    } catch (e) {
+      console.log(e);
     }
+
+    loadingArea.textContent =
+      "エラー：" + errorMessage;
+
+    return;
+  }
+
+  if (data?.error) {
+    loadingArea.textContent =
+      "エラー：" + data.error;
+    return;
+  }
+
+  loadingArea.style.display = "none";
+
+  sellerInfo.innerHTML = `
+    発行者名：${data.seller_name}<br>
+    メールアドレス：${data.email}
+  `;
+
+  registerArea.style.display = "block";
+}
 
     async function registerSeller() {
 
-      const password =
-        document.getElementById(
-          "password"
-        ).value;
+  const password =
+    document.getElementById(
+      "password"
+    ).value;
 
-      const passwordConfirm =
-        document.getElementById(
-          "passwordConfirm"
-        ).value;
+  const passwordConfirm =
+    document.getElementById(
+      "passwordConfirm"
+    ).value;
 
-      const message =
-        document.getElementById(
-          "message"
-        );
+  const message =
+    document.getElementById(
+      "message"
+    );
 
-      if (!password) {
-        message.textContent =
-          "パスワードを入力してください。";
-        return;
+  if (!password) {
+    message.textContent =
+      "パスワードを入力してください。";
+    return;
+  }
+
+  if (password.length < 8) {
+    message.textContent =
+      "パスワードは8文字以上にしてください。";
+    return;
+  }
+
+  if (password !== passwordConfirm) {
+    message.textContent =
+      "パスワードが一致していません。";
+    return;
+  }
+
+  message.textContent =
+    "登録しています...";
+
+  const { data, error } =
+    await supabaseClient.functions.invoke(
+      "register-seller",
+      {
+        body: {
+          action: "register",
+          token: token,
+          password: password
+        }
       }
+    );
 
-      if (password.length < 8) {
-        message.textContent =
-          "パスワードは8文字以上にしてください。";
-        return;
+  if (error) {
+
+    let errorMessage = error.message;
+
+    try {
+      const errorBody =
+        await error.context.json();
+
+      if (errorBody?.error) {
+        errorMessage = errorBody.error;
       }
+    } catch (e) {
+      console.log(e);
+    }
 
-      if (
-        password !==
-        passwordConfirm
-      ) {
-        message.textContent =
-          "パスワードが一致していません。";
-        return;
-      }
+    message.textContent =
+      "登録エラー：" + errorMessage;
 
+    return;
+  }
+
+  if (data?.error) {
+    message.textContent =
+      "登録エラー：" + data.error;
+    return;
+  }
+
+  if (data.existing_user) {
+    message.innerHTML = `
+      ✅ 発行者登録が完了しました。<br><br>
+      既存アカウントが使用されます。<br>
+      これまでのパスワードでログインしてください。<br><br>
+
+      <a href="seller.html">
+        販売者ログインへ
+      </a>
+    `;
+  } else {
+    message.innerHTML = `
+      ✅ 発行者登録が完了しました。<br><br>
+
+      <a href="seller.html">
+        販売者ログインへ
+      </a>
+    `;
+  }
+
+  document.getElementById(
+    "password"
+  ).disabled = true;
+
+  document.getElementById(
+    "passwordConfirm"
+  ).disabled = true;
+}
       message.textContent =
         "登録処理を準備しています...";
     }
