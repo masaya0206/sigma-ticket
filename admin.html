@@ -142,23 +142,14 @@
     <h2>ポイント設定</h2>
 
 <input
-  id="pointDate"
-  type="date"
+  id="pointStart"
+  type="datetime-local"
 >
 
-<select id="pointHour">
-  <option value="">時間を選択</option>
-  <option value="9">9:00〜9:59</option>
-  <option value="10">10:00〜10:59</option>
-  <option value="11">11:00〜11:59</option>
-  <option value="12">12:00〜12:59</option>
-  <option value="13">13:00〜13:59</option>
-  <option value="14">14:00〜14:59</option>
-  <option value="15">15:00〜15:59</option>
-  <option value="16">16:00〜16:59</option>
-  <option value="17">17:00〜17:59</option>
-  <option value="18">18:00〜18:59</option>
-</select>
+<input
+  id="pointEnd"
+  type="datetime-local"
+>
 
 <input
   id="pointValue"
@@ -957,11 +948,11 @@ document.getElementById("newSellerEmail").value = "";
 
     async function savePointRule() {
 
-  const saleDate =
-    document.getElementById("pointDate").value;
+  const startValue =
+    document.getElementById("pointStart").value;
 
-  const hourValue =
-    document.getElementById("pointHour").value;
+  const endValue =
+    document.getElementById("pointEnd").value;
 
   const pointValue =
     document.getElementById("pointValue").value;
@@ -970,20 +961,29 @@ document.getElementById("newSellerEmail").value = "";
     document.getElementById("pointMessage");
 
   if (
-    !saleDate ||
-    hourValue === "" ||
+    !startValue ||
+    !endValue ||
     pointValue === ""
   ) {
     message.textContent =
-      "日付・時間・ポイントを入力してください。";
+      "開始日時・終了日時・ポイントを入力してください。";
     return;
   }
 
-  const startHour =
-    Number(hourValue);
+  const startDate =
+    new Date(startValue);
+
+  const endDate =
+    new Date(endValue);
 
   const pointPerTicket =
     Number(pointValue);
+
+  if (endDate <= startDate) {
+    message.textContent =
+      "終了日時は開始日時より後にしてください。";
+    return;
+  }
 
   if (pointPerTicket < 0) {
     message.textContent =
@@ -997,17 +997,16 @@ document.getElementById("newSellerEmail").value = "";
   const { error } =
     await supabaseClient
       .from("point_rules")
-      .upsert(
-        {
-          sale_date: saleDate,
-          start_hour: startHour,
-          point_per_ticket: pointPerTicket
-        },
-        {
-          onConflict:
-            "sale_date,start_hour"
-        }
-      );
+      .insert({
+        start_at:
+          startDate.toISOString(),
+
+        end_at:
+          endDate.toISOString(),
+
+        point_per_ticket:
+          pointPerTicket
+      });
 
   if (error) {
     message.textContent =
@@ -1018,9 +1017,20 @@ document.getElementById("newSellerEmail").value = "";
   message.textContent =
     "✅ ポイント設定を保存しました。";
 
+  document.getElementById(
+    "pointStart"
+  ).value = "";
+
+  document.getElementById(
+    "pointEnd"
+  ).value = "";
+
+  document.getElementById(
+    "pointValue"
+  ).value = "";
+
   await loadPointRules();
 }
-
     async function loadPointRules() {
 
   const list =
@@ -1035,10 +1045,9 @@ document.getElementById("newSellerEmail").value = "";
     await supabaseClient
       .from("point_rules")
       .select(
-        "id,sale_date,start_hour,point_per_ticket"
+        "id,start_at,end_at,point_per_ticket"
       )
-      .order("sale_date")
-      .order("start_hour");
+      .order("start_at");
 
   if (error) {
     list.innerHTML =
@@ -1055,8 +1064,23 @@ document.getElementById("newSellerEmail").value = "";
   list.innerHTML =
     data.map(rule => {
 
-      const endHour =
-        rule.start_hour + 1;
+      const start =
+        new Date(rule.start_at)
+          .toLocaleString(
+            "ja-JP",
+            {
+              timeZone: "Asia/Tokyo"
+            }
+          );
+
+      const end =
+        new Date(rule.end_at)
+          .toLocaleString(
+            "ja-JP",
+            {
+              timeZone: "Asia/Tokyo"
+            }
+          );
 
       return `
         <div
@@ -1067,17 +1091,13 @@ document.getElementById("newSellerEmail").value = "";
             border-radius:8px;
           "
         >
-          <strong>
-            ${rule.sale_date}
-          </strong>
+          <strong>${start}</strong>
 
           <br>
 
-          ${rule.start_hour}:00
-          〜
-          ${endHour}:00
+          〜 ${end}
 
-          <br>
+          <br><br>
 
           1枚あたり
           <strong>
