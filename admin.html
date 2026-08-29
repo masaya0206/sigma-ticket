@@ -111,6 +111,26 @@
       ログアウト
     </button>
 
+    <h2>発行者を追加</h2>
+
+<input
+  id="newSellerName"
+  type="text"
+  placeholder="発行者名"
+>
+
+<input
+  id="newSellerEmail"
+  type="email"
+  placeholder="メールアドレス"
+>
+
+<button onclick="createSeller()">
+  発行者を追加
+</button>
+
+<p id="sellerCreateMessage"></p>
+
     <h2>チケット検索</h2>
 
     <input
@@ -679,6 +699,60 @@ async function saveNewPassword() {
   summaryArea.className = "";
 
   summaryArea.innerHTML = html;
+}
+
+    async function createSeller() {
+
+  const sellerName =
+    document.getElementById("newSellerName")
+      .value
+      .trim();
+
+  const email =
+    document.getElementById("newSellerEmail")
+      .value
+      .trim();
+
+  const message =
+    document.getElementById("sellerCreateMessage");
+
+  if (!sellerName || !email) {
+    message.textContent =
+      "発行者名とメールアドレスを入力してください。";
+    return;
+  }
+
+  message.textContent =
+    "発行者を追加しています...";
+
+  const { data, error } =
+    await supabaseClient.functions.invoke(
+      "create-seller",
+      {
+        body: {
+          email: email,
+          seller_name: sellerName
+        }
+      }
+    );
+
+  if (error) {
+    message.textContent =
+      "追加エラー：" + error.message;
+    return;
+  }
+
+  if (data?.error) {
+    message.textContent =
+      "追加エラー：" + data.error;
+    return;
+  }
+
+  message.textContent =
+    "✅ 発行者を追加しました。";
+
+  document.getElementById("newSellerName").value = "";
+  document.getElementById("newSellerEmail").value = "";
 }
     
     async function checkLogin() {
