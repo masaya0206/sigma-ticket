@@ -687,22 +687,31 @@ async function saveNewPassword() {
     if (!summary[seller]) {
 
       summary[seller] = {
-        total: 0,
-        unused: 0,
-        used: 0,
-        invalid: 0
-      };
+  total: 0,
+  pending: 0,
+  active: 0,
+  used: 0,
+  invalid: 0
+};
     }
 
     summary[seller].total++;
 
-    if (ticket.status === "unused") {
-      summary[seller].unused++;
-    }
+if (ticket.status === "pending") {
+  summary[seller].pending++;
+}
 
-    else if (ticket.status === "used") {
-      summary[seller].used++;
-    }
+else if (ticket.status === "active") {
+  summary[seller].active++;
+}
+
+else if (ticket.status === "used") {
+  summary[seller].used++;
+}
+
+else if (ticket.status === "invalid") {
+  summary[seller].invalid++;
+}
 
     else {
       summary[seller].invalid++;
@@ -729,14 +738,17 @@ async function saveNewPassword() {
         発行：
         ${item.total}枚<br>
 
-        🟢 未使用：
-        ${item.unused}枚<br>
+        🟡 受け取り待ち：
+${item.pending}枚<br>
 
-        🔴 使用済み：
-        ${item.used}枚<br>
+🟢 有効：
+${item.active}枚<br>
 
-        ⛔ 無効：
-        ${item.invalid}枚
+🔴 使用済み：
+${item.used}枚<br>
+
+⛔ 無効：
+${item.invalid}枚
 
       </div>
     `;
