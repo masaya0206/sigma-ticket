@@ -8,7 +8,7 @@
 
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
+
   <style>
     body {
       font-family: sans-serif;
@@ -16,6 +16,7 @@
       margin: 0 auto;
       padding: 20px;
       text-align: center;
+      background: #fafafa;
     }
 
     h1 {
@@ -25,11 +26,16 @@
     button {
       width: 100%;
       padding: 16px;
-      margin-top: 20px;
+      margin-top: 16px;
       font-size: 18px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     #reader {
@@ -37,7 +43,8 @@
       margin-top: 20px;
     }
 
-    #result {
+    #result,
+    #registerPanel {
       margin-top: 20px;
       padding: 20px;
       background: #f2f2f2;
@@ -45,11 +52,20 @@
     }
 
     .valid {
-      background: #e8f7e8;
+      background: #e8f7e8 !important;
     }
 
     .invalid {
-      background: #ffe8e8;
+      background: #ffe8e8 !important;
+    }
+
+    .warning {
+      background: #fff4df !important;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #666;
     }
   </style>
 </head>
@@ -58,17 +74,34 @@
 
   <h1>シグマ祭 チケット受付</h1>
 
-  <button
-  id="scanButton"
-  onclick="startScanner()"
-  style="display:none;"
->
-  QRコードを読み取る
-</button>
+  <div id="registerPanel">
+    <p id="registerStatus">
+      レジ勤務状態を確認しています...
+    </p>
 
-<p id="registerStatus">
-  レジ勤務状態を確認しています...
-</p>
+    <button
+      id="backToStaffButton"
+      onclick="location.href='staff.html'"
+    >
+      スタッフ画面に戻る
+    </button>
+  </div>
+
+  <button
+    id="scanButton"
+    onclick="startScanner()"
+    style="display:none;"
+  >
+    QRコードを読み取る
+  </button>
+
+  <button
+    id="stopButton"
+    onclick="stopScanner()"
+    style="display:none;"
+  >
+    スキャンを停止
+  </button>
 
   <div id="reader"></div>
 
@@ -78,143 +111,350 @@
 
   <script>
 
-    const SUPABASE_URL = "https://gsniytemgrbtgfywhqlu.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
 
     const supabaseClient =
-      supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
 
-    let scanner;
+    let scanner = null;
+    let scannerBusy = false;
+
+
+    async function getCurrentUser() {
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      return user;
+    }
+
 
     async function checkRegisterPermission() {
 
-  const status =
-    document.getElementById("registerStatus");
+      const status =
+        document.getElementById(
+          "registerStatus"
+        );
 
-  const scanButton =
-    document.getElementById("scanButton");
+      const scanButton =
+        document.getElementById(
+          "scanButton"
+        );
 
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
+      const user =
+        await getCurrentUser();
 
-  if (!user) {
+      if (!user) {
 
-    scanButton.style.display = "none";
+        scanButton.style.display =
+          "none";
 
-    status.textContent =
-      "スタッフ画面からログインしてください。";
+        status.textContent =
+          "スタッフ画面からログインしてください。";
 
-    return false;
-  }
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("staff_attendance")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("role", "register")
-      .is("clock_out", null)
-      .limit(1)
-      .maybeSingle();
-
-  if (error) {
-
-    scanButton.style.display = "none";
-
-    status.textContent =
-      "レジ勤務状態を確認できませんでした。";
-
-    return false;
-  }
-
-  if (!data) {
-
-    scanButton.style.display = "none";
-
-    status.textContent =
-      "現在レジ勤務中ではありません。";
-
-    return false;
-  }
-
-  scanButton.style.display = "block";
-
-  status.textContent =
-    "🟢 レジ勤務中";
-
-  return true;
-}
-
-    async function startScanner() {
-
-  const allowed =
-    await checkRegisterPermission();
-
-  if (!allowed) {
-
-    document.getElementById("result")
-      .innerHTML =
-      "レジ勤務中のスタッフだけ使用できます。";
-
-    return;
-  }
-
-  if (scanner) return;
-
-  scanner =
-    new Html5Qrcode("reader");
-
-  scanner.start(
-    {
-      facingMode: "environment"
-    },
-    {
-      fps: 10,
-      qrbox: {
-        width: 250,
-        height: 250
+        return false;
       }
-    },
 
-    async function(decodedText) {
-
-      await scanner.stop();
-
-      scanner = null;
-
-      checkTicket(decodedText);
-    },
-
-    function(error) {
-    }
-  );
-}
-
-    async function checkTicket(ticketCode) {
-
-      const resultBox = document.getElementById("result");
-
-      resultBox.className = "";
-      resultBox.innerHTML = "チケットを確認しています...";
-
-      const { data, error } = await supabaseClient
-        .from("tickets")
-        .select("*")
-        .eq("ticket_code", ticketCode)
-        .maybeSingle();
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select(
+            "id,clock_in,attendance_state"
+          )
+          .eq("user_id", user.id)
+          .eq("role", "register")
+          .eq(
+            "attendance_state",
+            "working"
+          )
+          .is("clock_out", null)
+          .order(
+            "clock_in",
+            { ascending: false }
+          )
+          .limit(1)
+          .maybeSingle();
 
       if (error) {
 
-        resultBox.className = "invalid";
+        scanButton.style.display =
+          "none";
+
+        status.textContent =
+          "レジ勤務状態を確認できませんでした。";
+
+        return false;
+      }
+
+      if (!data) {
+
+        scanButton.style.display =
+          "none";
+
+        status.textContent =
+          "現在レジ勤務中ではありません。";
+
+        return false;
+      }
+
+      scanButton.style.display =
+        scanner
+          ? "none"
+          : "block";
+
+      status.textContent =
+        "🟢 レジ勤務中";
+
+      return true;
+    }
+
+
+    async function startScanner() {
+
+      const allowed =
+        await checkRegisterPermission();
+
+      if (!allowed) {
+
+        const result =
+          document.getElementById(
+            "result"
+          );
+
+        result.className =
+          "warning";
+
+        result.innerHTML =
+          "レジ勤務中のスタッフだけ使用できます。";
+
+        return;
+      }
+
+      if (
+        scanner ||
+        scannerBusy
+      ) {
+        return;
+      }
+
+      scannerBusy = true;
+
+      try {
+
+        scanner =
+          new Html5Qrcode(
+            "reader"
+          );
+
+        document.getElementById(
+          "scanButton"
+        ).style.display =
+          "none";
+
+        document.getElementById(
+          "stopButton"
+        ).style.display =
+          "block";
+
+        const result =
+          document.getElementById(
+            "result"
+          );
+
+        result.className = "";
+        result.textContent =
+          "QRコードをカメラにかざしてください。";
+
+        await scanner.start(
+          {
+            facingMode:
+              "environment"
+          },
+          {
+            fps: 10,
+            qrbox: {
+              width: 250,
+              height: 250
+            }
+          },
+
+          async function(
+            decodedText
+          ) {
+
+            if (scannerBusy) {
+              return;
+            }
+
+            scannerBusy = true;
+
+            try {
+
+              await stopScanner(
+                false
+              );
+
+              await checkTicket(
+                decodedText
+              );
+
+            } finally {
+
+              scannerBusy = false;
+            }
+          },
+
+          function() {
+          }
+        );
+
+      } catch (error) {
+
+        scanner = null;
+
+        document.getElementById(
+          "stopButton"
+        ).style.display =
+          "none";
+
+        const result =
+          document.getElementById(
+            "result"
+          );
+
+        result.className =
+          "invalid";
+
+        result.innerHTML = `
+          <h2>⚠️ カメラエラー</h2>
+          <p>${error.message}</p>
+        `;
+
+        await checkRegisterPermission();
+
+      } finally {
+
+        scannerBusy = false;
+      }
+    }
+
+
+    async function stopScanner(
+      refreshPermission = true
+    ) {
+
+      if (!scanner) {
+
+        document.getElementById(
+          "stopButton"
+        ).style.display =
+          "none";
+
+        if (refreshPermission) {
+          await checkRegisterPermission();
+        }
+
+        return;
+      }
+
+      const currentScanner =
+        scanner;
+
+      scanner = null;
+
+      try {
+
+        await currentScanner.stop();
+
+      } catch (error) {
+      }
+
+      try {
+
+        await currentScanner.clear();
+
+      } catch (error) {
+      }
+
+      document.getElementById(
+        "stopButton"
+      ).style.display =
+        "none";
+
+      if (refreshPermission) {
+        await checkRegisterPermission();
+      }
+    }
+
+
+    async function checkTicket(
+      ticketCode
+    ) {
+
+      const resultBox =
+        document.getElementById(
+          "result"
+        );
+
+      const allowed =
+        await checkRegisterPermission();
+
+      if (!allowed) {
+
+        resultBox.className =
+          "invalid";
+
+        resultBox.innerHTML = `
+          <h2>⛔ 使用できません</h2>
+          <p>
+            現在レジ勤務中ではありません。
+          </p>
+        `;
+
+        return;
+      }
+
+      resultBox.className = "";
+
+      resultBox.innerHTML =
+        "チケットを確認しています...";
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("tickets")
+          .select("*")
+          .eq(
+            "ticket_code",
+            ticketCode
+          )
+          .maybeSingle();
+
+      if (error) {
+
+        resultBox.className =
+          "invalid";
 
         resultBox.innerHTML = `
           <h2>⚠️ エラー</h2>
           <p>${error.message}</p>
+          <button onclick="startScanner()">
+            もう一度読み取る
+          </button>
         `;
 
         return;
@@ -222,170 +462,379 @@
 
       if (!data) {
 
-        resultBox.className = "invalid";
+        resultBox.className =
+          "invalid";
 
         resultBox.innerHTML = `
           <h2>❌ 無効なチケット</h2>
-          <p>登録されていないチケットです。</p>
+          <p>
+            登録されていないチケットです。
+          </p>
+          <button onclick="startScanner()">
+            次のQRを読み取る
+          </button>
         `;
 
         return;
       }
 
-     if (data.status === "active") {
+      if (
+        data.status === "active"
+      ) {
 
-  resultBox.className = "valid";
+        resultBox.className =
+          "valid";
 
-  resultBox.innerHTML = `
-    <h2>🟢 有効</h2>
+        resultBox.innerHTML = `
+          <h2>🟢 有効</h2>
 
-    <p><strong>商品</strong><br>
-    ${data.product_name}</p>
+          <p>
+            <strong>商品</strong><br>
+            ${data.product_name}
+          </p>
 
-    <p><strong>販売者</strong><br>
-    ${data.seller_name}</p>
+          <p>
+            <strong>販売者</strong><br>
+            ${data.seller_name}
+          </p>
 
-    <p><strong>チケットID</strong><br>
-    ${data.ticket_code}</p>
+          <p>
+            <strong>購入者</strong><br>
+            ${data.buyer_name ?? "未登録"}
+          </p>
 
-    <button onclick="useTicket('${data.ticket_code}')">
-      使用する
-    </button>
-  `;
+          <p>
+            <strong>チケットID</strong><br>
+            ${data.ticket_code}
+          </p>
 
-} else if (data.status === "used") {
+          <button
+            id="useTicketButton"
+            onclick="
+              useTicket(
+                '${data.ticket_code}'
+              )
+            "
+          >
+            使用する
+          </button>
 
-        resultBox.className = "invalid";
+          <button onclick="startScanner()">
+            キャンセルして次を読む
+          </button>
+        `;
+
+        return;
+      }
+
+      if (
+        data.status === "used"
+      ) {
+
+        resultBox.className =
+          "invalid";
 
         resultBox.innerHTML = `
           <h2>🔴 使用済み</h2>
 
-          <p>${data.product_name}</p>
-          <p>チケットID：${data.ticket_code}</p>
+          <p>
+            ${data.product_name}
+          </p>
+
+          <p>
+            チケットID：
+            ${data.ticket_code}
+          </p>
+
+          <p class="small">
+            ${
+              data.used_at
+                ? new Date(
+                    data.used_at
+                  ).toLocaleString(
+                    "ja-JP"
+                  )
+                : ""
+            }
+          </p>
+
+          <button onclick="startScanner()">
+            次のQRを読み取る
+          </button>
         `;
 
-      } else {
+        return;
+      }
 
-        resultBox.className = "invalid";
+      if (
+        data.status === "pending"
+      ) {
+
+        resultBox.className =
+          "warning";
 
         resultBox.innerHTML = `
-          <h2>⛔ 無効</h2>
+          <h2>🟡 受け取り待ち</h2>
 
-          <p>このチケットは使用できません。</p>
+          <p>
+            購入者側で受け取りが完了していません。
+          </p>
+
+          <button onclick="startScanner()">
+            次のQRを読み取る
+          </button>
         `;
+
+        return;
       }
+
+      resultBox.className =
+        "invalid";
+
+      resultBox.innerHTML = `
+        <h2>⛔ 無効</h2>
+
+        <p>
+          このチケットは使用できません。
+        </p>
+
+        <button onclick="startScanner()">
+          次のQRを読み取る
+        </button>
+      `;
     }
 
-async function useTicket(ticketCode) {
 
-  const resultBox =
-    document.getElementById("result");
+    async function useTicket(
+      ticketCode
+    ) {
 
-  const allowed =
-    await checkRegisterPermission();
+      const resultBox =
+        document.getElementById(
+          "result"
+        );
 
-  if (!allowed) {
+      const useButton =
+        document.getElementById(
+          "useTicketButton"
+        );
 
-    resultBox.className = "invalid";
+      if (useButton) {
+        useButton.disabled = true;
+      }
 
-    resultBox.innerHTML = `
-      <h2>⛔ 使用できません</h2>
-      <p>
-        現在レジ勤務中ではありません。
-      </p>
-    `;
+      const allowed =
+        await checkRegisterPermission();
 
-    return;
-  }
+      if (!allowed) {
 
-  resultBox.innerHTML = "使用処理中...";
+        resultBox.className =
+          "invalid";
 
-  const { data, error } = await supabaseClient
-    .from("tickets")
-    .update({
-      status: "used",
-      used_at: new Date().toISOString()
-    })
-    .eq("ticket_code", ticketCode)
-    .eq("status", "active")
-    .select()
-    .maybeSingle();
+        resultBox.innerHTML = `
+          <h2>⛔ 使用できません</h2>
+          <p>
+            現在レジ勤務中ではありません。
+          </p>
+        `;
 
-  if (error) {
+        return;
+      }
 
-    resultBox.className = "invalid";
+      resultBox.className = "";
+      resultBox.innerHTML =
+        "使用処理中...";
 
-    resultBox.innerHTML = `
-      <h2>⚠️ エラー</h2>
-      <p>${error.message}</p>
-    `;
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("tickets")
+          .update({
+            status: "used",
+            used_at:
+              new Date().toISOString()
+          })
+          .eq(
+            "ticket_code",
+            ticketCode
+          )
+          .eq(
+            "status",
+            "active"
+          )
+          .select()
+          .maybeSingle();
 
-    return;
-  }
+      if (error) {
 
-  if (!data) {
+        resultBox.className =
+          "invalid";
 
-    resultBox.className = "invalid";
+        resultBox.innerHTML = `
+          <h2>⚠️ エラー</h2>
+          <p>${error.message}</p>
+          <button onclick="startScanner()">
+            次のQRを読み取る
+          </button>
+        `;
 
-    resultBox.innerHTML = `
-      <h2>🔴 使用できません</h2>
-      <p>すでに使用済み、または無効なチケットです。</p>
-    `;
+        return;
+      }
 
-    return;
-  }
-  
-const {
-  data: { user }
-} =
-  await supabaseClient.auth.getUser();
+      if (!data) {
 
-const {
-  data: staff
-} =
-  await supabaseClient
-    .from("staff_members")
-    .select("staff_name")
-    .eq("user_id", user.id)
-    .maybeSingle();
+        resultBox.className =
+          "invalid";
 
-await supabaseClient
-  .from("ticket_logs")
-  .insert({
-    ticket_code:
-      data.ticket_code,
+        resultBox.innerHTML = `
+          <h2>🔴 使用できません</h2>
 
-    action:
-      "used",
+          <p>
+            すでに使用済み、
+            または無効なチケットです。
+          </p>
 
-    actor_id:
-      user.id,
+          <button onclick="startScanner()">
+            次のQRを読み取る
+          </button>
+        `;
 
-    actor_name:
-      staff?.staff_name ??
-      "受付スタッフ"
-  });
-  
-  resultBox.className = "valid";
+        return;
+      }
 
-  resultBox.innerHTML = `
-    <h2>✅ 使用完了</h2>
+      const user =
+        await getCurrentUser();
 
-    <p>${data.product_name}</p>
+      let staffName =
+        "受付スタッフ";
 
-    <p>
-      ${new Date(data.used_at).toLocaleString("ja-JP")}
-    </p>
+      if (user) {
 
-    <button onclick="startScanner()">
-      次のQRを読み取る
-    </button>
-  `;
-}
+        const {
+          data: staff
+        } =
+          await supabaseClient
+            .from("staff_members")
+            .select("staff_name")
+            .eq(
+              "user_id",
+              user.id
+            )
+            .maybeSingle();
 
-    checkRegisterPermission();
+        if (staff?.staff_name) {
+          staffName =
+            staff.staff_name;
+        }
+      }
 
-</script>
+      const {
+        error: logError
+      } =
+        await supabaseClient
+          .from("ticket_logs")
+          .insert({
+            ticket_code:
+              data.ticket_code,
+            action:
+              "used",
+            actor_id:
+              user?.id ?? null,
+            actor_name:
+              staffName
+          });
+
+      resultBox.className =
+        "valid";
+
+      resultBox.innerHTML = `
+        <h2>✅ 使用完了</h2>
+
+        <p>
+          ${data.product_name}
+        </p>
+
+        <p>
+          ${new Date(
+            data.used_at
+          ).toLocaleString(
+            "ja-JP"
+          )}
+        </p>
+
+        ${
+          logError
+            ? `
+              <p class="small">
+                ※使用処理は完了しましたが、
+                操作履歴の保存に失敗しました。
+              </p>
+            `
+            : ""
+        }
+
+        <button onclick="startScanner()">
+          次のQRを読み取る
+        </button>
+
+        <button
+          onclick="
+            location.href='staff.html'
+          "
+        >
+          スタッフ画面に戻る
+        </button>
+      `;
+    }
+
+
+    async function initialize() {
+
+      const {
+        data: { session }
+      } =
+        await supabaseClient.auth
+          .getSession();
+
+      if (!session) {
+
+        document.getElementById(
+          "registerStatus"
+        ).textContent =
+          "スタッフ画面からログインしてください。";
+
+        document.getElementById(
+          "scanButton"
+        ).style.display =
+          "none";
+
+        return;
+      }
+
+      await checkRegisterPermission();
+    }
+
+
+    window.addEventListener(
+      "pagehide",
+      () => {
+
+        if (scanner) {
+
+          try {
+            scanner.stop();
+          } catch (error) {
+          }
+        }
+      }
+    );
+
+
+    initialize();
+
+  </script>
 
 </body>
 </html>
