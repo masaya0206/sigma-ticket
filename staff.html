@@ -11,10 +11,15 @@
   <style>
     body {
       font-family: sans-serif;
-      max-width: 500px;
+      max-width: 560px;
       margin: 0 auto;
       padding: 20px;
       text-align: center;
+      background: #fafafa;
+    }
+
+    h1 {
+      margin-bottom: 18px;
     }
 
     input,
@@ -32,16 +37,80 @@
       cursor: pointer;
     }
 
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     .card {
-      margin-top: 20px;
+      margin-top: 16px;
       padding: 18px;
       background: #f2f2f2;
       border-radius: 12px;
       text-align: left;
     }
 
+    .card h2 {
+      margin-top: 0;
+    }
+
+    .status {
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .notice {
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    .shift-item,
+    .attendance-item {
+      padding: 10px 0;
+      border-top: 1px solid #ccc;
+    }
+
+    .shift-item:first-child,
+    .attendance-item:first-child {
+      border-top: none;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .action-grid button {
+      margin-top: 0;
+    }
+
+    .danger-text {
+      color: #b00020;
+    }
+
+    .warning-text {
+      color: #8a5a00;
+    }
+
+    .success-text {
+      color: #146c2e;
+    }
+
     #staffArea {
       display: none;
+    }
+
+    #registerArea,
+    #roleLinksArea {
+      display: none;
+    }
+
+    @media (max-width: 420px) {
+      .action-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -56,12 +125,14 @@
       id="email"
       type="email"
       placeholder="メールアドレス"
+      autocomplete="email"
     >
 
     <input
       id="password"
       type="password"
       placeholder="パスワード"
+      autocomplete="current-password"
     >
 
     <button onclick="login()">
@@ -80,9 +151,7 @@
     </button>
 
     <div class="card">
-      <h2 id="staffName">
-        スタッフ
-      </h2>
+      <h2 id="staffName">スタッフ</h2>
 
       <p id="currentRole">
         今日の予定を確認しています...
@@ -91,56 +160,155 @@
 
 
     <div class="card">
+      <h2>今日の予定シフト</h2>
+      <div id="todayAssignments">
+        読み込み中...
+      </div>
+    </div>
 
-      <h2>勤怠</h2>
 
-      <button onclick="clockIn()">
-        出勤
+    <div class="card">
+      <h2>現在の勤怠</h2>
+
+      <p
+        id="attendanceStatus"
+        class="status"
+      >
+        確認しています...
+      </p>
+
+      <div
+        id="attendanceButtons"
+        class="action-grid"
+      >
+        <button
+          id="clockInButton"
+          onclick="clockIn()"
+        >
+          出勤
+        </button>
+
+        <button
+          id="breakStartButton"
+          onclick="startBreak()"
+        >
+          休憩開始
+        </button>
+
+        <button
+          id="breakEndButton"
+          onclick="endBreak()"
+        >
+          休憩終了
+        </button>
+
+        <button
+          id="clockOutButton"
+          onclick="clockOut()"
+        >
+          退勤
+        </button>
+      </div>
+
+      <p
+        id="attendanceMessage"
+        class="notice"
+      ></p>
+    </div>
+
+
+    <div
+      id="registerArea"
+      class="card"
+    >
+      <h2>レジ</h2>
+
+      <p>
+        売り子の予定時間中だけレジに入れます。
+        レジ勤務中だけチケットスキャンが使えます。
+      </p>
+
+      <button
+        id="registerStartButton"
+        onclick="startRegister()"
+      >
+        レジ開始
       </button>
 
-      <button onclick="startBreak()">
-        休憩開始
+      <button
+        id="registerEndButton"
+        onclick="endRegister()"
+        style="display:none;"
+      >
+        レジ終了
       </button>
 
-      <button onclick="endBreak()">
-        休憩終了
+      <button
+        id="scannerButton"
+        onclick="location.href='index.html'"
+        style="display:none;"
+      >
+        📷 チケットスキャン
       </button>
 
-      <button onclick="clockOut()">
-        退勤
+      <p id="registerMessage"></p>
+    </div>
+
+
+    <div class="card">
+      <h2>チケット</h2>
+
+      <button
+        onclick="location.href='seller.html'"
+      >
+        🎫 チケットを発行
       </button>
 
-      <p id="attendanceMessage"></p>
+      <p style="font-size:13px;">
+        チケット発行は全スタッフ共通です。
+      </p>
+    </div>
 
-      <hr style="margin:20px 0;">
 
-<h2>レジ</h2>
+    <div class="card">
+      <h2>今日の勤怠履歴</h2>
 
-<button
-  id="registerStartButton"
-  onclick="startRegister()"
->
-  レジ開始
-</button>
+      <button onclick="loadAttendanceHistory()">
+        履歴を更新
+      </button>
 
-<button
-  id="registerEndButton"
-  onclick="endRegister()"
-  style="display:none;"
->
-  レジ終了
-</button>
+      <div id="attendanceHistory">
+        読み込み中...
+      </div>
+    </div>
 
-<button
-  id="scannerButton"
-  onclick="location.href='index.html'"
-  style="display:none;"
->
-  📷 チケットスキャン
-</button>
 
-<p id="registerMessage"></p>
+    <div id="roleLinksArea" class="card">
+      <h2>当日運営</h2>
 
+      <button
+        id="frontPageButton"
+        onclick="location.href='front.html'"
+        style="display:none;"
+      >
+        表番画面
+      </button>
+
+      <button
+        id="backPageButton"
+        onclick="location.href='back.html'"
+        style="display:none;"
+      >
+        裏番画面
+      </button>
+
+      <button
+        id="adminPageButton"
+        onclick="location.href='admin.html'"
+        style="display:none;"
+      >
+        管理者画面
+      </button>
     </div>
 
   </div>
@@ -160,6 +328,77 @@
         SUPABASE_KEY
       );
 
+    let currentUserId = null;
+    let currentScheduledRole = null;
+
+
+    function roleText(role) {
+
+      if (role === "seller") {
+        return "売り子";
+      }
+
+      if (role === "tent") {
+        return "テント内";
+      }
+
+      if (role === "front") {
+        return "表番";
+      }
+
+      if (role === "back") {
+        return "裏番";
+      }
+
+      if (role === "register") {
+        return "レジ";
+      }
+
+      return "未確定";
+    }
+
+
+    function timeText(value) {
+
+      if (!value) {
+        return "";
+      }
+
+      return new Date(value)
+        .toLocaleTimeString(
+          "ja-JP",
+          {
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+    }
+
+
+    function dayRange(date = new Date()) {
+
+      const start =
+        new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate(),
+          0, 0, 0, 0
+        );
+
+      const end =
+        new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate() + 1,
+          0, 0, 0, 0
+        );
+
+      return {
+        start,
+        end
+      };
+    }
+
 
     async function login() {
 
@@ -172,15 +411,22 @@
       const message =
         document.getElementById("loginMessage");
 
+      message.textContent =
+        "ログインしています...";
+
       const { error } =
-        await supabaseClient.auth.signInWithPassword({
-          email,
-          password
-        });
+        await supabaseClient.auth
+          .signInWithPassword({
+            email,
+            password
+          });
 
       if (error) {
+
         message.textContent =
-          "ログイン失敗：" + error.message;
+          "ログイン失敗：" +
+          error.message;
+
         return;
       }
 
@@ -194,11 +440,18 @@
 
       await supabaseClient.auth.signOut();
 
-      document.getElementById("staffArea")
-        .style.display = "none";
+      currentUserId = null;
+      currentScheduledRole = null;
 
-      document.getElementById("loginArea")
-        .style.display = "block";
+      document.getElementById(
+        "staffArea"
+      ).style.display =
+        "none";
+
+      document.getElementById(
+        "loginArea"
+      ).style.display =
+        "block";
     }
 
 
@@ -213,6 +466,8 @@
         return;
       }
 
+      currentUserId = user.id;
+
       const {
         data: staff,
         error
@@ -220,46 +475,161 @@
         await supabaseClient
           .from("staff_members")
           .select(
-            "staff_name,is_active,can_sell,can_scan"
+            "staff_name,is_active"
           )
           .eq("user_id", user.id)
           .maybeSingle();
 
       if (error || !staff) {
 
-        document.getElementById("loginMessage")
-          .textContent =
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
           "スタッフ情報が見つかりません。";
 
         await supabaseClient.auth.signOut();
+
         return;
       }
 
       if (!staff.is_active) {
 
-        document.getElementById("loginMessage")
-          .textContent =
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
           "このスタッフアカウントは停止中です。";
 
         await supabaseClient.auth.signOut();
+
         return;
       }
 
-      document.getElementById("loginArea")
-        .style.display = "none";
+      document.getElementById(
+        "loginArea"
+      ).style.display =
+        "none";
 
-      document.getElementById("staffArea")
-        .style.display = "block";
+      document.getElementById(
+        "staffArea"
+      ).style.display =
+        "block";
 
-      document.getElementById("staffName")
-        .textContent = staff.staff_name;
+      document.getElementById(
+        "staffName"
+      ).textContent =
+        staff.staff_name;
 
-      await loadTodayAssignment(user.id);
-      await updateRegisterState();
+      await Promise.all([
+        loadTodayAssignments(user.id),
+        updateAttendanceState(user.id),
+        updateRegisterState(),
+        loadAttendanceHistory(),
+        updateRoleLinks(user.id)
+      ]);
     }
 
 
-    async function loadTodayAssignment(userId) {
+    async function loadTodayAssignments(userId) {
+
+      const {
+        start,
+        end
+      } =
+        dayRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_assignments")
+          .select(
+            "role,start_at,end_at"
+          )
+          .eq("user_id", userId)
+          .lt(
+            "start_at",
+            end.toISOString()
+          )
+          .gt(
+            "end_at",
+            start.toISOString()
+          )
+          .order(
+            "start_at",
+            { ascending: true }
+          );
+
+      const area =
+        document.getElementById(
+          "todayAssignments"
+        );
+
+      if (error) {
+
+        area.textContent =
+          "予定シフト取得エラー：" +
+          error.message;
+
+        return;
+      }
+
+      const now =
+        new Date();
+
+      const current =
+        (data || []).find(
+          item =>
+            new Date(item.start_at) <= now &&
+            new Date(item.end_at) >= now
+        ) || null;
+
+      currentScheduledRole =
+        current?.role ?? null;
+
+      document.getElementById(
+        "currentRole"
+      ).textContent =
+        current
+          ? `現在の予定：${roleText(
+              current.role
+            )} ${timeText(
+              current.start_at
+            )}〜${timeText(
+              current.end_at
+            )}`
+          : "現在の予定シフトはありません。";
+
+      if (!data || data.length === 0) {
+
+        area.textContent =
+          "今日の予定シフトはありません。";
+
+        updateRegisterAreaVisibility();
+
+        return;
+      }
+
+      area.innerHTML =
+        data.map(item => `
+          <div class="shift-item">
+            <strong>
+              ${roleText(item.role)}
+            </strong>
+            <br>
+            ${timeText(item.start_at)}
+            〜
+            ${timeText(item.end_at)}
+          </div>
+        `).join("");
+
+      updateRegisterAreaVisibility();
+    }
+
+
+    async function getCurrentAttendanceRole(
+      userId
+    ) {
 
       const now =
         new Date().toISOString();
@@ -276,574 +646,935 @@
           .eq("user_id", userId)
           .lte("start_at", now)
           .gte("end_at", now)
-          .order("start_at", {
-            ascending: false
-          })
+          .order(
+            "start_at",
+            { ascending: false }
+          )
           .limit(1)
           .maybeSingle();
 
-      const area =
-        document.getElementById("currentRole");
+      if (error) {
+        throw error;
+      }
+
+      return data?.role ?? null;
+    }
+
+
+    async function getOpenAttendance(
+      userId
+    ) {
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select(
+            "id,role,clock_in,clock_out,attendance_state"
+          )
+          .eq("user_id", userId)
+          .is("clock_out", null)
+          .order(
+            "clock_in",
+            { ascending: false }
+          )
+          .limit(1)
+          .maybeSingle();
 
       if (error) {
-        area.textContent =
-          "予定シフト取得エラー";
+        throw error;
+      }
+
+      return data;
+    }
+
+
+    async function getLatestAttendance(
+      userId
+    ) {
+
+      const {
+        start,
+        end
+      } =
+        dayRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select(
+            "id,role,clock_in,clock_out,attendance_state"
+          )
+          .eq("user_id", userId)
+          .gte(
+            "clock_in",
+            start.toISOString()
+          )
+          .lt(
+            "clock_in",
+            end.toISOString()
+          )
+          .order(
+            "clock_in",
+            { ascending: false }
+          )
+          .limit(1)
+          .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    }
+
+
+    async function updateAttendanceState(
+      userId = currentUserId
+    ) {
+
+      if (!userId) {
         return;
       }
 
-      if (!data) {
-        area.textContent =
-          "現在の予定シフトはありません。";
+      const status =
+        document.getElementById(
+          "attendanceStatus"
+        );
+
+      try {
+
+        const open =
+          await getOpenAttendance(userId);
+
+        const latest =
+          await getLatestAttendance(userId);
+
+        const clockInButton =
+          document.getElementById(
+            "clockInButton"
+          );
+
+        const breakStartButton =
+          document.getElementById(
+            "breakStartButton"
+          );
+
+        const breakEndButton =
+          document.getElementById(
+            "breakEndButton"
+          );
+
+        const clockOutButton =
+          document.getElementById(
+            "clockOutButton"
+          );
+
+        clockInButton.style.display =
+          "none";
+
+        breakStartButton.style.display =
+          "none";
+
+        breakEndButton.style.display =
+          "none";
+
+        clockOutButton.style.display =
+          "none";
+
+        if (open) {
+
+          if (open.role === "register") {
+
+            status.textContent =
+              `🧾 レジ勤務中 ${timeText(
+                open.clock_in
+              )}〜`;
+
+          } else {
+
+            status.textContent =
+              `🟢 勤務中 ${timeText(
+                open.clock_in
+              )}〜 / ${roleText(
+                open.role
+              )}`;
+
+            breakStartButton.style.display =
+              "block";
+
+            clockOutButton.style.display =
+              "block";
+          }
+
+          return;
+        }
+
+        if (
+          latest?.attendance_state ===
+          "break"
+        ) {
+
+          status.textContent =
+            `☕ 休憩中 ${
+              timeText(
+                latest.clock_out
+              )
+            }〜`;
+
+          breakEndButton.style.display =
+            "block";
+
+          return;
+        }
+
+        status.textContent =
+          latest
+            ? "🔵 現在は勤務していません。"
+            : "⚪ 未出勤";
+
+        const role =
+          await getCurrentAttendanceRole(
+            userId
+          );
+
+        if (role === "seller") {
+
+          status.textContent +=
+            " 売り子は通常勤怠の対象外です。";
+
+        } else {
+
+          clockInButton.style.display =
+            "block";
+        }
+
+      } catch (error) {
+
+        status.textContent =
+          "勤怠状態取得エラー：" +
+          error.message;
+      }
+    }
+
+
+    async function clockIn() {
+
+      const message =
+        document.getElementById(
+          "attendanceMessage"
+        );
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
         return;
       }
 
-      const roleText =
-  data.role === "seller"
-    ? "売り子"
-    : data.role === "tent"
-    ? "テント内"
-    : data.role === "front"
-    ? "表番"
-    : data.role === "back"
-    ? "裏番"
-    : "未確定";
+      try {
 
-      const start =
-        new Date(data.start_at)
-          .toLocaleTimeString(
-            "ja-JP",
-            {
-              hour: "2-digit",
-              minute: "2-digit"
-            }
+        const open =
+          await getOpenAttendance(user.id);
+
+        if (open) {
+
+          message.textContent =
+            "すでに勤務中です。";
+
+          return;
+        }
+
+        const role =
+          await getCurrentAttendanceRole(
+            user.id
           );
 
-      const end =
-        new Date(data.end_at)
-          .toLocaleTimeString(
-            "ja-JP",
-            {
-              hour: "2-digit",
-              minute: "2-digit"
-            }
+        if (role === "seller") {
+
+          message.textContent =
+            "売り子は通常勤怠の対象外です。";
+
+          return;
+        }
+
+        const { error } =
+          await supabaseClient
+            .from("staff_attendance")
+            .insert({
+              user_id: user.id,
+              role: role,
+              clock_in:
+                new Date().toISOString(),
+              attendance_state:
+                "working"
+            });
+
+        if (error) {
+          throw error;
+        }
+
+        message.textContent =
+          role
+            ? "✅ 出勤しました。"
+            : "⚠️ 予定外勤務として出勤しました。裏番による役割確定が必要です。";
+
+        await afterAttendanceChange();
+
+      } catch (error) {
+
+        message.textContent =
+          "出勤エラー：" +
+          error.message;
+      }
+    }
+
+
+    async function startBreak() {
+
+      const message =
+        document.getElementById(
+          "attendanceMessage"
+        );
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      try {
+
+        const attendance =
+          await getOpenAttendance(user.id);
+
+        if (!attendance) {
+
+          message.textContent =
+            "現在勤務中ではありません。";
+
+          return;
+        }
+
+        if (
+          attendance.role ===
+          "register"
+        ) {
+
+          message.textContent =
+            "レジ勤務中です。先にレジ終了をしてください。";
+
+          return;
+        }
+
+        const { error } =
+          await supabaseClient
+            .from("staff_attendance")
+            .update({
+              clock_out:
+                new Date().toISOString(),
+              attendance_state:
+                "break"
+            })
+            .eq(
+              "id",
+              attendance.id
+            );
+
+        if (error) {
+          throw error;
+        }
+
+        message.textContent =
+          "☕ 休憩を開始しました。";
+
+        await afterAttendanceChange();
+
+      } catch (error) {
+
+        message.textContent =
+          "休憩開始エラー：" +
+          error.message;
+      }
+    }
+
+
+    async function endBreak() {
+
+      const message =
+        document.getElementById(
+          "attendanceMessage"
+        );
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      try {
+
+        const open =
+          await getOpenAttendance(user.id);
+
+        if (open) {
+
+          message.textContent =
+            "すでに勤務中です。";
+
+          return;
+        }
+
+        const role =
+          await getCurrentAttendanceRole(
+            user.id
           );
 
-      area.textContent =
-        `予定：${roleText} ${start}〜${end}`;
+        if (role === "seller") {
+
+          message.textContent =
+            "現在は売り子予定のため通常勤怠は使用しません。";
+
+          return;
+        }
+
+        const { error } =
+          await supabaseClient
+            .from("staff_attendance")
+            .insert({
+              user_id: user.id,
+              role: role,
+              clock_in:
+                new Date().toISOString(),
+              attendance_state:
+                "working"
+            });
+
+        if (error) {
+          throw error;
+        }
+
+        message.textContent =
+          role
+            ? "▶️ 勤務を再開しました。"
+            : "⚠️ 予定外勤務として再開しました。裏番による役割確定が必要です。";
+
+        await afterAttendanceChange();
+
+      } catch (error) {
+
+        message.textContent =
+          "休憩終了エラー：" +
+          error.message;
+      }
     }
 
-async function getCurrentAttendanceRole(userId) {
 
-  const now =
-    new Date().toISOString();
+    async function clockOut() {
 
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("staff_assignments")
-      .select("role,start_at,end_at")
-      .eq("user_id", userId)
-      .lte("start_at", now)
-      .gte("end_at", now)
-      .order("start_at", {
-        ascending: false
-      })
-      .limit(1)
-      .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data?.role ?? null;
-}
-
-
-async function getOpenAttendance(userId) {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("staff_attendance")
-      .select(
-        "id,role,clock_in,clock_out"
-      )
-      .eq("user_id", userId)
-      .is("clock_out", null)
-      .order("clock_in", {
-        ascending: false
-      })
-      .limit(1)
-      .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
-
-
-async function clockIn() {
-
-  const message =
-    document.getElementById(
-      "attendanceMessage"
-    );
-
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
-
-  if (!user) {
-    message.textContent =
-      "ログインしてください。";
-    return;
-  }
-
-  try {
-
-    const openAttendance =
-      await getOpenAttendance(user.id);
-
-    if (openAttendance) {
-      message.textContent =
-        "すでに勤務中です。";
-      return;
-    }
-
-    const role =
-      await getCurrentAttendanceRole(
-        user.id
-      );
-
-    // 売り子は通常勤怠を取らない
-    if (role === "seller") {
-      message.textContent =
-        "売り子は通常勤怠の対象外です。";
-      return;
-    }
-
-    const { error } =
-      await supabaseClient
-        .from("staff_attendance")
-        .insert({
-  user_id: user.id,
-  role: role,
-  clock_in:
-    new Date().toISOString(),
-  attendance_state:
-    "working"
-});
-
-    if (error) {
-      throw error;
-    }
-
-    if (role) {
-      message.textContent =
-        "✅ 出勤しました。";
-    } else {
-      message.textContent =
-        "⚠️ 予定外勤務として出勤しました。裏番による役割確定が必要です。";
-    }
-
-  } catch (error) {
-
-    message.textContent =
-      "出勤エラー：" +
-      error.message;
-  }
-}
-
-
-async function startBreak() {
-
-  const message =
-    document.getElementById(
-      "attendanceMessage"
-    );
-
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
-
-  if (!user) {
-    return;
-  }
-
-  try {
-
-    const attendance =
-      await getOpenAttendance(user.id);
-
-    if (!attendance) {
-      message.textContent =
-        "現在勤務中ではありません。";
-      return;
-    }
-
-    if (attendance.role === "register") {
-      message.textContent =
-        "レジ勤務中です。先にレジ終了をしてください。";
-      return;
-    }
-
-    const { error } =
-      await supabaseClient
-        .from("staff_attendance")
-        .update({
-  clock_out:
-    new Date().toISOString(),
-
-  attendance_state:
-    "break"
-})
-        .eq(
-          "id",
-          attendance.id
+      const message =
+        document.getElementById(
+          "attendanceMessage"
         );
 
-    if (error) {
-      throw error;
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      try {
+
+        const attendance =
+          await getOpenAttendance(user.id);
+
+        if (!attendance) {
+
+          message.textContent =
+            "現在勤務中ではありません。";
+
+          return;
+        }
+
+        if (
+          attendance.role ===
+          "register"
+        ) {
+
+          message.textContent =
+            "レジ勤務中です。先にレジ終了をしてください。";
+
+          return;
+        }
+
+        const { error } =
+          await supabaseClient
+            .from("staff_attendance")
+            .update({
+              clock_out:
+                new Date().toISOString(),
+              attendance_state:
+                "finished"
+            })
+            .eq(
+              "id",
+              attendance.id
+            );
+
+        if (error) {
+          throw error;
+        }
+
+        message.textContent =
+          "✅ 退勤しました。";
+
+        await afterAttendanceChange();
+
+      } catch (error) {
+
+        message.textContent =
+          "退勤エラー：" +
+          error.message;
+      }
     }
 
-    message.textContent =
-      "☕ 休憩を開始しました。";
 
-  } catch (error) {
+    function updateRegisterAreaVisibility() {
 
-    message.textContent =
-      "休憩開始エラー：" +
-      error.message;
-  }
-}
-
-
-async function endBreak() {
-
-  const message =
-    document.getElementById(
-      "attendanceMessage"
-    );
-
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
-
-  if (!user) {
-    return;
-  }
-
-  try {
-
-    const openAttendance =
-      await getOpenAttendance(user.id);
-
-    if (openAttendance) {
-      message.textContent =
-        "すでに勤務中です。";
-      return;
-    }
-
-    const role =
-      await getCurrentAttendanceRole(
-        user.id
-      );
-
-    if (role === "seller") {
-      message.textContent =
-        "現在は売り子予定のため通常勤怠は使用しません。";
-      return;
-    }
-
-    const { error } =
-      await supabaseClient
-        .from("staff_attendance")
-        .insert({
-          user_id: user.id,
-          role: role,
-          clock_in:
-            new Date().toISOString()
-        });
-
-    if (error) {
-      throw error;
-    }
-
-    if (role) {
-      message.textContent =
-        "▶️ 勤務を再開しました。";
-    } else {
-      message.textContent =
-        "⚠️ 予定外勤務として再開しました。裏番による役割確定が必要です。";
-    }
-
-  } catch (error) {
-
-    message.textContent =
-      "休憩終了エラー：" +
-      error.message;
-  }
-}
-
-
-async function clockOut() {
-
-  const message =
-    document.getElementById(
-      "attendanceMessage"
-    );
-
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
-
-  if (!user) {
-    return;
-  }
-
-  try {
-
-    const attendance =
-      await getOpenAttendance(user.id);
-
-    if (!attendance) {
-      message.textContent =
-        "現在勤務中ではありません。";
-      return;
-    }
-
-    if (attendance.role === "register") {
-      message.textContent =
-        "レジ勤務中です。先にレジ終了をしてください。";
-      return;
-    }
-
-    const { error } =
-      await supabaseClient
-        .from("staff_attendance")
-        .update({
-  clock_out:
-    new Date().toISOString(),
-
-  attendance_state:
-    "finished"
-})
-        .eq(
-          "id",
-          attendance.id
+      const area =
+        document.getElementById(
+          "registerArea"
         );
 
-    if (error) {
-      throw error;
+      area.style.display =
+        currentScheduledRole === "seller"
+          ? "block"
+          : "none";
     }
 
-    message.textContent =
-      "✅ 退勤しました。";
-
-  } catch (error) {
-
-    message.textContent =
-      "退勤エラー：" +
-      error.message;
-  }
-}
-    
 
     async function startRegister() {
 
-  const message =
-    document.getElementById("registerMessage");
+      const message =
+        document.getElementById(
+          "registerMessage"
+        );
 
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
 
-  if (!user) {
-    message.textContent =
-      "ログインしてください。";
-    return;
-  }
+      if (!user) {
+        return;
+      }
 
-  try {
+      try {
 
-    const openAttendance =
-      await getOpenAttendance(user.id);
+        const open =
+          await getOpenAttendance(user.id);
 
-    if (openAttendance) {
-      message.textContent =
-        "すでに別の勤務を開始しています。";
-      return;
+        if (open) {
+
+          message.textContent =
+            "すでに別の勤務を開始しています。";
+
+          return;
+        }
+
+        const role =
+          await getCurrentAttendanceRole(
+            user.id
+          );
+
+        if (role !== "seller") {
+
+          message.textContent =
+            "レジには売り子の予定時間中のみ入れます。";
+
+          return;
+        }
+
+        const { error } =
+          await supabaseClient
+            .from("staff_attendance")
+            .insert({
+              user_id: user.id,
+              role: "register",
+              clock_in:
+                new Date().toISOString(),
+              attendance_state:
+                "working"
+            });
+
+        if (error) {
+          throw error;
+        }
+
+        message.textContent =
+          "✅ レジ勤務を開始しました。";
+
+        await afterAttendanceChange();
+
+      } catch (error) {
+
+        message.textContent =
+          "レジ開始エラー：" +
+          error.message;
+      }
     }
 
-    const role =
-      await getCurrentAttendanceRole(
-        user.id
-      );
 
-    if (role !== "seller") {
-      message.textContent =
-        "レジには売り子の予定時間中のみ入れます。";
-      return;
+    async function endRegister() {
+
+      const message =
+        document.getElementById(
+          "registerMessage"
+        );
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      try {
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient
+            .from("staff_attendance")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("role", "register")
+            .is("clock_out", null)
+            .order(
+              "clock_in",
+              { ascending: false }
+            )
+            .limit(1)
+            .maybeSingle();
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data) {
+
+          message.textContent =
+            "現在レジ勤務中ではありません。";
+
+          return;
+        }
+
+        const {
+          error: updateError
+        } =
+          await supabaseClient
+            .from("staff_attendance")
+            .update({
+              clock_out:
+                new Date().toISOString(),
+              attendance_state:
+                "finished"
+            })
+            .eq("id", data.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        message.textContent =
+          "✅ レジ勤務を終了しました。";
+
+        await afterAttendanceChange();
+
+      } catch (error) {
+
+        message.textContent =
+          "レジ終了エラー：" +
+          error.message;
+      }
     }
 
-    const { error } =
-      await supabaseClient
-        .from("staff_attendance")
-        .insert({
-  user_id: user.id,
-  role: "register",
-  clock_in:
-    new Date().toISOString(),
-  attendance_state: "working"
-});
 
-    if (error) {
-      throw error;
+    async function updateRegisterState() {
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("role", "register")
+          .is("clock_out", null)
+          .limit(1)
+          .maybeSingle();
+
+      if (error) {
+        return;
+      }
+
+      const isRegister =
+        !!data;
+
+      const area =
+        document.getElementById(
+          "registerArea"
+        );
+
+      if (
+        currentScheduledRole === "seller" ||
+        isRegister
+      ) {
+        area.style.display =
+          "block";
+      } else {
+        area.style.display =
+          "none";
+      }
+
+      document.getElementById(
+        "registerStartButton"
+      ).style.display =
+        isRegister
+          ? "none"
+          : "block";
+
+      document.getElementById(
+        "registerEndButton"
+      ).style.display =
+        isRegister
+          ? "block"
+          : "none";
+
+      document.getElementById(
+        "scannerButton"
+      ).style.display =
+        isRegister
+          ? "block"
+          : "none";
     }
 
-    message.textContent =
-      "✅ レジ勤務を開始しました。";
 
-    await updateRegisterState();
+    async function loadAttendanceHistory() {
 
-  } catch (error) {
+      if (!currentUserId) {
+        return;
+      }
 
-    message.textContent =
-      "レジ開始エラー：" +
-      error.message;
-  }
-}
+      const area =
+        document.getElementById(
+          "attendanceHistory"
+        );
 
+      const {
+        start,
+        end
+      } =
+        dayRange();
 
-async function endRegister() {
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select(
+            "id,role,clock_in,clock_out,attendance_state"
+          )
+          .eq(
+            "user_id",
+            currentUserId
+          )
+          .gte(
+            "clock_in",
+            start.toISOString()
+          )
+          .lt(
+            "clock_in",
+            end.toISOString()
+          )
+          .order(
+            "clock_in",
+            { ascending: true }
+          );
 
-  const message =
-    document.getElementById("registerMessage");
+      if (error) {
 
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
+        area.textContent =
+          "勤怠履歴取得エラー：" +
+          error.message;
 
-  if (!user) {
-    return;
-  }
+        return;
+      }
 
-  try {
+      if (!data || data.length === 0) {
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("staff_attendance")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("role", "register")
-        .is("clock_out", null)
-        .order(
-          "clock_in",
-          { ascending: false }
-        )
-        .limit(1)
-        .maybeSingle();
+        area.textContent =
+          "今日の勤怠記録はありません。";
 
-    if (error) {
-      throw error;
+        return;
+      }
+
+      area.innerHTML =
+        data.map(item => {
+
+          const endText =
+            item.clock_out
+              ? timeText(item.clock_out)
+              : "勤務中";
+
+          const stateText =
+            item.attendance_state ===
+              "break"
+              ? "休憩へ"
+              : item.attendance_state ===
+                "finished"
+              ? "終了"
+              : "勤務中";
+
+          return `
+            <div class="attendance-item">
+              <strong>
+                ${roleText(item.role)}
+              </strong>
+              <br>
+              ${timeText(item.clock_in)}
+              〜
+              ${endText}
+              <br>
+              <small>${stateText}</small>
+            </div>
+          `;
+        }).join("");
     }
 
-    if (!data) {
-      message.textContent =
-        "現在レジ勤務中ではありません。";
-      return;
+
+    async function updateRoleLinks(
+      userId
+    ) {
+
+      const area =
+        document.getElementById(
+          "roleLinksArea"
+        );
+
+      const frontButton =
+        document.getElementById(
+          "frontPageButton"
+        );
+
+      const backButton =
+        document.getElementById(
+          "backPageButton"
+        );
+
+      const adminButton =
+        document.getElementById(
+          "adminPageButton"
+        );
+
+      frontButton.style.display =
+        "none";
+
+      backButton.style.display =
+        "none";
+
+      adminButton.style.display =
+        "none";
+
+      let hasLink = false;
+
+      if (
+        currentScheduledRole ===
+        "front"
+      ) {
+
+        frontButton.style.display =
+          "block";
+
+        hasLink = true;
+      }
+
+      const {
+        data: isBack
+      } =
+        await supabaseClient
+          .rpc("is_current_back");
+
+      if (isBack) {
+
+        backButton.style.display =
+          "block";
+
+        hasLink = true;
+      }
+
+      const {
+        data: admin
+      } =
+        await supabaseClient
+          .from("admins")
+          .select("user_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+      if (admin) {
+
+        adminButton.style.display =
+          "block";
+
+        hasLink = true;
+      }
+
+      area.style.display =
+        hasLink
+          ? "block"
+          : "none";
     }
 
-    const { error: updateError } =
-      await supabaseClient
-        .from("staff_attendance")
-        .update({
-  clock_out:
-    new Date().toISOString(),
-  attendance_state:
-    "finished"
-})
-        .eq("id", data.id);
 
-    if (updateError) {
-      throw updateError;
+    async function afterAttendanceChange() {
+
+      await Promise.all([
+        updateAttendanceState(),
+        updateRegisterState(),
+        loadAttendanceHistory()
+      ]);
     }
-
-    message.textContent =
-      "✅ レジ勤務を終了しました。";
-
-    await updateRegisterState();
-
-  } catch (error) {
-
-    message.textContent =
-      "レジ終了エラー：" +
-      error.message;
-  }
-}
-
-
-async function updateRegisterState() {
-
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth.getUser();
-
-  if (!user) {
-    return;
-  }
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("staff_attendance")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("role", "register")
-      .is("clock_out", null)
-      .limit(1)
-      .maybeSingle();
-
-  if (error) {
-    return;
-  }
-
-  const isRegister =
-    !!data;
-
-  document.getElementById(
-    "registerStartButton"
-  ).style.display =
-    isRegister ? "none" : "block";
-
-  document.getElementById(
-    "registerEndButton"
-  ).style.display =
-    isRegister ? "block" : "none";
-
-  document.getElementById(
-    "scannerButton"
-  ).style.display =
-    isRegister ? "block" : "none";
-}
 
 
     async function checkLogin() {
@@ -851,7 +1582,8 @@ async function updateRegisterState() {
       const {
         data: { session }
       } =
-        await supabaseClient.auth.getSession();
+        await supabaseClient.auth
+          .getSession();
 
       if (session) {
         await showStaffArea();
