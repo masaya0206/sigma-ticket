@@ -16,23 +16,46 @@
       margin: 0 auto;
       padding: 20px;
       text-align: center;
+      background: #fafafa;
+    }
+
+    h1 {
+      margin-bottom: 18px;
     }
 
     button {
       width: 100%;
+      box-sizing: border-box;
       padding: 16px;
-      margin-top: 20px;
+      margin-top: 16px;
       font-size: 18px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
     }
 
-    #claimArea {
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .card {
       margin-top: 20px;
       padding: 20px;
       background: #f2f2f2;
-      border-radius: 10px;
+      border-radius: 12px;
+    }
+
+    .success {
+      background: #e8f7e8 !important;
+    }
+
+    .danger {
+      background: #ffe8e8 !important;
+    }
+
+    .warning {
+      background: #fff4df !important;
     }
 
     #qrcode {
@@ -41,18 +64,16 @@
       margin-top: 20px;
     }
 
-    .success {
-      background: #e8f7e8;
-    }
-
-    .danger {
-      background: #ffe8e8;
-    }
-
     .ticket-code {
       font-size: 18px;
       font-weight: bold;
       word-break: break-all;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
     }
   </style>
 </head>
@@ -61,7 +82,10 @@
 
   <h1>シグマ祭 前売り券</h1>
 
-  <div id="claimArea">
+  <div
+    id="claimArea"
+    class="card"
+  >
 
     <h2>チケットを受け取る</h2>
 
@@ -70,7 +94,10 @@
       前売り券の受け取りが完了します。
     </p>
 
-    <button id="claimButton" onclick="claimTicket()">
+    <button
+      id="claimButton"
+      onclick="claimTicket()"
+    >
       受け取り完了
     </button>
 
@@ -103,17 +130,85 @@
       params.get("token");
 
 
+    function showTicket(ticket) {
+
+      const claimArea =
+        document.getElementById(
+          "claimArea"
+        );
+
+      claimArea.className =
+        "card success";
+
+      claimArea.innerHTML = `
+        <h2>✅ 受け取り完了</h2>
+
+        <p>
+          <strong>商品</strong><br>
+          ${ticket.product_name}
+        </p>
+
+        <p>
+          <strong>販売者</strong><br>
+          ${ticket.seller_name}
+        </p>
+
+        <p>
+          <strong>購入者</strong><br>
+          ${ticket.buyer_name ?? "未登録"}
+        </p>
+
+        <p>
+          <strong>チケットID</strong><br>
+          <span class="ticket-code">
+            ${ticket.ticket_code}
+          </span>
+        </p>
+
+        <div id="qrcode"></div>
+
+        <p>
+          当日はこのQRコードを
+          店舗スタッフに提示してください。
+        </p>
+
+        <p class="small">
+          スクリーンショットを保存しておくと安心です。
+        </p>
+      `;
+
+      new QRCode(
+        document.getElementById(
+          "qrcode"
+        ),
+        {
+          text:
+            ticket.ticket_code,
+          width:
+            220,
+          height:
+            220
+        }
+      );
+    }
+
+
     async function claimTicket() {
 
       const claimArea =
-        document.getElementById("claimArea");
+        document.getElementById(
+          "claimArea"
+        );
 
       const claimButton =
-        document.getElementById("claimButton");
+        document.getElementById(
+          "claimButton"
+        );
 
       if (!claimToken) {
 
-        claimArea.className = "danger";
+        claimArea.className =
+          "card danger";
 
         claimArea.innerHTML = `
           <h2>❌ エラー</h2>
@@ -126,23 +221,28 @@
         return;
       }
 
-      claimButton.disabled = true;
+      claimButton.disabled =
+        true;
+
       claimButton.textContent =
         "確認しています...";
 
-
-      const { data, error } =
+      const {
+        data,
+        error
+      } =
         await supabaseClient.rpc(
           "claim_ticket",
           {
-            p_token: claimToken
+            p_token:
+              claimToken
           }
         );
 
-
       if (error) {
 
-        claimArea.className = "danger";
+        claimArea.className =
+          "card danger";
 
         claimArea.innerHTML = `
           <h2>⚠️ エラー</h2>
@@ -155,10 +255,13 @@
         return;
       }
 
+      if (
+        !data ||
+        data.length === 0
+      ) {
 
-      if (!data || data.length === 0) {
-
-        claimArea.className = "danger";
+        claimArea.className =
+          "card danger";
 
         claimArea.innerHTML = `
           <h2>❌ 無効なURL</h2>
@@ -172,13 +275,16 @@
         return;
       }
 
+      const ticket =
+        data[0];
 
-      const ticket = data[0];
+      if (
+        ticket.status ===
+        "used"
+      ) {
 
-
-      if (ticket.status === "used") {
-
-        claimArea.className = "danger";
+        claimArea.className =
+          "card danger";
 
         claimArea.innerHTML = `
           <h2>🔴 使用済み</h2>
@@ -191,10 +297,13 @@
         return;
       }
 
+      if (
+        ticket.status ===
+        "invalid"
+      ) {
 
-      if (ticket.status === "invalid") {
-
-        claimArea.className = "danger";
+        claimArea.className =
+          "card danger";
 
         claimArea.innerHTML = `
           <h2>⛔ 無効</h2>
@@ -207,47 +316,78 @@
         return;
       }
 
+      if (
+        ticket.status ===
+        "pending"
+      ) {
 
-      if (ticket.status === "active") {
-
-        claimArea.className = "success";
+        claimArea.className =
+          "card warning";
 
         claimArea.innerHTML = `
-          <h2>✅ 受け取り完了</h2>
+          <h2>🟡 受け取り処理中</h2>
 
           <p>
-            <strong>商品</strong><br>
-            ${ticket.product_name}
+            チケットはまだ有効化されていません。
+            もう一度受け取りをお試しください。
           </p>
+
+          <button onclick="location.reload()">
+            再読み込み
+          </button>
+        `;
+
+        return;
+      }
+
+      if (
+        ticket.status ===
+        "active"
+      ) {
+
+        showTicket(ticket);
+
+        return;
+      }
+
+      claimArea.className =
+        "card danger";
+
+      claimArea.innerHTML = `
+        <h2>⚠️ 状態エラー</h2>
+
+        <p>
+          チケット状態を確認できませんでした。
+        </p>
+      `;
+    }
+
+
+    async function initialize() {
+
+      if (!claimToken) {
+
+        document.getElementById(
+          "claimArea"
+        ).className =
+          "card danger";
+
+        document.getElementById(
+          "claimArea"
+        ).innerHTML = `
+          <h2>❌ 無効なURL</h2>
 
           <p>
-            <strong>販売者</strong><br>
-            ${ticket.seller_name}
-          </p>
-
-          <p class="ticket-code">
-            ${ticket.ticket_code}
-          </p>
-
-          <div id="qrcode"></div>
-
-          <p>
-            当日はこのQRコードを
-            店舗スタッフに提示してください。
+            受け取り情報がありません。
           </p>
         `;
 
-
-        new QRCode(
-          document.getElementById("qrcode"),
-          {
-            text: ticket.ticket_code,
-            width: 220,
-            height: 220
-          }
-        );
+        return;
       }
     }
+
+
+    initialize();
 
   </script>
 
