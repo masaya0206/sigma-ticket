@@ -255,6 +255,7 @@
         .textContent = staff.staff_name;
 
       await loadTodayAssignment(user.id);
+      await updateRegisterState();
     }
 
 
@@ -297,11 +298,15 @@
       }
 
       const roleText =
-        data.role === "seller"
-          ? "売り子"
-          : data.role === "tent"
-          ? "テント内"
-          : "裏番";
+  data.role === "seller"
+    ? "売り子"
+    : data.role === "tent"
+    ? "テント内"
+    : data.role === "front"
+    ? "表番"
+    : data.role === "back"
+    ? "裏番"
+    : "未確定";
 
       const start =
         new Date(data.start_at)
@@ -327,37 +332,327 @@
         `予定：${roleText} ${start}〜${end}`;
     }
 
+async function getCurrentAttendanceRole(userId) {
 
-    async function clockIn() {
-      document.getElementById(
-        "attendanceMessage"
-      ).textContent =
-        "出勤処理は次に実装します。";
+  const now =
+    new Date().toISOString();
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("staff_assignments")
+      .select("role,start_at,end_at")
+      .eq("user_id", userId)
+      .lte("start_at", now)
+      .gte("end_at", now)
+      .order("start_at", {
+        ascending: false
+      })
+      .limit(1)
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.role ?? null;
+}
+
+
+async function getOpenAttendance(userId) {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("staff_attendance")
+      .select(
+        "id,role,clock_in,clock_out"
+      )
+      .eq("user_id", userId)
+      .is("clock_out", null)
+      .order("clock_in", {
+        ascending: false
+      })
+      .limit(1)
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+
+async function clockIn() {
+
+  const message =
+    document.getElementById(
+      "attendanceMessage"
+    );
+
+  const {
+    data: { user }
+  } =
+    await supabaseClient.auth.getUser();
+
+  if (!user) {
+    message.textContent =
+      "ログインしてください。";
+    return;
+  }
+
+  try {
+
+    const openAttendance =
+      await getOpenAttendance(user.id);
+
+    if (openAttendance) {
+      message.textContent =
+        "すでに勤務中です。";
+      return;
     }
 
+    const role =
+      await getCurrentAttendanceRole(
+        user.id
+      );
 
-    async function startBreak() {
-      document.getElementById(
-        "attendanceMessage"
-      ).textContent =
-        "休憩開始処理は次に実装します。";
+    // 売り子は通常勤怠を取らない
+    if (role === "seller") {
+      message.textContent =
+        "売り子は通常勤怠の対象外です。";
+      return;
     }
 
+    const { error } =
+      await supabaseClient
+        .from("staff_attendance")
+        .insert({
+          user_id: user.id,
 
-    async function endBreak() {
-      document.getElementById(
-        "attendanceMessage"
-      ).textContent =
-        "休憩終了処理は次に実装します。";
+          // 予定外なら null
+          role: role,
+
+          clock_in:
+            new Date().toISOString()
+        });
+
+    if (error) {
+      throw error;
     }
 
-
-    async function clockOut() {
-      document.getElementById(
-        "attendanceMessage"
-      ).textContent =
-        "退勤処理は次に実装します。";
+    if (role) {
+      message.textContent =
+        "✅ 出勤しました。";
+    } else {
+      message.textContent =
+        "⚠️ 予定外勤務として出勤しました。裏番による役割確定が必要です。";
     }
+
+  } catch (error) {
+
+    message.textContent =
+      "出勤エラー：" +
+      error.message;
+  }
+}
+
+
+async function startBreak() {
+
+  const message =
+    document.getElementById(
+      "attendanceMessage"
+    );
+
+  const {
+    data: { user }
+  } =
+    await supabaseClient.auth.getUser();
+
+  if (!user) {
+    return;
+  }
+
+  try {
+
+    const attendance =
+      await getOpenAttendance(user.id);
+
+    if (!attendance) {
+      message.textContent =
+        "現在勤務中ではありません。";
+      return;
+    }
+
+    if (attendance.role === "register") {
+      message.textContent =
+        "レジ勤務中です。先にレジ終了をしてください。";
+      return;
+    }
+
+    const { error } =
+      await supabaseClient
+        .from("staff_attendance")
+        .update({
+          clock_out:
+            new Date().toISOString()
+        })
+        .eq(
+          "id",
+          attendance.id
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    message.textContent =
+      "☕ 休憩を開始しました。";
+
+  } catch (error) {
+
+    message.textContent =
+      "休憩開始エラー：" +
+      error.message;
+  }
+}
+
+
+async function endBreak() {
+
+  const message =
+    document.getElementById(
+      "attendanceMessage"
+    );
+
+  const {
+    data: { user }
+  } =
+    await supabaseClient.auth.getUser();
+
+  if (!user) {
+    return;
+  }
+
+  try {
+
+    const openAttendance =
+      await getOpenAttendance(user.id);
+
+    if (openAttendance) {
+      message.textContent =
+        "すでに勤務中です。";
+      return;
+    }
+
+    const role =
+      await getCurrentAttendanceRole(
+        user.id
+      );
+
+    if (role === "seller") {
+      message.textContent =
+        "現在は売り子予定のため通常勤怠は使用しません。";
+      return;
+    }
+
+    const { error } =
+      await supabaseClient
+        .from("staff_attendance")
+        .insert({
+          user_id: user.id,
+          role: role,
+          clock_in:
+            new Date().toISOString()
+        });
+
+    if (error) {
+      throw error;
+    }
+
+    if (role) {
+      message.textContent =
+        "▶️ 勤務を再開しました。";
+    } else {
+      message.textContent =
+        "⚠️ 予定外勤務として再開しました。裏番による役割確定が必要です。";
+    }
+
+  } catch (error) {
+
+    message.textContent =
+      "休憩終了エラー：" +
+      error.message;
+  }
+}
+
+
+async function clockOut() {
+
+  const message =
+    document.getElementById(
+      "attendanceMessage"
+    );
+
+  const {
+    data: { user }
+  } =
+    await supabaseClient.auth.getUser();
+
+  if (!user) {
+    return;
+  }
+
+  try {
+
+    const attendance =
+      await getOpenAttendance(user.id);
+
+    if (!attendance) {
+      message.textContent =
+        "現在勤務中ではありません。";
+      return;
+    }
+
+    if (attendance.role === "register") {
+      message.textContent =
+        "レジ勤務中です。先にレジ終了をしてください。";
+      return;
+    }
+
+    const { error } =
+      await supabaseClient
+        .from("staff_attendance")
+        .update({
+          clock_out:
+            new Date().toISOString()
+        })
+        .eq(
+          "id",
+          attendance.id
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    message.textContent =
+      "✅ 退勤しました。";
+
+  } catch (error) {
+
+    message.textContent =
+      "退勤エラー：" +
+      error.message;
+  }
+}
+    
 
     async function startRegister() {
 
