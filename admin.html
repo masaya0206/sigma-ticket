@@ -17,13 +17,19 @@
       text-align: center;
     }
 
-    input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 14px;
-      margin-top: 10px;
-      font-size: 16px;
-    }
+    input,
+select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+    input[type="datetime-local"] {
+  min-width: 0;
+}
 
     button {
       width: 100%;
