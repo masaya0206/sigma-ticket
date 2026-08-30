@@ -76,6 +76,170 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-180.png">
 
+
+  <style id="sigma-red-theme">
+    :root {
+      --sigma-red: #b5121b;
+      --sigma-red-dark: #8f0e15;
+      --sigma-red-soft: #fff1f2;
+      --sigma-gold: #d9a526;
+      --sigma-bg: #f7f4f2;
+      --sigma-surface: #ffffff;
+      --sigma-ink: #1c1c1e;
+      --sigma-muted: #6e6e73;
+      --sigma-line: #ece7e4;
+      --sigma-green: #15803d;
+      --sigma-shadow: 0 8px 24px rgba(74, 25, 25, 0.08);
+    }
+
+    html {
+      background: var(--sigma-bg);
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Hiragino Sans",
+        "Yu Gothic",
+        sans-serif !important;
+      color: var(--sigma-ink) !important;
+      background: var(--sigma-bg) !important;
+      max-width: 620px !important;
+      margin: 0 auto !important;
+      padding: 20px !important;
+    }
+
+    body > h1:first-of-type {
+      margin: -20px -20px 22px !important;
+      padding:
+        max(36px, env(safe-area-inset-top))
+        22px
+        34px !important;
+      color: #fff !important;
+      background:
+        radial-gradient(circle at 86% 18%, rgba(255,255,255,.12), transparent 28%),
+        linear-gradient(145deg, var(--sigma-red), var(--sigma-red-dark)) !important;
+      border-radius: 0 0 28px 28px !important;
+      font-size: 30px !important;
+      letter-spacing: .02em !important;
+      text-align: left !important;
+    }
+
+    input,
+    select,
+    textarea {
+      color: var(--sigma-ink) !important;
+      background: #fff !important;
+      border: 1px solid #ddd5d1 !important;
+      border-radius: 14px !important;
+      box-shadow: none !important;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none !important;
+      border-color: var(--sigma-red) !important;
+      box-shadow: 0 0 0 3px rgba(181,18,27,.10) !important;
+    }
+
+    button {
+      border-radius: 14px !important;
+      font-weight: 750 !important;
+      color: var(--sigma-red) !important;
+      background: var(--sigma-red-soft) !important;
+      box-shadow: none !important;
+    }
+
+    button:active {
+      transform: scale(.985);
+    }
+
+    button:disabled {
+      opacity: .45 !important;
+    }
+
+    #loginArea,
+    #sellerArea,
+    #staffArea,
+    #adminArea,
+    #backArea,
+    #frontArea,
+    #ticketArea,
+    #ticketResult,
+    #claimArea,
+    #mySummaryArea,
+    #summaryArea,
+    #logArea,
+    #newPasswordArea,
+    .card,
+    .subcard {
+      border-radius: 20px !important;
+    }
+
+    #loginArea,
+    #ticketArea,
+    #ticketResult,
+    #claimArea,
+    #mySummaryArea,
+    #summaryArea,
+    #logArea,
+    #newPasswordArea,
+    .card {
+      background: var(--sigma-surface) !important;
+      border: 1px solid rgba(181,18,27,.06) !important;
+      box-shadow: var(--sigma-shadow) !important;
+    }
+
+    .subcard {
+      background: #fff !important;
+      border-color: var(--sigma-line) !important;
+    }
+
+    .success {
+      background: #ecfdf3 !important;
+      color: #14532d !important;
+    }
+
+    .danger {
+      background: #fff0f0 !important;
+      color: #7f1d1d !important;
+    }
+
+    .warning {
+      background: #fff8e8 !important;
+      color: #6b4a00 !important;
+    }
+
+    a {
+      color: var(--sigma-red) !important;
+    }
+
+    strong {
+      color: inherit;
+    }
+
+    hr {
+      border-color: var(--sigma-line) !important;
+    }
+
+    .ticket-code {
+      color: var(--sigma-red) !important;
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 16px !important;
+      }
+
+      body > h1:first-of-type {
+        margin-left: -16px !important;
+        margin-right: -16px !important;
+      }
+    }
+  </style>
+
 </head>
 
 <body>
