@@ -4,21 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>シグマ祭 前売り券発行</title>
+  <title>シグマ祭 チケット発行</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     body {
       font-family: sans-serif;
-      max-width: 500px;
+      max-width: 560px;
       margin: 0 auto;
       padding: 20px;
       text-align: center;
+      background: #fafafa;
     }
 
-    input {
+    h1 {
+      margin-bottom: 18px;
+    }
+
+    input,
+    button {
       width: 100%;
       box-sizing: border-box;
       padding: 14px;
@@ -26,131 +31,209 @@
       font-size: 16px;
     }
 
+    input {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #fff;
+    }
+
     button {
-      width: 100%;
-      padding: 16px;
-      margin-top: 15px;
-      font-size: 18px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
     }
 
-    #loginArea,
-    #sellerArea,
-    #ticketResult,
-    #mySummaryArea {
-      margin-top: 20px;
-      padding: 20px;
-      background: #f2f2f2;
-      border-radius: 10px;
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
-    #qrcode {
-      display: flex;
-      justify-content: center;
-      margin-top: 20px;
+    .card {
+      margin-top: 16px;
+      padding: 18px;
+      background: #f2f2f2;
+      border-radius: 12px;
+      text-align: left;
+    }
+
+    .subcard {
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #fff;
     }
 
     .success {
-      background: #e8f7e8;
+      background: #e8f7e8 !important;
     }
 
     .danger {
-      background: #ffe8e8;
+      background: #ffe8e8 !important;
+    }
+
+    .warning {
+      background: #fff4df !important;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
     }
 
     .ticket-code {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
       word-break: break-all;
+    }
+
+    .link-text {
+      word-break: break-all;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .summary-box {
+      padding: 12px;
+      background: #fff;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    #sellerArea,
+    #newPasswordArea {
+      display: none;
+    }
+
+    @media (max-width: 420px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <h1>シグマ祭 前売り券発行</h1>
+  <h1>シグマ祭 チケット発行</h1>
 
 
-  <div id="loginArea">
+  <div id="loginArea" class="card">
 
-    <h2>販売者ログイン</h2>
+    <h2>スタッフログイン</h2>
 
     <input
       id="email"
       type="email"
       placeholder="メールアドレス"
+      autocomplete="email"
     >
 
     <input
       id="password"
       type="password"
       placeholder="パスワード"
+      autocomplete="current-password"
     >
 
     <button onclick="login()">
       ログイン
     </button>
-    
+
     <button onclick="resetPassword()">
-  パスワードを設定・再設定
-</button>
+      パスワードを設定・再設定
+    </button>
 
-<p id="loginMessage"></p>
-
+    <p id="loginMessage"></p>
 
   </div>
-<div id="newPasswordArea" style="display:none;">
 
-  <h2>新しいパスワードを設定</h2>
 
-  <input
-    id="newPassword"
-    type="password"
-    placeholder="新しいパスワード"
+  <div
+    id="newPasswordArea"
+    class="card"
   >
 
-  <button onclick="saveNewPassword()">
-    パスワードを保存
-  </button>
+    <h2>新しいパスワードを設定</h2>
 
-  <p id="passwordMessage"></p>
-
-</div>
-
-  <div id="sellerArea" style="display:none;">
-
-    <p>
-      販売者：
-      <strong id="sellerName"></strong>
-    </p>
-    
     <input
-  id="buyerName"
-  type="text"
-  placeholder="購入者の名前"
->
+      id="newPassword"
+      type="password"
+      placeholder="新しいパスワード"
+    >
 
-    <button onclick="issueTicket()">
-      チケットを1枚発行
-      </button>
-    
-      <button onclick="loadMySummary()">
-  自分の販売状況を見る
-</button>
+    <button onclick="saveNewPassword()">
+      パスワードを保存
+    </button>
 
-<div id="mySummaryArea">
-  販売状況はまだ表示されていません。
-</div>
+    <p id="passwordMessage"></p>
+
+  </div>
+
+
+  <div id="sellerArea">
+
+    <button onclick="location.href='staff.html'">
+      スタッフ画面に戻る
     </button>
 
     <button onclick="logout()">
       ログアウト
     </button>
 
-    <div id="ticketResult">
+
+    <div class="card">
+      <h2>チケット発行</h2>
+
+      <p>
+        発行者：
+        <strong id="sellerName"></strong>
+      </p>
+
+      <input
+        id="buyerName"
+        type="text"
+        placeholder="購入者の名前"
+      >
+
+      <button
+        id="issueButton"
+        onclick="issueTicket()"
+      >
+        チケットを1枚発行
+      </button>
+
+      <p class="small">
+        発行直後は「受け取り待ち」です。
+        購入者が受け取りページを開いて確定すると有効になります。
+      </p>
+    </div>
+
+
+    <div
+      id="ticketResult"
+      class="card"
+    >
       まだチケットは発行されていません。
+    </div>
+
+
+    <div class="card">
+      <h2>自分の販売状況</h2>
+
+      <button onclick="loadMySummary()">
+        販売状況を更新
+      </button>
+
+      <div id="mySummaryArea">
+        販売状況はまだ表示されていません。
+      </div>
     </div>
 
   </div>
@@ -173,131 +256,329 @@
     let currentSeller = null;
 
 
+    function statusText(status) {
+
+      if (status === "pending") {
+        return "🟡 受け取り待ち";
+      }
+
+      if (status === "active") {
+        return "🟢 有効";
+      }
+
+      if (status === "used") {
+        return "🔴 使用済み";
+      }
+
+      return "⛔ 無効";
+    }
+
+
+    function dateText(value) {
+
+      if (!value) return "";
+
+      return new Date(value)
+        .toLocaleString("ja-JP");
+    }
+
+
     async function login() {
 
       const email =
-        document.getElementById("email").value;
+        document.getElementById(
+          "email"
+        ).value;
 
       const password =
-        document.getElementById("password").value;
+        document.getElementById(
+          "password"
+        ).value;
 
-      const loginMessage =
-        document.getElementById("loginMessage");
+      const message =
+        document.getElementById(
+          "loginMessage"
+        );
 
-      loginMessage.textContent =
+      message.textContent =
         "ログインしています...";
 
-      const { data, error } =
-        await supabaseClient.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
+      const {
+        error
+      } =
+        await supabaseClient.auth
+          .signInWithPassword({
+            email,
+            password
+          });
 
       if (error) {
 
-        loginMessage.textContent =
-          "ログイン失敗：" + error.message;
+        message.textContent =
+          "ログイン失敗：" +
+          error.message;
 
         return;
       }
 
+      message.textContent = "";
+
       await loadSeller();
     }
 
+
     async function resetPassword() {
 
-  const email =
-    document.getElementById("email").value;
+      const email =
+        document.getElementById(
+          "email"
+        ).value;
 
-  const loginMessage =
-    document.getElementById("loginMessage");
+      const message =
+        document.getElementById(
+          "loginMessage"
+        );
 
-  if (!email) {
-    loginMessage.textContent =
-      "メールアドレスを入力してください。";
-    return;
-  }
+      if (!email) {
 
-  const { error } =
-    await supabaseClient.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo:
-          "https://masaya0206.github.io/sigma-ticket/seller.html"
+        message.textContent =
+          "メールアドレスを入力してください。";
+
+        return;
       }
-    );
 
-  if (error) {
-    loginMessage.textContent =
-      "エラー：" + error.message;
-    return;
-  }
+      const {
+        error
+      } =
+        await supabaseClient.auth
+          .resetPasswordForEmail(
+            email,
+            {
+              redirectTo:
+                "https://masaya0206.github.io/sigma-ticket/seller.html"
+            }
+          );
 
-  loginMessage.textContent =
-    "パスワード設定用メールを送信しました。";
-}
+      if (error) {
+
+        message.textContent =
+          "エラー：" +
+          error.message;
+
+        return;
+      }
+
+      message.textContent =
+        "パスワード設定用メールを送信しました。";
+    }
+
+
+    async function saveNewPassword() {
+
+      const newPassword =
+        document.getElementById(
+          "newPassword"
+        ).value;
+
+      const message =
+        document.getElementById(
+          "passwordMessage"
+        );
+
+      if (!newPassword) {
+
+        message.textContent =
+          "新しいパスワードを入力してください。";
+
+        return;
+      }
+
+      const {
+        error
+      } =
+        await supabaseClient.auth
+          .updateUser({
+            password:
+              newPassword
+          });
+
+      if (error) {
+
+        message.textContent =
+          "エラー：" +
+          error.message;
+
+        return;
+      }
+
+      message.textContent =
+        "✅ パスワードを設定しました。";
+
+      await loadSeller();
+    }
+
+
+    supabaseClient.auth
+      .onAuthStateChange(
+        async (event) => {
+
+          if (
+            event ===
+            "PASSWORD_RECOVERY"
+          ) {
+
+            document.getElementById(
+              "loginArea"
+            ).style.display =
+              "none";
+
+            document.getElementById(
+              "sellerArea"
+            ).style.display =
+              "none";
+
+            document.getElementById(
+              "newPasswordArea"
+            ).style.display =
+              "block";
+          }
+        }
+      );
+
 
     async function loadSeller() {
 
       const {
         data: { user }
       } =
-        await supabaseClient.auth.getUser();
+        await supabaseClient.auth
+          .getUser();
 
       if (!user) {
         return;
       }
 
-      const { data, error } =
+      const {
+        data: staff,
+        error: staffError
+      } =
         await supabaseClient
-          .from("sellers")
-          .select("*")
-          .eq("user_id", user.id)
+          .from("staff_members")
+          .select(
+            "staff_name,is_active"
+          )
+          .eq(
+            "user_id",
+            user.id
+          )
           .maybeSingle();
 
-      if (error) {
+      if (
+        staffError ||
+        !staff
+      ) {
 
-        document.getElementById("loginMessage")
-          .textContent =
-          "販売者情報の取得に失敗：" +
-          error.message;
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
+          "スタッフ情報が見つかりません。";
 
-        return;
-      }
-
-      if (!data) {
-
-        await supabaseClient.auth.signOut();
-
-        document.getElementById("loginMessage")
-          .textContent =
-          "このアカウントには販売者権限がありません。";
+        await supabaseClient.auth
+          .signOut();
 
         return;
       }
 
-      if (!data.is_active) {
+      if (!staff.is_active) {
 
-        await supabaseClient.auth.signOut();
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
+          "このスタッフアカウントは停止中です。";
 
-        document.getElementById("loginMessage")
-          .textContent =
+        await supabaseClient.auth
+          .signOut();
+
+        return;
+      }
+
+      const {
+        data: seller,
+        error: sellerError
+      } =
+        await supabaseClient
+          .from("sellers")
+          .select(
+            "user_id,seller_name,is_active"
+          )
+          .eq(
+            "user_id",
+            user.id
+          )
+          .maybeSingle();
+
+      /*
+        移行期間中は sellers に行があるスタッフを販売者として利用。
+        新規登録フローでは register-seller が sellers と staff_members
+        の両方を作成する前提。
+      */
+      if (
+        sellerError ||
+        !seller
+      ) {
+
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
+          "このアカウントにはチケット発行情報がありません。";
+
+        await supabaseClient.auth
+          .signOut();
+
+        return;
+      }
+
+      if (!seller.is_active) {
+
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
           "この販売者アカウントは現在無効です。";
 
+        await supabaseClient.auth
+          .signOut();
+
         return;
       }
 
-      currentSeller = data;
+      currentSeller = {
+        ...seller,
+        seller_name:
+          seller.seller_name ||
+          staff.staff_name
+      };
 
-      document.getElementById("sellerName")
-        .textContent =
-        data.seller_name;
+      document.getElementById(
+        "sellerName"
+      ).textContent =
+        currentSeller.seller_name;
 
-      document.getElementById("loginArea")
-        .style.display = "none";
+      document.getElementById(
+        "loginArea"
+      ).style.display =
+        "none";
 
-      document.getElementById("sellerArea")
-        .style.display = "block";
+      document.getElementById(
+        "newPasswordArea"
+      ).style.display =
+        "none";
+
+      document.getElementById(
+        "sellerArea"
+      ).style.display =
+        "block";
+
+      await loadMySummary();
     }
 
 
@@ -309,7 +590,8 @@
           .substring(0, 12)
           .toUpperCase();
 
-      return "SGM-" + randomPart;
+      return "SGM-" +
+        randomPart;
     }
 
 
@@ -318,351 +600,560 @@
       if (!currentSeller) {
         return;
       }
-      
+
       const buyerName =
-  document.getElementById("buyerName")
-    .value
-    .trim();
+        document.getElementById(
+          "buyerName"
+        ).value.trim();
 
-if (!buyerName) {
-  alert("購入者の名前を入力してください。");
-  return;
-}
+      const button =
+        document.getElementById(
+          "issueButton"
+        );
 
-      const ticketResult =
-        document.getElementById("ticketResult");
+      const result =
+        document.getElementById(
+          "ticketResult"
+        );
 
-      ticketResult.className = "";
-      ticketResult.innerHTML =
+      if (!buyerName) {
+
+        result.className =
+          "card warning";
+
+        result.textContent =
+          "購入者の名前を入力してください。";
+
+        return;
+      }
+
+      button.disabled = true;
+
+      result.className =
+        "card";
+
+      result.textContent =
         "チケットを発行しています...";
+
+      try {
+
+        const {
+          data: { user }
+        } =
+          await supabaseClient.auth
+            .getUser();
+
+        if (!user) {
+          throw new Error(
+            "ログイン情報を確認できませんでした。"
+          );
+        }
+
+        const ticketCode =
+          createTicketCode();
+
+        const claimToken =
+          crypto.randomUUID()
+            .replaceAll("-", "");
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient
+            .from("tickets")
+            .insert({
+              ticket_code:
+                ticketCode,
+
+              product_name:
+                "チャーハン前売り券",
+
+              seller_name:
+                currentSeller.seller_name,
+
+              seller_id:
+                user.id,
+
+              buyer_name:
+                buyerName,
+
+              status:
+                "pending",
+
+              claim_token:
+                claimToken,
+
+              sale_type:
+                "presale"
+            })
+            .select()
+            .single();
+
+        if (error) {
+          throw error;
+        }
+
+        const {
+          error: logError
+        } =
+          await supabaseClient
+            .from("ticket_logs")
+            .insert({
+              ticket_code:
+                data.ticket_code,
+
+              action:
+                "issued",
+
+              actor_id:
+                user.id,
+
+              actor_name:
+                currentSeller.seller_name
+            });
+
+        const claimUrl =
+          "https://masaya0206.github.io/sigma-ticket/claim.html?token=" +
+          encodeURIComponent(
+            data.claim_token
+          );
+
+        result.className =
+          "card success";
+
+        result.innerHTML = `
+          <h2>✅ 発行完了</h2>
+
+          <p>
+            <strong>商品</strong><br>
+            ${data.product_name}
+          </p>
+
+          <p>
+            <strong>購入者</strong><br>
+            ${data.buyer_name}
+          </p>
+
+          <p>
+            <strong>状態</strong><br>
+            🟡 受け取り待ち
+          </p>
+
+          <p>
+            <strong>チケットID</strong><br>
+            <span class="ticket-code">
+              ${data.ticket_code}
+            </span>
+          </p>
+
+          <p>
+            このURLを購入者本人に送ってください。
+          </p>
+
+          <p class="link-text">
+            ${claimUrl}
+          </p>
+
+          <button
+            onclick="
+              copyClaimUrl(
+                '${claimUrl}'
+              )
+            "
+          >
+            受け取りURLをコピー
+          </button>
+
+          <button
+            onclick="
+              openClaimUrl(
+                '${claimUrl}'
+              )
+            "
+          >
+            受け取りページを開く
+          </button>
+
+          ${
+            logError
+              ? `
+                <p class="small">
+                  ※チケット発行は完了しましたが、
+                  発行履歴の保存に失敗しました。
+                </p>
+              `
+              : ""
+          }
+        `;
+
+        document.getElementById(
+          "buyerName"
+        ).value = "";
+
+        await loadMySummary();
+
+      } catch (error) {
+
+        result.className =
+          "card danger";
+
+        result.textContent =
+          "発行エラー：" +
+          error.message;
+
+      } finally {
+
+        button.disabled = false;
+      }
+    }
+
+
+    async function copyClaimUrl(
+      url
+    ) {
+
+      try {
+
+        await navigator.clipboard
+          .writeText(url);
+
+        alert(
+          "受け取りURLをコピーしました。"
+        );
+
+      } catch (error) {
+
+        prompt(
+          "このURLをコピーしてください。",
+          url
+        );
+      }
+    }
+
+
+    function openClaimUrl(url) {
+
+      window.open(
+        url,
+        "_blank",
+        "noopener"
+      );
+    }
+
+
+    async function loadMySummary() {
+
+      const area =
+        document.getElementById(
+          "mySummaryArea"
+        );
+
+      area.textContent =
+        "販売状況を集計しています...";
 
       const {
         data: { user }
       } =
-        await supabaseClient.auth.getUser();
+        await supabaseClient.auth
+          .getUser();
 
       if (!user) {
 
-        ticketResult.className = "danger";
-        ticketResult.innerHTML =
+        area.textContent =
           "ログイン情報を確認できませんでした。";
 
         return;
       }
 
-      const ticketCode =
-        createTicketCode();
-      
-      const claimToken =
-  crypto.randomUUID()
-    .replaceAll("-", "");
-      
-      const { data, error } =
+      const {
+        data,
+        error
+      } =
         await supabaseClient
           .from("tickets")
-          .insert({
-            ticket_code: ticketCode,
-            product_name: "チャーハン前売り券",
-            seller_name: currentSeller.seller_name,
-            seller_id: user.id,
-            buyer_name: buyerName,
-            status: "pending",
-            claim_token: claimToken
-          })
-          .select()
-          .single();
+          .select(
+            "ticket_code,status,created_at,buyer_name,product_name"
+          )
+          .eq(
+            "seller_id",
+            user.id
+          )
+          .order(
+            "created_at",
+            { ascending: false }
+          );
 
       if (error) {
 
-        ticketResult.className = "danger";
+        area.className =
+          "danger";
 
-        ticketResult.innerHTML =
-          "発行エラー：" + error.message;
+        area.textContent =
+          "エラー：" +
+          error.message;
 
         return;
       }
-      
-await supabaseClient
-  .from("ticket_logs")
-  .insert({
-    ticket_code: data.ticket_code,
-    action: "issued",
-    actor_id: user.id,
-    actor_name: currentSeller.seller_name
-  });
-      const claimUrl =
-  "https://masaya0206.github.io/sigma-ticket/claim.html?token="
-  + encodeURIComponent(data.claim_token);
-      ticketResult.className = "success";
 
-      ticketResult.innerHTML = `
-  <h2>✅ 発行完了</h2>
+      let total = 0;
+      let pending = 0;
+      let active = 0;
+      let used = 0;
+      let invalid = 0;
 
-  <p>
-    商品：${data.product_name}
-  </p>
+      for (
+        const ticket of data || []
+      ) {
 
-  <p>
-    販売者：${data.seller_name}
-  </p>
+        total++;
 
-  <p>
-    状態：受け取り待ち
-  </p>
+        if (
+          ticket.status ===
+          "pending"
+        ) {
+          pending++;
+        } else if (
+          ticket.status ===
+          "active"
+        ) {
+          active++;
+        } else if (
+          ticket.status ===
+          "used"
+        ) {
+          used++;
+        } else {
+          invalid++;
+        }
+      }
 
-  <p>
-    このURLを購入者に送ってください。
-  </p>
+      let html = `
+        <div class="summary-grid">
+          <div class="summary-box">
+            発行<br>
+            <strong>${total}枚</strong>
+          </div>
 
-  <p style="word-break:break-all;">
-    ${claimUrl}
-  </p>
-`;
-document.getElementById("buyerName").value = "";
-      
+          <div class="summary-box">
+            🟡 受け取り待ち<br>
+            <strong>${pending}枚</strong>
+          </div>
+
+          <div class="summary-box">
+            🟢 有効<br>
+            <strong>${active}枚</strong>
+          </div>
+
+          <div class="summary-box">
+            🔴 使用済み<br>
+            <strong>${used}枚</strong>
+          </div>
+        </div>
+
+        <p>
+          ⛔ 無効：${invalid}枚
+        </p>
+
+        <h3>発行履歴</h3>
+      `;
+
+      if (
+        !data ||
+        data.length === 0
+      ) {
+
+        html +=
+          "<p>まだ発行履歴はありません。</p>";
+
+      } else {
+
+        for (const ticket of data) {
+
+          html += `
+            <div class="subcard">
+
+              <strong>
+                ${ticket.product_name}
+              </strong>
+
+              <br>
+
+              購入者：
+              ${ticket.buyer_name ?? "未登録"}
+
+              <br>
+
+              状態：
+              ${statusText(
+                ticket.status
+              )}
+
+              <br>
+
+              チケットID：
+              ${ticket.ticket_code}
+
+              <br>
+
+              発行日時：
+              ${dateText(
+                ticket.created_at
+              )}
+
+              ${
+                ticket.status ===
+                "pending"
+                  ? `
+                    <button
+                      onclick="
+                        cancelTicket(
+                          '${ticket.ticket_code}'
+                        )
+                      "
+                    >
+                      このチケットをキャンセル
+                    </button>
+                  `
+                  : ""
+              }
+            </div>
+          `;
+        }
+      }
+
+      area.className = "";
+      area.innerHTML = html;
+    }
+
+
+    async function cancelTicket(
+      ticketCode
+    ) {
+
+      const confirmed =
+        confirm(
+          "このチケットをキャンセルしますか？\n購入者がまだ受け取っていない券のみキャンセルできます。"
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth
+          .getUser();
+
+      if (!user) {
+
+        alert(
+          "ログイン情報を確認できませんでした。"
+        );
+
+        return;
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("tickets")
+          .update({
+            status:
+              "invalid"
+          })
+          .eq(
+            "ticket_code",
+            ticketCode
+          )
+          .eq(
+            "seller_id",
+            user.id
+          )
+          .eq(
+            "status",
+            "pending"
+          )
+          .select()
+          .maybeSingle();
+
+      if (error) {
+
+        alert(
+          "キャンセルできませんでした：" +
+          error.message
+        );
+
+        return;
+      }
+
+      if (!data) {
+
+        alert(
+          "このチケットはキャンセルできません。\nすでに受け取り済みの可能性があります。"
+        );
+
+        return;
+      }
+
+      await supabaseClient
+        .from("ticket_logs")
+        .insert({
+          ticket_code:
+            data.ticket_code,
+
+          action:
+            "invalidated",
+
+          actor_id:
+            user.id,
+
+          actor_name:
+            currentSeller?.seller_name ??
+            "販売者"
+        });
+
+      alert(
+        "チケットをキャンセルしました。"
+      );
+
+      await loadMySummary();
     }
 
 
     async function logout() {
 
-      await supabaseClient.auth.signOut();
+      await supabaseClient.auth
+        .signOut();
 
       currentSeller = null;
 
-      document.getElementById("sellerArea")
-        .style.display = "none";
+      document.getElementById(
+        "sellerArea"
+      ).style.display =
+        "none";
 
-      document.getElementById("loginArea")
-        .style.display = "block";
+      document.getElementById(
+        "loginArea"
+      ).style.display =
+        "block";
 
-      document.getElementById("password")
-        .value = "";
+      document.getElementById(
+        "password"
+      ).value = "";
     }
 
-async function loadMySummary() {
 
-  const mySummaryArea =
-    document.getElementById("mySummaryArea");
-
-  mySummaryArea.innerHTML =
-    "販売状況を集計しています...";
-
-  const {
-    data: { user }
-  } = await supabaseClient.auth.getUser();
-
-  if (!user) {
-    mySummaryArea.innerHTML =
-      "ログイン情報を確認できませんでした。";
-    return;
-  }
-
-  const { data, error } =
-    await supabaseClient
-      .from("tickets")
-      .select("ticket_code,status,created_at,buyer_name")
-      .eq("seller_id", user.id)
-      .order("created_at", {
-        ascending: false
-      });
-
-  if (error) {
-
-    mySummaryArea.className = "danger";
-
-    mySummaryArea.innerHTML =
-      "エラー：" + error.message;
-
-    return;
-  }
-
- let total = 0;
-let pending = 0;
-let active = 0;
-let used = 0;
-let invalid = 0;
-
-  for (const ticket of data) {
-
-    total++;
-
-   if (ticket.status === "pending") {
-  pending++;
-}
-
-else if (ticket.status === "active") {
-  active++;
-}
-
-    else if (ticket.status === "used") {
-      used++;
-    }
-
-    else {
-      invalid++;
-    }
-  }
-
-  let html = `
-    <h2>自分の販売状況</h2>
-
-    発行：${total}枚<br>
-🟡 受け取り待ち：${pending}枚<br>
-🟢 有効：${active}枚<br>
-🔴 使用済み：${used}枚<br>
-⛔ 無効：${invalid}枚
-
-    <h3>発行履歴</h3>
-  `;
-
-  for (const ticket of data) {
-
-    const date =
-      new Date(ticket.created_at)
-        .toLocaleString("ja-JP");
-
-    html += `
-  <div style="
-    border-top:1px solid #ccc;
-    padding:12px 0;
-    text-align:left;
-  ">
-
-  ${ticket.ticket_code}<br>
-購入者：${ticket.buyer_name ?? "未登録"}<br>
-状態：${ticket.status}<br>
-発行日時：${date}
-
-    ${
-      ticket.status === "pending"
-      ? `
-        <button
-          onclick="cancelTicket('${ticket.ticket_code}')"
-        >
-          このチケットをキャンセル
-        </button>
-      `
-      : ""
-    }
-
-  </div>
-`;
-  }
-
-  mySummaryArea.className = "";
-
-  mySummaryArea.innerHTML = html;
-}
-    async function cancelTicket(ticketCode) {
-
-  const confirmed =
-    confirm(
-      "このチケットをキャンセルしますか？\n購入者がまだ受け取っていない券のみキャンセルできます。"
-    );
-
-  if (!confirmed) {
-    return;
-  }
-
-  const {
-    data: { user }
-  } = await supabaseClient.auth.getUser();
-
-  if (!user) {
-    alert("ログイン情報を確認できませんでした。");
-    return;
-  }
-
-  const { data, error } =
-    await supabaseClient
-      .from("tickets")
-      .update({
-        status: "invalid"
-      })
-      .eq("ticket_code", ticketCode)
-      .eq("seller_id", user.id)
-      .eq("status", "pending")
-      .select()
-      .maybeSingle();
-
-  if (error) {
-    alert(
-      "キャンセルできませんでした：" +
-      error.message
-    );
-    return;
-  }
-
-  if (!data) {
-    alert(
-      "このチケットはキャンセルできません。\nすでに受け取り済みの可能性があります。"
-    );
-    return;
-  }
-
-  await supabaseClient
-    .from("ticket_logs")
-    .insert({
-      ticket_code: data.ticket_code,
-      action: "invalidated",
-      actor_id: user.id,
-      actor_name: currentSeller.seller_name
-    });
-
-  alert("チケットをキャンセルしました。");
-
-  await loadMySummary();
-}
-    async function saveNewPassword() {
-
-  const newPassword =
-    document.getElementById("newPassword").value;
-
-  const passwordMessage =
-    document.getElementById("passwordMessage");
-
-  if (!newPassword) {
-    passwordMessage.textContent =
-      "新しいパスワードを入力してください。";
-    return;
-  }
-
-  const { error } =
-    await supabaseClient.auth.updateUser({
-      password: newPassword
-    });
-
-  if (error) {
-    passwordMessage.textContent =
-      "エラー：" + error.message;
-    return;
-  }
-
-  passwordMessage.textContent =
-    "パスワードを設定しました。";
-}
-    supabaseClient.auth.onAuthStateChange(
-  (event, session) => {
-
-    if (event === "PASSWORD_RECOVERY") {
-
-      document.getElementById("loginArea")
-        .style.display = "none";
-
-      document.getElementById("sellerArea")
-        .style.display = "none";
-
-      document.getElementById("newPasswordArea")
-        .style.display = "block";
-    }
-  }
-);
     async function checkLogin() {
 
       const {
         data: { session }
       } =
-        await supabaseClient.auth.getSession();
+        await supabaseClient.auth
+          .getSession();
 
       if (session) {
         await loadSeller();
