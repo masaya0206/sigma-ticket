@@ -26,6 +26,13 @@ select {
   margin-top: 10px;
   font-size: 16px;
 }
+    
+    input[type="checkbox"] {
+  width: auto;
+  max-width: none;
+  margin-top: 0;
+  padding: 0;
+}
 
     input[type="datetime-local"] {
   min-width: 0;
@@ -117,6 +124,21 @@ select {
       ログアウト
     </button>
 
+    <button
+  onclick="
+    togglePanel(
+      'sellerManagementArea'
+    )
+  "
+>
+  🎫 発行者管理を開く / 閉じる
+</button>
+
+<div
+  id="sellerManagementArea"
+  style="display:none;"
+>
+
     <h2>発行者を追加</h2>
 
 <input
@@ -139,16 +161,47 @@ select {
 
     <h2>発行者一覧</h2>
 
-<button onclick="loadSellers()">
-  発行者一覧を表示
+<button
+  onclick="
+    togglePanel(
+      'sellerList',
+      loadSellers
+    )
+  "
+>
+  発行者一覧を表示 / 閉じる
 </button>
 
 <div id="sellerList"></div>
 
+  </div>
+
+    <button
+  onclick="
+    togglePanel(
+      'staffManagementArea'
+    )
+  "
+>
+  👥 スタッフ・シフト管理を開く / 閉じる
+</button>
+
+<div
+  id="staffManagementArea"
+  style="display:none;"
+>
+
     <h2>スタッフ管理</h2>
 
-<button onclick="loadStaffMembers()">
-  スタッフ一覧を表示
+<button
+  onclick="
+    togglePanel(
+      'staffMemberList',
+      loadStaffMembers
+    )
+  "
+>
+  スタッフ一覧を表示 / 閉じる
 </button>
 
 <div id="staffMemberList"></div>
@@ -182,11 +235,35 @@ select {
 
 <p id="assignmentMessage"></p>
 
-<button onclick="loadAssignments()">
-  シフト一覧を見る
+<button
+  onclick="
+    togglePanel(
+      'assignmentList',
+      loadAssignments
+    )
+  "
+>
+  シフト一覧を見る / 閉じる
 </button>
 
 <div id="assignmentList"></div>
+
+  </div>
+
+    <button
+  onclick="
+    togglePanel(
+      'pointManagementArea'
+    )
+  "
+>
+  ⭐ ポイント設定を開く / 閉じる
+</button>
+
+<div
+  id="pointManagementArea"
+  style="display:none;"
+>
     
     <h2>ポイント設定</h2>
 
@@ -214,11 +291,35 @@ select {
 
 <p id="pointMessage"></p>
 
-<button onclick="loadPointRules()">
-  ポイント設定一覧を見る
+<button
+  onclick="
+    togglePanel(
+      'pointRuleList',
+      loadPointRules
+    )
+  "
+>
+  ポイント設定一覧を見る / 閉じる
 </button>
 
 <div id="pointRuleList"></div>
+
+  </div>
+
+    <button
+  onclick="
+    togglePanel(
+      'ticketManagementArea'
+    )
+  "
+>
+  🎟️ チケット管理を開く / 閉じる
+</button>
+
+<div
+  id="ticketManagementArea"
+  style="display:none;"
+>
 
     <h2>チケット検索</h2>
 
@@ -232,24 +333,43 @@ select {
       検索
     </button>
     
-    <button onclick="loadLogs()">
-  操作履歴を見る
+    <button
+  onclick="
+    togglePanel(
+      'logArea',
+      loadLogs
+    )
+  "
+>
+  操作履歴を見る / 閉じる
 </button>
-    <button onclick="loadSalesSummary()">
-  販売状況を見る
+    
+    <button
+  onclick="
+    togglePanel(
+      'summaryArea',
+      loadSalesSummary
+    )
+  "
+>
+  販売状況を見る / 閉じる
 </button>
 
-<div id="summaryArea">
-  販売状況はまだ表示されていません。
-</div>
+<div
+  id="summaryArea"
+  style="display:none;"
+></div>
 
-<div id="logArea">
-  操作履歴はまだ表示されていません。
-</div>
+<div
+  id="logArea"
+  style="display:none;"
+></div>
 
     <div id="ticketArea">
       チケットIDを入力してください。
     </div>
+
+  </div>
 
   </div>
 
@@ -1485,6 +1605,52 @@ async function loadAssignments() {
       }
     }
 
+    async function togglePanel(panelId, loadFunction) {
+
+  const panel =
+    document.getElementById(panelId);
+
+  const isOpen =
+    panel.dataset.open === "true";
+
+  if (isOpen) {
+    panel.style.display = "none";
+    panel.dataset.open = "false";
+    return;
+  }
+
+  const mainPanels = [
+    "sellerManagementArea",
+    "staffManagementArea",
+    "pointManagementArea",
+    "ticketManagementArea"
+  ];
+
+  if (mainPanels.includes(panelId)) {
+
+    for (const id of mainPanels) {
+
+      if (id === panelId) {
+        continue;
+      }
+
+      const other =
+        document.getElementById(id);
+
+      if (other) {
+        other.style.display = "none";
+        other.dataset.open = "false";
+      }
+    }
+  }
+
+  panel.style.display = "block";
+  panel.dataset.open = "true";
+
+  if (loadFunction) {
+    await loadFunction();
+  }
+}
 
     checkLogin();
 
