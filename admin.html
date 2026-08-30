@@ -152,6 +152,41 @@ select {
 </button>
 
 <div id="staffMemberList"></div>
+
+    <h2>スタッフシフト設定</h2>
+
+<select id="assignmentStaff">
+  <option value="">スタッフを選択</option>
+</select>
+
+<select id="assignmentRole">
+  <option value="">役割を選択</option>
+  <option value="seller">売り子</option>
+  <option value="tent">テント内</option>
+  <option value="back">裏番</option>
+</select>
+
+<input
+  id="assignmentStart"
+  type="datetime-local"
+>
+
+<input
+  id="assignmentEnd"
+  type="datetime-local"
+>
+
+<button onclick="saveAssignment()">
+  シフトを保存
+</button>
+
+<p id="assignmentMessage"></p>
+
+<button onclick="loadAssignments()">
+  シフト一覧を見る
+</button>
+
+<div id="assignmentList"></div>
     
     <h2>ポイント設定</h2>
 
@@ -318,6 +353,8 @@ async function resetPassword() {
 
       document.getElementById("adminArea")
         .style.display = "block";
+
+      loadAssignmentStaffOptions();
     }
 
 
@@ -1048,6 +1085,188 @@ document.getElementById("newSellerEmail").value = "";
   }
 
   alert("権限を変更しました。");
+}
+
+    async function loadAssignmentStaffOptions() {
+
+  const select =
+    document.getElementById("assignmentStaff");
+
+  const { data, error } =
+    await supabaseClient
+      .from("staff_members")
+      .select("user_id,staff_name,is_active")
+      .eq("is_active", true)
+      .order("staff_name");
+
+  if (error) {
+    return;
+  }
+
+  select.innerHTML =
+    `<option value="">スタッフを選択</option>`;
+
+  for (const staff of data || []) {
+    select.innerHTML += `
+      <option value="${staff.user_id}">
+        ${staff.staff_name}
+      </option>
+    `;
+  }
+}
+
+
+async function saveAssignment() {
+
+  const userId =
+    document.getElementById("assignmentStaff").value;
+
+  const role =
+    document.getElementById("assignmentRole").value;
+
+  const startValue =
+    document.getElementById("assignmentStart").value;
+
+  const endValue =
+    document.getElementById("assignmentEnd").value;
+
+  const message =
+    document.getElementById("assignmentMessage");
+
+  if (
+    !userId ||
+    !role ||
+    !startValue ||
+    !endValue
+  ) {
+    message.textContent =
+      "スタッフ・役割・開始日時・終了日時を入力してください。";
+    return;
+  }
+
+  const start =
+    new Date(startValue);
+
+  const end =
+    new Date(endValue);
+
+  if (end <= start) {
+    message.textContent =
+      "終了日時は開始日時より後にしてください。";
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("staff_assignments")
+      .insert({
+        user_id: userId,
+        role: role,
+        start_at: start.toISOString(),
+        end_at: end.toISOString()
+      });
+
+  if (error) {
+    message.textContent =
+      "保存エラー：" + error.message;
+    return;
+  }
+
+  message.textContent =
+    "✅ シフトを保存しました。";
+
+  await loadAssignments();
+}
+
+
+async function loadAssignments() {
+
+  const area =
+    document.getElementById("assignmentList");
+
+  area.innerHTML =
+    "読み込み中...";
+
+  const { data, error } =
+    await supabaseClient
+      .from("staff_assignments")
+      .select(`
+        id,
+        role,
+        start_at,
+        end_at,
+        staff_members (
+          staff_name
+        )
+      `)
+      .order("start_at");
+
+  if (error) {
+    area.innerHTML =
+      "取得エラー：" + error.message;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    area.innerHTML =
+      "シフトはまだ登録されていません。";
+    return;
+  }
+
+  area.innerHTML =
+    data.map(item => {
+
+      const roleText =
+        item.role === "seller"
+          ? "売り子"
+          : item.role === "tent"
+          ? "テント内"
+          : "裏番";
+
+      const start =
+        new Date(item.start_at)
+          .toLocaleString(
+            "ja-JP",
+            {
+              timeZone: "Asia/Tokyo"
+            }
+          );
+
+      const end =
+        new Date(item.end_at)
+          .toLocaleString(
+            "ja-JP",
+            {
+              timeZone: "Asia/Tokyo"
+            }
+          );
+
+      return `
+        <div
+          style="
+            border:1px solid #ccc;
+            padding:10px;
+            margin:8px 0;
+            border-radius:8px;
+            text-align:left;
+          "
+        >
+          <strong>
+            ${item.staff_members?.staff_name ?? "不明"}
+          </strong>
+
+          <br>
+
+          ${roleText}
+
+          <br>
+
+          ${start}
+          〜
+          ${end}
+        </div>
+      `;
+    }).join("");
 }
 
     async function toggleSeller(userId, currentStatus) {
