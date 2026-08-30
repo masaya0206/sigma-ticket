@@ -216,6 +216,7 @@ select {
   <option value="">役割を選択</option>
   <option value="seller">売り子</option>
   <option value="tent">テント内</option>
+  <option value="front">表番</option>
   <option value="back">裏番</option>
 </select>
 
@@ -1337,11 +1338,13 @@ async function loadAssignments() {
     data.map(item => {
 
       const roleText =
-        item.role === "seller"
-          ? "売り子"
-          : item.role === "tent"
-          ? "テント内"
-          : "裏番";
+  item.role === "seller"
+    ? "売り子"
+    : item.role === "tent"
+    ? "テント内"
+    : item.role === "front"
+    ? "表番"
+    : "裏番";
 
       const start =
         new Date(item.start_at)
