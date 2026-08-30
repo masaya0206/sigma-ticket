@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 表番</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+      background: #fafafa;
+    }
+
+    h1 {
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    button,
+    input,
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 10px;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    input,
+    select {
+      border: 1px solid #ccc;
+      background: #fff;
+    }
+
+    .card {
+      margin-top: 16px;
+      padding: 18px;
+      background: #f2f2f2;
+      border-radius: 12px;
+      text-align: left;
+    }
+
+    .big-number {
+      font-size: 42px;
+      font-weight: bold;
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .button-grid button {
+      margin-top: 0;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .mini-grid button {
+      margin-top: 0;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-top: 1px solid #ccc;
+    }
+
+    .row:first-child {
+      border-top: none;
+    }
+
+    .status {
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .warning {
+      color: #8a5a00;
+    }
+
+    .danger {
+      color: #b00020;
+    }
+
+    .success {
+      color: #146c2e;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    #frontArea {
+      display: none;
+    }
+
+    @media (max-width: 420px) {
+      .mini-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>シグマ祭 表番</h1>
+
+  <div id="loginArea">
+
+    <input
+      id="email"
+      type="email"
+      placeholder="メールアドレス"
+      autocomplete="email"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="パスワード"
+      autocomplete="current-password"
+    >
+
+    <button onclick="login()">
+      ログイン
+    </button>
+
+    <p id="loginMessage"></p>
+
+  </div>
+
+
+  <div id="frontArea">
+
+    <button onclick="logout()">
+      ログアウト
+    </button>
+
+    <button onclick="location.href='staff.html'">
+      スタッフ画面に戻る
+    </button>
+
+
+    <div class="card">
+      <h2 id="staffName">表番</h2>
+
+      <p
+        id="frontStatus"
+        class="status"
+      >
+        表番勤務状態を確認しています...
+      </p>
+    </div>
+
+
+    <div class="card">
+      <h2>来客カウント</h2>
+
+      <p class="small">
+        テントに来たお客さんをカウントします。
+        後で時間帯別の混雑度・ポイント計算に利用します。
+      </p>
+
+      <div
+        id="todayCustomerCount"
+        class="big-number"
+      >
+        0
+      </div>
+
+      <p style="text-align:center;">
+        本日の累計来客数
+      </p>
+
+      <div class="button-grid">
+        <button onclick="addCustomers(1)">
+          ＋1
+        </button>
+
+        <button onclick="addCustomers(5)">
+          ＋5
+        </button>
+      </div>
+
+      <div class="button-grid">
+        <button onclick="addCustomers(-1)">
+          −1
+        </button>
+
+        <button onclick="openManualCount()">
+          数を指定
+        </button>
+      </div>
+
+      <div
+        id="manualCountArea"
+        style="display:none;"
+      >
+        <input
+          id="manualCount"
+          type="number"
+          min="1"
+          step="1"
+          placeholder="人数"
+        >
+
+        <button onclick="submitManualCount()">
+          この人数を追加
+        </button>
+      </div>
+
+      <p id="countMessage"></p>
+    </div>
+
+
+    <div class="card">
+      <h2>現在の混雑度</h2>
+
+      <p class="small">
+        表番の目視による補助情報です。
+        来客数とは別に記録します。
+      </p>
+
+      <div class="mini-grid">
+        <button onclick="setCrowdLevel('low')">
+          🟢 空いている
+        </button>
+
+        <button onclick="setCrowdLevel('medium')">
+          🟡 普通
+        </button>
+
+        <button onclick="setCrowdLevel('high')">
+          🔴 混雑
+        </button>
+      </div>
+
+      <p
+        id="crowdStatus"
+        class="status"
+      >
+        未入力
+      </p>
+
+      <p id="crowdMessage"></p>
+    </div>
+
+
+    <div class="card">
+      <h2>今時間の集計</h2>
+
+      <div id="currentHourSummary">
+        読み込み中...
+      </div>
+    </div>
+
+
+    <div class="card">
+      <h2>時間帯別 来客数</h2>
+
+      <button onclick="loadHourlyCounts()">
+        集計を更新
+      </button>
+
+      <div id="hourlyCounts">
+        読み込み中...
+      </div>
+    </div>
+
+
+    <div class="card">
+      <h2>チケット利用状況</h2>
+
+      <button onclick="loadTicketUsage()">
+        チケット集計を更新
+      </button>
+
+      <div id="ticketUsage">
+        読み込み中...
+      </div>
+    </div>
+
+  </div>
+
+
+  <script>
+
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
+
+    let currentUserId = null;
+
+
+    function dayRange(
+      date = new Date()
+    ) {
+
+      const start =
+        new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate(),
+          0, 0, 0, 0
+        );
+
+      const end =
+        new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate() + 1,
+          0, 0, 0, 0
+        );
+
+      return {
+        start,
+        end
+      };
+    }
+
+
+    function currentHourRange() {
+
+      const now =
+        new Date();
+
+      const start =
+        new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          now.getHours(),
+          0, 0, 0
+        );
+
+      const end =
+        new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          now.getHours() + 1,
+          0, 0, 0
+        );
+
+      return {
+        start,
+        end
+      };
+    }
+
+
+    function timeText(value) {
+
+      return new Date(value)
+        .toLocaleTimeString(
+          "ja-JP",
+          {
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+    }
+
+
+    async function login() {
+
+      const email =
+        document.getElementById(
+          "email"
+        ).value;
+
+      const password =
+        document.getElementById(
+          "password"
+        ).value;
+
+      const message =
+        document.getElementById(
+          "loginMessage"
+        );
+
+      message.textContent =
+        "ログインしています...";
+
+      const { error } =
+        await supabaseClient.auth
+          .signInWithPassword({
+            email,
+            password
+          });
+
+      if (error) {
+
+        message.textContent =
+          "ログイン失敗：" +
+          error.message;
+
+        return;
+      }
+
+      message.textContent = "";
+
+      await showFrontArea();
+    }
+
+
+    async function logout() {
+
+      await supabaseClient.auth.signOut();
+
+      currentUserId = null;
+
+      document.getElementById(
+        "frontArea"
+      ).style.display =
+        "none";
+
+      document.getElementById(
+        "loginArea"
+      ).style.display =
+        "block";
+    }
+
+
+    async function getCurrentUser() {
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth
+          .getUser();
+
+      return user;
+    }
+
+
+    async function isCurrentFront() {
+
+      const user =
+        await getCurrentUser();
+
+      if (!user) {
+        return false;
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("role", "front")
+          .eq(
+            "attendance_state",
+            "working"
+          )
+          .is("clock_out", null)
+          .limit(1)
+          .maybeSingle();
+
+      if (error) {
+        return false;
+      }
+
+      return !!data;
+    }
+
+
+    async function showFrontArea() {
+
+      const user =
+        await getCurrentUser();
+
+      if (!user) {
+        return;
+      }
+
+      currentUserId =
+        user.id;
+
+      const {
+        data: staff,
+        error: staffError
+      } =
+        await supabaseClient
+          .from("staff_members")
+          .select(
+            "staff_name,is_active"
+          )
+          .eq(
+            "user_id",
+            user.id
+          )
+          .maybeSingle();
+
+      if (
+        staffError ||
+        !staff
+      ) {
+
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
+          "スタッフ情報が見つかりません。";
+
+        await supabaseClient.auth
+          .signOut();
+
+        return;
+      }
+
+      if (!staff.is_active) {
+
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
+          "このスタッフアカウントは停止中です。";
+
+        await supabaseClient.auth
+          .signOut();
+
+        return;
+      }
+
+      const allowed =
+        await isCurrentFront();
+
+      if (!allowed) {
+
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
+          "現在、表番として勤務中ではありません。";
+
+        await supabaseClient.auth
+          .signOut();
+
+        return;
+      }
+
+      document.getElementById(
+        "loginArea"
+      ).style.display =
+        "none";
+
+      document.getElementById(
+        "frontArea"
+      ).style.display =
+        "block";
+
+      document.getElementById(
+        "staffName"
+      ).textContent =
+        `${staff.staff_name} / 表番`;
+
+      document.getElementById(
+        "frontStatus"
+      ).textContent =
+        "🟢 表番勤務中";
+
+      await refreshAll();
+    }
+
+
+    async function ensureFrontPermission() {
+
+      const allowed =
+        await isCurrentFront();
+
+      if (!allowed) {
+
+        document.getElementById(
+          "frontStatus"
+        ).textContent =
+          "⛔ 現在、表番勤務中ではありません。";
+
+        return false;
+      }
+
+      document.getElementById(
+        "frontStatus"
+      ).textContent =
+        "🟢 表番勤務中";
+
+      return true;
+    }
+
+
+    async function addCustomers(
+      amount
+    ) {
+
+      const message =
+        document.getElementById(
+          "countMessage"
+        );
+
+      const allowed =
+        await ensureFrontPermission();
+
+      if (!allowed) {
+
+        message.textContent =
+          "表番勤務中のみ入力できます。";
+
+        return;
+      }
+
+      if (
+        !Number.isInteger(amount) ||
+        amount === 0
+      ) {
+        return;
+      }
+
+      message.textContent =
+        "保存しています...";
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from(
+            "front_customer_events"
+          )
+          .insert({
+            staff_user_id:
+              currentUserId,
+            count_delta:
+              amount,
+            recorded_at:
+              new Date().toISOString()
+          });
+
+      if (error) {
+
+        message.textContent =
+          "保存エラー：" +
+          error.message;
+
+        return;
+      }
+
+      message.textContent =
+        amount > 0
+          ? `✅ ${amount}人追加しました。`
+          : `✅ ${Math.abs(amount)}人減らしました。`;
+
+      await Promise.all([
+        loadTodayCustomerCount(),
+        loadHourlyCounts(),
+        loadCurrentHourSummary()
+      ]);
+    }
+
+
+    function openManualCount() {
+
+      const area =
+        document.getElementById(
+          "manualCountArea"
+        );
+
+      area.style.display =
+        area.style.display ===
+          "none"
+          ? "block"
+          : "none";
+    }
+
+
+    async function submitManualCount() {
+
+      const input =
+        document.getElementById(
+          "manualCount"
+        );
+
+      const value =
+        Number(input.value);
+
+      if (
+        !Number.isInteger(value) ||
+        value <= 0
+      ) {
+
+        document.getElementById(
+          "countMessage"
+        ).textContent =
+          "1以上の整数を入力してください。";
+
+        return;
+      }
+
+      await addCustomers(value);
+
+      input.value = "";
+    }
+
+
+    async function setCrowdLevel(
+      level
+    ) {
+
+      const message =
+        document.getElementById(
+          "crowdMessage"
+        );
+
+      const allowed =
+        await ensureFrontPermission();
+
+      if (!allowed) {
+
+        message.textContent =
+          "表番勤務中のみ入力できます。";
+
+        return;
+      }
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from(
+            "front_crowd_logs"
+          )
+          .insert({
+            staff_user_id:
+              currentUserId,
+            crowd_level:
+              level,
+            recorded_at:
+              new Date().toISOString()
+          });
+
+      if (error) {
+
+        message.textContent =
+          "保存エラー：" +
+          error.message;
+
+        return;
+      }
+
+      message.textContent =
+        "✅ 混雑度を記録しました。";
+
+      await loadCurrentCrowdLevel();
+    }
+
+
+    async function loadTodayCustomerCount() {
+
+      const {
+        start,
+        end
+      } =
+        dayRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "front_customer_events"
+          )
+          .select("count_delta")
+          .gte(
+            "recorded_at",
+            start.toISOString()
+          )
+          .lt(
+            "recorded_at",
+            end.toISOString()
+          );
+
+      const area =
+        document.getElementById(
+          "todayCustomerCount"
+        );
+
+      if (error) {
+
+        area.textContent =
+          "—";
+
+        return;
+      }
+
+      const total =
+        (data || [])
+          .reduce(
+            (
+              sum,
+              item
+            ) =>
+              sum +
+              Number(
+                item.count_delta
+              ),
+            0
+          );
+
+      area.textContent =
+        Math.max(
+          0,
+          total
+        );
+    }
+
+
+    async function loadCurrentCrowdLevel() {
+
+      const {
+        start,
+        end
+      } =
+        dayRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "front_crowd_logs"
+          )
+          .select(
+            "crowd_level,recorded_at"
+          )
+          .gte(
+            "recorded_at",
+            start.toISOString()
+          )
+          .lt(
+            "recorded_at",
+            end.toISOString()
+          )
+          .order(
+            "recorded_at",
+            { ascending: false }
+          )
+          .limit(1)
+          .maybeSingle();
+
+      const area =
+        document.getElementById(
+          "crowdStatus"
+        );
+
+      if (
+        error ||
+        !data
+      ) {
+
+        area.textContent =
+          "未入力";
+
+        return;
+      }
+
+      const text =
+        data.crowd_level === "low"
+          ? "🟢 空いている"
+          : data.crowd_level === "medium"
+          ? "🟡 普通"
+          : "🔴 混雑";
+
+      area.textContent =
+        `${text} / ${timeText(
+          data.recorded_at
+        )}`;
+    }
+
+
+    async function loadHourlyCounts() {
+
+      const {
+        start,
+        end
+      } =
+        dayRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "front_customer_events"
+          )
+          .select(
+            "count_delta,recorded_at"
+          )
+          .gte(
+            "recorded_at",
+            start.toISOString()
+          )
+          .lt(
+            "recorded_at",
+            end.toISOString()
+          )
+          .order(
+            "recorded_at",
+            { ascending: true }
+          );
+
+      const area =
+        document.getElementById(
+          "hourlyCounts"
+        );
+
+      if (error) {
+
+        area.innerHTML = `
+          <p class="danger">
+            集計取得エラー：
+            ${error.message}
+          </p>
+        `;
+
+        return;
+      }
+
+      const counts = {};
+
+      for (
+        let hour = 8;
+        hour <= 20;
+        hour++
+      ) {
+        counts[hour] = 0;
+      }
+
+      for (
+        const item of data || []
+      ) {
+
+        const hour =
+          new Date(
+            item.recorded_at
+          ).getHours();
+
+        if (
+          hour >= 8 &&
+          hour <= 20
+        ) {
+
+          counts[hour] +=
+            Number(
+              item.count_delta
+            );
+        }
+      }
+
+      area.innerHTML =
+        Object.entries(counts)
+          .map(
+            ([hour, count]) => `
+              <div class="row">
+                <span>
+                  ${hour}:00〜${
+                    Number(hour) + 1
+                  }:00
+                </span>
+
+                <strong>
+                  ${Math.max(
+                    0,
+                    count
+                  )}人
+                </strong>
+              </div>
+            `
+          )
+          .join("");
+    }
+
+
+    async function loadCurrentHourSummary() {
+
+      const {
+        start,
+        end
+      } =
+        currentHourRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "front_customer_events"
+          )
+          .select("count_delta")
+          .gte(
+            "recorded_at",
+            start.toISOString()
+          )
+          .lt(
+            "recorded_at",
+            end.toISOString()
+          );
+
+      const area =
+        document.getElementById(
+          "currentHourSummary"
+        );
+
+      if (error) {
+
+        area.textContent =
+          "集計できませんでした。";
+
+        return;
+      }
+
+      const count =
+        (data || [])
+          .reduce(
+            (
+              sum,
+              item
+            ) =>
+              sum +
+              Number(
+                item.count_delta
+              ),
+            0
+          );
+
+      const now =
+        new Date();
+
+      area.innerHTML = `
+        <div class="row">
+          <span>
+            ${now.getHours()}:00〜${
+              now.getHours() + 1
+            }:00
+          </span>
+
+          <strong>
+            ${Math.max(
+              0,
+              count
+            )}人
+          </strong>
+        </div>
+
+        <p class="small">
+          この時間帯は終了後に
+          ポイント計算へ利用します。
+        </p>
+      `;
+    }
+
+
+    async function loadTicketUsage() {
+
+      const {
+        start,
+        end
+      } =
+        dayRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("tickets")
+          .select(
+            "product_name,status,used_at"
+          )
+          .eq(
+            "status",
+            "used"
+          )
+          .gte(
+            "used_at",
+            start.toISOString()
+          )
+          .lt(
+            "used_at",
+            end.toISOString()
+          );
+
+      const area =
+        document.getElementById(
+          "ticketUsage"
+        );
+
+      if (error) {
+
+        area.innerHTML = `
+          <p class="danger">
+            チケット集計エラー：
+            ${error.message}
+          </p>
+        `;
+
+        return;
+      }
+
+      const productCounts = {};
+
+      for (
+        const item of data || []
+      ) {
+
+        const name =
+          item.product_name ||
+          "商品未設定";
+
+        productCounts[name] =
+          (
+            productCounts[name] ||
+            0
+          ) + 1;
+      }
+
+      let html = `
+        <div class="row">
+          <span>本日の使用済み総数</span>
+          <strong>
+            ${(data || []).length}枚
+          </strong>
+        </div>
+      `;
+
+      for (
+        const [
+          product,
+          count
+        ] of Object.entries(
+          productCounts
+        )
+      ) {
+
+        html += `
+          <div class="row">
+            <span>${product}</span>
+            <strong>${count}枚</strong>
+          </div>
+        `;
+      }
+
+      area.innerHTML =
+        html;
+    }
+
+
+    async function refreshAll() {
+
+      await Promise.all([
+        loadTodayCustomerCount(),
+        loadCurrentCrowdLevel(),
+        loadHourlyCounts(),
+        loadCurrentHourSummary(),
+        loadTicketUsage()
+      ]);
+    }
+
+
+    async function checkLogin() {
+
+      const {
+        data: { session }
+      } =
+        await supabaseClient.auth
+          .getSession();
+
+      if (session) {
+        await showFrontArea();
+      }
+    }
+
+
+    checkLogin();
+
+  </script>
+
+</body>
+</html>
