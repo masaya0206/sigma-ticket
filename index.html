@@ -68,6 +68,14 @@
       color: #666;
     }
   </style>
+
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="シグマ祭">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+
 </head>
 
 <body>
@@ -81,9 +89,9 @@
 
     <button
       id="backToStaffButton"
-      onclick="location.href='staff.html'"
+      onclick="location.href='home.html'"
     >
-      スタッフ画面に戻る
+      🏠 ポータルに戻る
     </button>
   </div>
 
@@ -781,10 +789,10 @@
 
         <button
           onclick="
-            location.href='staff.html'
+            location.href='home.html'
           "
         >
-          スタッフ画面に戻る
+          🏠 ポータルに戻る
         </button>
       `;
     }
@@ -834,6 +842,19 @@
 
     initialize();
 
+  </script>
+
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("./service-worker.js", { scope: "./" })
+          .catch((error) => {
+            console.log("Service Worker registration failed:", error);
+          });
+      });
+    }
   </script>
 
 </body>
