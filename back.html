@@ -109,25 +109,22 @@
       スタッフ状況を更新
     </button>
 
-    <label
+    <div
+  id="timelineArea"
+  class="card"
   style="
-    display:block;
+    overflow-x:auto;
     margin-top:15px;
-    text-align:left;
   "
 >
-  <input
-    id="unconfirmedOnly"
-    type="checkbox"
-    onchange="loadStaffStatus()"
-    style="
-      width:auto;
-      margin-right:8px;
-    "
-  >
-  未確定勤務だけ表示
-</label>
+  <h2>予定・確定勤怠</h2>
 
+  <div id="timelineContent">
+    読み込み前です。
+  </div>
+</div>
+
+   
     <div id="staffList"></div>
 
 <div
@@ -376,6 +373,15 @@
         );
     }
 
+    let currentStatusFilter = "all";
+
+function setStatusFilter(filter) {
+
+  currentStatusFilter = filter;
+
+  loadStaffStatus();
+}
+
 
     async function loadStaffStatus() {
 
@@ -438,16 +444,46 @@
       }
 
 
-      const {
-        data: attendance,
-        error: attendanceError
-      } =
-        await supabaseClient
-          .from("staff_attendance")
-          .select(
-            "id,user_id,role,clock_in,clock_out"
-          )
-          .is("clock_out", null);
+      const today =
+  new Date();
+
+const startOfDay =
+  new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+    0, 0, 0, 0
+  );
+
+const endOfDay =
+  new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 1,
+    0, 0, 0, 0
+  );
+
+const {
+  data: attendance,
+  error: attendanceError
+} =
+  await supabaseClient
+    .from("staff_attendance")
+    .select(
+      "id,user_id,role,clock_in,clock_out,attendance_state"
+    )
+    .gte(
+      "clock_in",
+      startOfDay.toISOString()
+    )
+    .lt(
+      "clock_in",
+      endOfDay.toISOString()
+    )
+    .order(
+      "clock_in",
+      { ascending: true }
+    );
 
 
       if (attendanceError) {
@@ -476,37 +512,197 @@
       }
 
 
-      let workingCount = 0;
-      let registerCount = 0;
-      let unconfirmedCount = 0;
+let workingCount = 0;
+let breakCount = 0;
+let registerCount = 0;
+let unconfirmedCount = 0;
+let lateCount = 0;
+let overtimeCount = 0;
 
+for (const item of Object.values(attendanceMap)) {
 
-      for (const item of attendance || []) {
+  if (
+    item.attendance_state === "working"
+  ) {
+    workingCount++;
+  }
 
-        workingCount++;
+  if (
+    item.attendance_state === "break"
+  ) {
+    breakCount++;
+  }
 
-        if (item.role === "register") {
-          registerCount++;
-        }
+  if (
+    item.attendance_state === "working" &&
+    item.role === "register"
+  ) {
+    registerCount++;
+  }
 
-        if (!item.role) {
-          unconfirmedCount++;
-        }
+  if (!item.role) {
+    unconfirmedCount++;
+  }
+}
+
       }
 
+for (const staff of staffMembers || []) {
 
-      summary.innerHTML = `
-        現在勤務中：
-        <strong>${workingCount}人</strong>
-        <br>
+  const assignment =
+    assignmentMap[staff.user_id];
 
-        レジ：
-        <strong>${registerCount}人</strong>
-        <br>
+  const actual =
+    attendanceMap[staff.user_id];
 
-        未確定勤務：
-        <strong>${unconfirmedCount}件</strong>
-      `;
+  let isLate = false;
+let isOvertime = false;
+
+if (assignment) {
+
+  const plannedStart =
+    new Date(assignment.start_at);
+
+  const plannedEnd =
+    new Date(assignment.end_at);
+
+  const nowDate =
+    new Date();
+
+  if (
+    nowDate > plannedStart &&
+    nowDate <= plannedEnd &&
+    !actual
+  ) {
+    isLate = true;
+  }
+
+  if (
+    nowDate > plannedEnd &&
+    actual?.attendance_state === "working"
+  ) {
+    isOvertime = true;
+  }
+}
+
+if (
+  currentStatusFilter === "working" &&
+  actual?.attendance_state !== "working"
+) {
+  continue;
+}
+
+if (
+  currentStatusFilter === "break" &&
+  actual?.attendance_state !== "break"
+) {
+  continue;
+}
+
+if (
+  currentStatusFilter === "register" &&
+  !(
+    actual?.attendance_state === "working" &&
+    actual?.role === "register"
+  )
+) {
+  continue;
+}
+
+if (
+  currentStatusFilter === "late" &&
+  !isLate
+) {
+  continue;
+}
+
+if (
+  currentStatusFilter === "overtime" &&
+  !isOvertime
+) {
+  continue;
+}
+
+if (
+  currentStatusFilter === "unconfirmed" &&
+  !(
+    actual &&
+    !actual.role
+  )
+) {
+  continue;
+}
+
+  if (!assignment) {
+    continue;
+  }
+
+  const plannedStart =
+    new Date(assignment.start_at);
+
+  const plannedEnd =
+    new Date(assignment.end_at);
+
+  const nowDate =
+    new Date();
+
+  if (
+    nowDate > plannedStart &&
+    nowDate <= plannedEnd &&
+    !actual
+  ) {
+    lateCount++;
+  }
+
+  if (
+    nowDate > plannedEnd &&
+    actual?.attendance_state === "working"
+  ) {
+    overtimeCount++;
+  }
+}
+
+summary.innerHTML = `
+  <button onclick="setStatusFilter('working')">
+    現在勤務中：
+    <strong>${workingCount}人</strong>
+  </button>
+
+  <button onclick="setStatusFilter('break')">
+    休憩中：
+    <strong>${breakCount}人</strong>
+  </button>
+
+  <button onclick="setStatusFilter('register')">
+    レジ：
+    <strong>${registerCount}人</strong>
+  </button>
+
+  <button onclick="setStatusFilter('late')">
+    🔴 遅刻中：
+    <strong>${lateCount}人</strong>
+  </button>
+
+  <button onclick="setStatusFilter('overtime')">
+    🟠 残業中：
+    <strong>${overtimeCount}人</strong>
+  </button>
+
+  <button onclick="setStatusFilter('unconfirmed')">
+    ⚠️ 未確定勤務：
+    <strong>${unconfirmedCount}件</strong>
+  </button>
+
+  <button onclick="setStatusFilter('all')">
+    全員表示
+  </button>
+`;
+
+    renderTimeline(
+  staffMembers,
+  assignments,
+  attendance
+);
 
 
       let html = "";
@@ -519,18 +715,6 @@
 
         const actual =
           attendanceMap[staff.user_id];
-
-        const unconfirmedOnly =
-  document.getElementById(
-    "unconfirmedOnly"
-  ).checked;
-
-if (
-  unconfirmedOnly &&
-  (!actual || actual.role)
-) {
-  continue;
-}
 
 
         const plannedText =
@@ -1332,6 +1516,251 @@ function closeAttendanceEditor() {
     "editorMessage"
   ).textContent =
     "役割を選択しました。保存すると確定します。";
+}
+
+    function minutesFromStart(
+  date,
+  dayStart
+) {
+
+  return (
+    new Date(date).getTime() -
+    dayStart.getTime()
+  ) / 60000;
+}
+
+
+function renderTimeline(
+  staffMembers,
+  assignments,
+  attendance
+) {
+
+  const area =
+    document.getElementById(
+      "timelineContent"
+    );
+
+  const today =
+    new Date();
+
+  const dayStart =
+    new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      8, 0, 0, 0
+    );
+
+  const dayEnd =
+    new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      20, 0, 0, 0
+    );
+
+  const totalMinutes =
+    (
+      dayEnd.getTime() -
+      dayStart.getTime()
+    ) / 60000;
+
+
+  let html = `
+    <div style="
+      min-width:900px;
+    ">
+  `;
+
+
+  for (
+    const staff of staffMembers || []
+  ) {
+
+    const staffAssignments =
+      (assignments || [])
+        .filter(
+          item =>
+            item.user_id ===
+            staff.user_id
+        );
+
+    const staffAttendance =
+      (attendance || [])
+        .filter(
+          item =>
+            item.user_id ===
+            staff.user_id
+        );
+
+
+    html += `
+      <div
+        style="
+          display:grid;
+          grid-template-columns:120px 1fr;
+          margin-bottom:14px;
+          align-items:center;
+        "
+      >
+
+        <button
+          onclick="
+            toggleStaffDetail(
+              '${staff.user_id}'
+            )
+          "
+          style="
+            margin:0;
+            text-align:left;
+          "
+        >
+          ${staff.staff_name}
+        </button>
+
+        <div
+          style="
+            position:relative;
+            height:54px;
+            border-left:1px solid #ccc;
+          "
+        >
+    `;
+
+
+    for (
+      const item of staffAssignments
+    ) {
+
+      const startMin =
+        minutesFromStart(
+          item.start_at,
+          dayStart
+        );
+
+      const endMin =
+        minutesFromStart(
+          item.end_at,
+          dayStart
+        );
+
+      const left =
+        Math.max(
+          0,
+          startMin / totalMinutes * 100
+        );
+
+      const width =
+        Math.max(
+          1,
+          (
+            endMin - startMin
+          ) / totalMinutes * 100
+        );
+
+      html += `
+        <div
+          style="
+            position:absolute;
+            top:4px;
+            left:${left}%;
+            width:${width}%;
+            height:18px;
+            background:#bbb;
+            border-radius:9px;
+            overflow:hidden;
+            white-space:nowrap;
+            font-size:12px;
+          "
+        >
+          ${roleText(item.role)}
+        </div>
+      `;
+    }
+
+
+    for (
+      const item of staffAttendance
+    ) {
+
+      const startMin =
+        minutesFromStart(
+          item.clock_in,
+          dayStart
+        );
+
+      const actualEnd =
+        item.clock_out
+          ? new Date(item.clock_out)
+          : new Date();
+
+      const endMin =
+        minutesFromStart(
+          actualEnd,
+          dayStart
+        );
+
+      const left =
+        Math.max(
+          0,
+          startMin / totalMinutes * 100
+        );
+
+      const width =
+        Math.max(
+          1,
+          (
+            endMin - startMin
+          ) / totalMinutes * 100
+        );
+
+      html += `
+        <div
+          onclick="
+            openAttendanceEditor(
+              '${staff.user_id}',
+              '${staff.staff_name}'
+            )
+          "
+          style="
+            position:absolute;
+            top:30px;
+            left:${left}%;
+            width:${width}%;
+            height:18px;
+            background:#333;
+            border-radius:9px;
+            cursor:pointer;
+          "
+          title="
+            ${timeText(item.clock_in)}
+            〜
+            ${
+              item.clock_out
+                ? timeText(item.clock_out)
+                : "勤務中"
+            }
+            /
+            ${roleText(item.role)}
+          "
+        ></div>
+      `;
+    }
+
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+
+  html += `
+    </div>
+  `;
+
+  area.innerHTML = html;
 }
 
     async function checkLogin() {
