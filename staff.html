@@ -433,14 +433,13 @@ async function clockIn() {
       await supabaseClient
         .from("staff_attendance")
         .insert({
-          user_id: user.id,
-
-          // 予定外なら null
-          role: role,
-
-          clock_in:
-            new Date().toISOString()
-        });
+  user_id: user.id,
+  role: role,
+  clock_in:
+    new Date().toISOString(),
+  attendance_state:
+    "working"
+});
 
     if (error) {
       throw error;
@@ -500,9 +499,12 @@ async function startBreak() {
       await supabaseClient
         .from("staff_attendance")
         .update({
-          clock_out:
-            new Date().toISOString()
-        })
+  clock_out:
+    new Date().toISOString(),
+
+  attendance_state:
+    "break"
+})
         .eq(
           "id",
           attendance.id
@@ -630,9 +632,12 @@ async function clockOut() {
       await supabaseClient
         .from("staff_attendance")
         .update({
-          clock_out:
-            new Date().toISOString()
-        })
+  clock_out:
+    new Date().toISOString(),
+
+  attendance_state:
+    "finished"
+})
         .eq(
           "id",
           attendance.id
@@ -696,11 +701,12 @@ async function clockOut() {
       await supabaseClient
         .from("staff_attendance")
         .insert({
-          user_id: user.id,
-          role: "register",
-          clock_in:
-            new Date().toISOString()
-        });
+  user_id: user.id,
+  role: "register",
+  clock_in:
+    new Date().toISOString(),
+  attendance_state: "working"
+});
 
     if (error) {
       throw error;
@@ -767,9 +773,11 @@ async function endRegister() {
       await supabaseClient
         .from("staff_attendance")
         .update({
-          clock_out:
-            new Date().toISOString()
-        })
+  clock_out:
+    new Date().toISOString(),
+  attendance_state:
+    "finished"
+})
         .eq("id", data.id);
 
     if (updateError) {
