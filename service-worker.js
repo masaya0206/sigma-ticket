@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-pwa-v2";
+const CACHE_NAME = "sigma-ticket-pwa-v3";
 
 const APP_SHELL = [
   "./",
@@ -46,12 +46,10 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
-  // Supabase/API/CDN requests are always networked.
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // HTML/navigation: network first so GitHub Pages updates show quickly.
   if (
     request.mode === "navigate" ||
     request.destination === "document"
@@ -72,7 +70,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static local files: cache first.
   event.respondWith(
     caches.match(request)
       .then((cached) => {
