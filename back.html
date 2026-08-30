@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 裏番</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .card {
+      margin-top: 12px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      text-align: left;
+    }
+
+    .warning {
+      background: #fff4df;
+    }
+
+    .working {
+      background: #e8f7e8;
+    }
+
+    .detail {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+    }
+
+    #backArea {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>シグマ祭 裏番</h1>
+
+  <div id="loginArea">
+
+    <input
+      id="email"
+      type="email"
+      placeholder="メールアドレス"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="パスワード"
+    >
+
+    <button onclick="login()">
+      ログイン
+    </button>
+
+    <p id="loginMessage"></p>
+
+  </div>
+
+
+  <div id="backArea">
+
+    <button onclick="logout()">
+      ログアウト
+    </button>
+
+    <div class="card">
+
+      <h2>現在の勤務状況</h2>
+
+      <p id="summary">
+        集計しています...
+      </p>
+
+    </div>
+
+
+    <button onclick="loadStaffStatus()">
+      スタッフ状況を更新
+    </button>
+
+    <label
+  style="
+    display:block;
+    margin-top:15px;
+    text-align:left;
+  "
+>
+  <input
+    id="unconfirmedOnly"
+    type="checkbox"
+    onchange="loadStaffStatus()"
+    style="
+      width:auto;
+      margin-right:8px;
+    "
+  >
+  未確定勤務だけ表示
+</label>
+
+    <div id="staffList"></div>
+
+<div
+  id="attendanceEditor"
+  class="card"
+  style="display:none;"
+>
+
+  <h2 id="editorStaffName">
+    勤怠編集
+  </h2>
+
+  <div id="attendanceHistory"></div>
+
+<hr style="margin:20px 0;">
+
+  <input
+    id="editorClockIn"
+    type="datetime-local"
+  >
+
+  <input
+    id="editorClockOut"
+    type="datetime-local"
+  >
+
+  <select id="editorRole">
+    <option value="">役割未確定</option>
+    <option value="seller">売り子</option>
+    <option value="tent">テント内</option>
+    <option value="front">表番</option>
+    <option value="back">裏番</option>
+    <option value="register">レジ</option>
+  </select>
+
+  <div
+  id="quickRoleButtons"
+  style="
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  "
+>
+  <button
+    type="button"
+    onclick="setQuickRole('seller')"
+  >
+    売り子
+  </button>
+
+  <button
+    type="button"
+    onclick="setQuickRole('tent')"
+  >
+    テント内
+  </button>
+
+  <button
+    type="button"
+    onclick="setQuickRole('front')"
+  >
+    表番
+  </button>
+
+  <button
+    type="button"
+    onclick="setQuickRole('back')"
+  >
+    裏番
+  </button>
+
+  <button
+    type="button"
+    onclick="setQuickRole('register')"
+  >
+    レジ
+  </button>
+</div>
+
+  <input
+    id="editorNote"
+    type="text"
+    placeholder="修正理由 例：打刻忘れ"
+  >
+
+  <button onclick="saveAttendanceEdit()">
+    修正を保存
+  </button>
+
+  <button onclick="prepareNewAttendance()">
+  新しい勤務を入力
+</button>
+
+<button onclick="addAttendance()">
+  この内容で勤務を追加
+</button>
+
+  <button onclick="deleteAttendance()">
+    この勤怠を削除
+  </button>
+
+  <button onclick="closeAttendanceEditor()">
+    閉じる
+  </button>
+
+  <p id="editorMessage"></p>
+
+</div>
+    
+  </div>
+
+
+  <script>
+
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
+
+
+    async function login() {
+
+      const email =
+        document.getElementById("email").value;
+
+      const password =
+        document.getElementById("password").value;
+
+      const message =
+        document.getElementById("loginMessage");
+
+      const { error } =
+        await supabaseClient.auth
+          .signInWithPassword({
+            email,
+            password
+          });
+
+      if (error) {
+        message.textContent =
+          "ログイン失敗：" +
+          error.message;
+        return;
+      }
+
+      await showBackArea();
+    }
+
+
+    async function logout() {
+
+      await supabaseClient.auth.signOut();
+
+      document.getElementById("backArea")
+        .style.display = "none";
+
+      document.getElementById("loginArea")
+        .style.display = "block";
+    }
+
+
+    async function showBackArea() {
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      const { data: allowed } =
+        await supabaseClient
+          .rpc("is_current_back");
+
+      if (!allowed) {
+
+        document.getElementById(
+          "loginMessage"
+        ).textContent =
+          "現在、裏番として利用できません。";
+
+        await supabaseClient.auth.signOut();
+
+        return;
+      }
+
+      document.getElementById("loginArea")
+        .style.display = "none";
+
+      document.getElementById("backArea")
+        .style.display = "block";
+
+      await loadStaffStatus();
+    }
+
+
+    function roleText(role) {
+
+      if (role === "seller") {
+        return "売り子";
+      }
+
+      if (role === "tent") {
+        return "テント内";
+      }
+
+      if (role === "front") {
+        return "表番";
+      }
+
+      if (role === "back") {
+        return "裏番";
+      }
+
+      if (role === "register") {
+        return "レジ";
+      }
+
+      return "未確定";
+    }
+
+
+    function timeText(value) {
+
+      if (!value) {
+        return "勤務中";
+      }
+
+      return new Date(value)
+        .toLocaleTimeString(
+          "ja-JP",
+          {
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+    }
+
+
+    async function loadStaffStatus() {
+
+      const list =
+        document.getElementById("staffList");
+
+      const summary =
+        document.getElementById("summary");
+
+      list.innerHTML =
+        "読み込み中...";
+
+      const now =
+        new Date().toISOString();
+
+
+      const {
+        data: staffMembers,
+        error: staffError
+      } =
+        await supabaseClient
+          .from("staff_members")
+          .select(
+            "user_id,staff_name,is_active"
+          )
+          .eq("is_active", true)
+          .order("staff_name");
+
+
+      if (staffError) {
+
+        list.innerHTML =
+          "スタッフ取得エラー：" +
+          staffError.message;
+
+        return;
+      }
+
+
+      const {
+        data: assignments,
+        error: assignmentError
+      } =
+        await supabaseClient
+          .from("staff_assignments")
+          .select(
+            "user_id,role,start_at,end_at"
+          )
+          .lte("start_at", now)
+          .gte("end_at", now);
+
+
+      if (assignmentError) {
+
+        list.innerHTML =
+          "予定取得エラー：" +
+          assignmentError.message;
+
+        return;
+      }
+
+
+      const {
+        data: attendance,
+        error: attendanceError
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select(
+            "id,user_id,role,clock_in,clock_out"
+          )
+          .is("clock_out", null);
+
+
+      if (attendanceError) {
+
+        list.innerHTML =
+          "勤怠取得エラー：" +
+          attendanceError.message;
+
+        return;
+      }
+
+
+      const assignmentMap = {};
+
+      for (const item of assignments || []) {
+        assignmentMap[item.user_id] =
+          item;
+      }
+
+
+      const attendanceMap = {};
+
+      for (const item of attendance || []) {
+        attendanceMap[item.user_id] =
+          item;
+      }
+
+
+      let workingCount = 0;
+      let registerCount = 0;
+      let unconfirmedCount = 0;
+
+
+      for (const item of attendance || []) {
+
+        workingCount++;
+
+        if (item.role === "register") {
+          registerCount++;
+        }
+
+        if (!item.role) {
+          unconfirmedCount++;
+        }
+      }
+
+
+      summary.innerHTML = `
+        現在勤務中：
+        <strong>${workingCount}人</strong>
+        <br>
+
+        レジ：
+        <strong>${registerCount}人</strong>
+        <br>
+
+        未確定勤務：
+        <strong>${unconfirmedCount}件</strong>
+      `;
+
+
+      let html = "";
+
+
+      for (const staff of staffMembers || []) {
+
+        const assignment =
+          assignmentMap[staff.user_id];
+
+        const actual =
+          attendanceMap[staff.user_id];
+
+        const unconfirmedOnly =
+  document.getElementById(
+    "unconfirmedOnly"
+  ).checked;
+
+if (
+  unconfirmedOnly &&
+  (!actual || actual.role)
+) {
+  continue;
+}
+
+
+        const plannedText =
+          assignment
+            ? `${roleText(
+                assignment.role
+              )} ${
+                timeText(
+                  assignment.start_at
+                )
+              }〜${
+                timeText(
+                  assignment.end_at
+                )
+              }`
+            : "予定なし";
+
+
+        let actualText =
+  "未出勤";
+
+let statusText =
+  "⚪ 未出勤";
+
+let cardClass =
+  "card";
+
+const nowDate =
+  new Date();
+
+if (actual) {
+
+  cardClass += " working";
+
+  actualText =
+    `${roleText(actual.role)} ` +
+    `${timeText(actual.clock_in)}〜勤務中`;
+
+  statusText =
+    "🟢 勤務中";
+
+  if (!actual.role) {
+    cardClass =
+      "card warning";
+
+    statusText =
+      "⚠️ 予定外・役割未確定";
+  }
+
+} else if (assignment) {
+
+  const plannedStart =
+    new Date(assignment.start_at);
+
+  const plannedEnd =
+    new Date(assignment.end_at);
+
+  if (nowDate > plannedEnd) {
+
+    statusText =
+      "🔵 予定終了";
+
+    actualText =
+      "現在勤務していません";
+
+  } else if (nowDate > plannedStart) {
+
+    statusText =
+      "🔴 未出勤・遅刻の可能性";
+
+    actualText =
+      "予定開始時刻を過ぎています";
+
+  } else {
+
+    statusText =
+      "⚪ 未出勤";
+
+    actualText =
+      "まだ予定開始前です";
+  }
+}
+
+
+        html += `
+          <div class="${cardClass}">
+
+            <button
+              onclick="
+                toggleStaffDetail(
+                  '${staff.user_id}'
+                )
+              "
+            >
+              ${staff.staff_name}
+            </button>
+
+            <div
+              id="detail-${staff.user_id}"
+              class="detail"
+              style="display:none;"
+            >
+
+              <strong>予定</strong>
+              <br>
+              ${plannedText}
+
+              <br><br>
+
+              <strong>状態</strong>
+<br>
+${statusText}
+
+<br><br>
+
+              <strong>現在の実績</strong>
+              <br>
+              ${actualText}
+
+              <br><br>
+
+<button
+  onclick="
+    openAttendanceEditor(
+      '${staff.user_id}',
+      '${staff.staff_name}'
+    )
+  "
+>
+  勤怠を編集
+</button>
+
+            </div>
+
+          </div>
+        `;
+      }
+
+
+      list.innerHTML = html;
+    }
+
+
+    function toggleStaffDetail(userId) {
+
+      const target =
+        document.getElementById(
+          "detail-" + userId
+        );
+
+      const details =
+        document.querySelectorAll(
+          ".detail"
+        );
+
+      for (const item of details) {
+
+        if (item !== target) {
+          item.style.display =
+            "none";
+        }
+      }
+
+      if (
+        target.style.display ===
+        "none"
+      ) {
+        target.style.display =
+          "block";
+      } else {
+        target.style.display =
+          "none";
+      }
+    }
+
+let editingUserId = null;
+let editingAttendanceId = null;
+
+
+async function openAttendanceEditor(
+  userId,
+  staffName
+) {
+
+  editingUserId = userId;
+  editingAttendanceId = null;
+
+  document.getElementById(
+    "editorStaffName"
+  ).textContent =
+    staffName + " の勤怠編集";
+
+  document.getElementById(
+    "attendanceEditor"
+  ).style.display =
+    "block";
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "勤怠を読み込んでいます...";
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("staff_attendance")
+      .select(
+        "id,role,clock_in,clock_out"
+      )
+      .eq("user_id", userId)
+      .order(
+        "clock_in",
+        { ascending: false }
+      )
+      .limit(1)
+      .maybeSingle();
+
+  if (error) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "取得エラー：" +
+      error.message;
+
+    return;
+  }
+
+  if (!data) {
+
+    document.getElementById(
+      "editorClockIn"
+    ).value = "";
+
+    document.getElementById(
+      "editorClockOut"
+    ).value = "";
+
+    document.getElementById(
+      "editorRole"
+    ).value = "";
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "勤怠記録はありません。";
+
+    return;
+  }
+
+  editingAttendanceId =
+    data.id;
+
+  document.getElementById(
+    "editorClockIn"
+  ).value =
+    toLocalDateTimeInput(
+      data.clock_in
+    );
+
+  document.getElementById(
+    "editorClockOut"
+  ).value =
+    data.clock_out
+      ? toLocalDateTimeInput(
+          data.clock_out
+        )
+      : "";
+
+  document.getElementById(
+    "editorRole"
+  ).value =
+    data.role ?? "";
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent = "";
+}
+
+
+function toLocalDateTimeInput(value) {
+
+  const date =
+    new Date(value);
+
+  const local =
+    new Date(
+      date.getTime() -
+      date.getTimezoneOffset() *
+      60000
+    );
+
+  return local
+    .toISOString()
+    .slice(0, 16);
+}
+
+
+async function saveAttendanceEdit() {
+
+  if (!editingAttendanceId) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "修正する勤怠がありません。";
+
+    return;
+  }
+
+  const clockInValue =
+    document.getElementById(
+      "editorClockIn"
+    ).value;
+
+  const clockOutValue =
+    document.getElementById(
+      "editorClockOut"
+    ).value;
+
+  const roleValue =
+    document.getElementById(
+      "editorRole"
+    ).value;
+
+  const note =
+    document.getElementById(
+      "editorNote"
+    ).value.trim();
+
+  if (!clockInValue) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "開始時刻を入力してください。";
+
+    return;
+  }
+
+  const {
+    data: { user }
+  } =
+    await supabaseClient.auth
+      .getUser();
+
+  const updates = {
+    clock_in:
+      new Date(
+        clockInValue
+      ).toISOString(),
+
+    clock_out:
+      clockOutValue
+        ? new Date(
+            clockOutValue
+          ).toISOString()
+        : null,
+
+    role:
+      roleValue || null,
+
+    corrected_by:
+      user.id,
+
+    corrected_at:
+      new Date().toISOString(),
+
+    correction_note:
+      note || null
+  };
+
+  const { error } =
+    await supabaseClient
+      .from("staff_attendance")
+      .update(updates)
+      .eq(
+        "id",
+        editingAttendanceId
+      );
+
+  if (error) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "保存エラー：" +
+      error.message;
+
+    return;
+  }
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "✅ 勤怠を修正しました。";
+
+  await loadStaffStatus();
+}
+
+
+async function addAttendance() {
+
+  if (!editingUserId) {
+    return;
+  }
+
+  const clockInValue =
+    document.getElementById(
+      "editorClockIn"
+    ).value;
+
+  const clockOutValue =
+    document.getElementById(
+      "editorClockOut"
+    ).value;
+
+  const roleValue =
+    document.getElementById(
+      "editorRole"
+    ).value;
+
+  const note =
+    document.getElementById(
+      "editorNote"
+    ).value.trim();
+
+  if (!clockInValue) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "開始時刻を入力してください。";
+
+    return;
+  }
+
+  const {
+    data: { user }
+  } =
+    await supabaseClient.auth
+      .getUser();
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("staff_attendance")
+      .insert({
+        user_id:
+          editingUserId,
+
+        role:
+          roleValue || null,
+
+        clock_in:
+          new Date(
+            clockInValue
+          ).toISOString(),
+
+        clock_out:
+          clockOutValue
+            ? new Date(
+                clockOutValue
+              ).toISOString()
+            : null,
+
+        corrected_by:
+          user.id,
+
+        corrected_at:
+          new Date().toISOString(),
+
+        correction_note:
+          note || "裏番による追加"
+      })
+      .select("id")
+      .single();
+
+  if (error) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "追加エラー：" +
+      error.message;
+
+    return;
+  }
+
+  editingAttendanceId =
+    data.id;
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "✅ 勤務を追加しました。";
+
+  await loadStaffStatus();
+}
+
+
+async function deleteAttendance() {
+
+  if (!editingAttendanceId) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "削除する勤怠がありません。";
+
+    return;
+  }
+
+  const confirmed =
+    confirm(
+      "この勤怠記録を削除しますか？"
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("staff_attendance")
+      .delete()
+      .eq(
+        "id",
+        editingAttendanceId
+      );
+
+  if (error) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "削除エラー：" +
+      error.message;
+
+    return;
+  }
+
+  editingAttendanceId = null;
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "✅ 勤怠を削除しました。";
+
+  await loadStaffStatus();
+}
+
+
+function closeAttendanceEditor() {
+
+  document.getElementById(
+    "attendanceEditor"
+  ).style.display =
+    "none";
+
+  editingUserId = null;
+  editingAttendanceId = null;
+}
+
+    async function openAttendanceEditor(
+  userId,
+  staffName
+) {
+
+  editingUserId = userId;
+  editingAttendanceId = null;
+
+  document.getElementById(
+    "editorStaffName"
+  ).textContent =
+    staffName + " の勤怠編集";
+
+  document.getElementById(
+    "attendanceEditor"
+  ).style.display =
+    "block";
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "今日の勤怠を読み込んでいます...";
+
+  const now =
+    new Date();
+
+  const startOfDay =
+    new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+
+  const endOfDay =
+    new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0,
+      0,
+      0,
+      0
+    );
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("staff_attendance")
+      .select(
+        "id,role,clock_in,clock_out"
+      )
+      .eq("user_id", userId)
+      .gte(
+        "clock_in",
+        startOfDay.toISOString()
+      )
+      .lt(
+        "clock_in",
+        endOfDay.toISOString()
+      )
+      .order(
+        "clock_in",
+        { ascending: true }
+      );
+
+  if (error) {
+
+    document.getElementById(
+      "editorMessage"
+    ).textContent =
+      "取得エラー：" +
+      error.message;
+
+    return;
+  }
+
+  showAttendanceHistory(
+    data || []
+  );
+}
+
+    function showAttendanceHistory(
+  attendance
+) {
+
+  const area =
+    document.getElementById(
+      "attendanceHistory"
+    );
+
+  if (
+    !attendance ||
+    attendance.length === 0
+  ) {
+
+    area.innerHTML =
+      "今日の勤怠記録はありません。";
+
+    return;
+  }
+
+  let html =
+    "<h3>今日の実績</h3>";
+
+  for (const item of attendance) {
+
+    const start =
+      timeText(
+        item.clock_in
+      );
+
+    const end =
+      item.clock_out
+        ? timeText(
+            item.clock_out
+          )
+        : "勤務中";
+
+    html += `
+      <button
+        onclick="
+          selectAttendance(
+            '${item.id}',
+            '${item.role ?? ""}',
+            '${item.clock_in}',
+            '${item.clock_out ?? ""}'
+          )
+        "
+        style="
+          text-align:left;
+          margin-top:8px;
+        "
+      >
+        ${start}〜${end}
+        ／
+        ${roleText(item.role)}
+      </button>
+    `;
+  }
+
+  area.innerHTML = html;
+}
+
+    function selectAttendance(
+  id,
+  role,
+  clockIn,
+  clockOut
+) {
+
+  editingAttendanceId =
+    id;
+
+  document.getElementById(
+    "editorClockIn"
+  ).value =
+    toLocalDateTimeInput(
+      clockIn
+    );
+
+  document.getElementById(
+    "editorClockOut"
+  ).value =
+    clockOut
+      ? toLocalDateTimeInput(
+          clockOut
+        )
+      : "";
+
+  document.getElementById(
+    "editorRole"
+  ).value =
+    role || "";
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "この勤務を編集中です。";
+}
+
+    function clearAttendanceEditor() {
+
+  editingAttendanceId =
+    null;
+
+  document.getElementById(
+    "editorClockIn"
+  ).value = "";
+
+  document.getElementById(
+    "editorClockOut"
+  ).value = "";
+
+  document.getElementById(
+    "editorRole"
+  ).value = "";
+
+  document.getElementById(
+    "editorNote"
+  ).value = "";
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "新しい勤務を入力してください。";
+}
+
+    function prepareNewAttendance() {
+
+  clearAttendanceEditor();
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "新しい勤務を入力してください。";
+}
+
+    function setQuickRole(role) {
+
+  document.getElementById(
+    "editorRole"
+  ).value = role;
+
+  document.getElementById(
+    "editorMessage"
+  ).textContent =
+    "役割を選択しました。保存すると確定します。";
+}
+
+    async function checkLogin() {
+
+      const {
+        data: { session }
+      } =
+        await supabaseClient.auth
+          .getSession();
+
+      if (session) {
+        await showBackArea();
+      }
+    }
+
+
+    checkLogin();
+
+  </script>
+
+</body>
+</html>
