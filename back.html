@@ -55,6 +55,102 @@
       border-top: 1px solid #ccc;
     }
 
+
+    .timeline-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .timeline-grid {
+      min-width: 980px;
+    }
+
+    .timeline-header,
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+    }
+
+    .timeline-name {
+      position: sticky;
+      left: 0;
+      z-index: 4;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      padding: 8px;
+      min-width: 0;
+    }
+
+    .timeline-header .timeline-name {
+      z-index: 6;
+      font-weight: bold;
+    }
+
+    .timeline-hours {
+      position: relative;
+      height: 36px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .timeline-hour {
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .timeline-track {
+      position: relative;
+      height: 62px;
+      border-bottom: 1px solid #eee;
+      background-image:
+        linear-gradient(
+          to right,
+          transparent calc(100% - 1px),
+          #e5e5e5 calc(100% - 1px)
+        );
+      background-size: calc(100% / 12) 100%;
+    }
+
+    .timeline-bar {
+      position: absolute;
+      border-radius: 8px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      padding: 2px 5px;
+      box-sizing: border-box;
+      font-size: 11px;
+      line-height: 18px;
+      cursor: pointer;
+    }
+
+    .timeline-plan {
+      top: 7px;
+      height: 22px;
+      background: #cfcfcf;
+    }
+
+    .timeline-actual {
+      top: 34px;
+      height: 22px;
+      background: #333;
+      color: #fff;
+    }
+
+    .timeline-name-button {
+      width: 100%;
+      margin: 0;
+      padding: 8px;
+      text-align: left;
+      font-size: 14px;
+      background: #f5f5f5;
+    }
+
     #backArea {
       display: none;
     }
@@ -110,19 +206,20 @@
     </button>
 
     <div
-  id="timelineArea"
-  class="card"
-  style="
-    overflow-x:auto;
-    margin-top:15px;
-  "
->
-  <h2>予定・確定勤怠</h2>
+      id="timelineArea"
+      class="card"
+      style="margin-top:15px;"
+    >
+      <h2>予定・確定勤怠</h2>
 
-  <div id="timelineContent">
-    読み込み前です。
-  </div>
-</div>
+      <p style="font-size:13px; color:#666;">
+        上段：予定　／　下段：確定勤怠
+      </p>
+
+      <div id="timelineContent">
+        読み込み前です。
+      </div>
+    </div>
 
    
     <div id="staffList"></div>
@@ -394,8 +491,24 @@ function setStatusFilter(filter) {
       list.innerHTML =
         "読み込み中...";
 
-      const now =
-        new Date().toISOString();
+      const nowDate =
+        new Date();
+
+      const startOfDay =
+        new Date(
+          nowDate.getFullYear(),
+          nowDate.getMonth(),
+          nowDate.getDate(),
+          0, 0, 0, 0
+        );
+
+      const endOfDay =
+        new Date(
+          nowDate.getFullYear(),
+          nowDate.getMonth(),
+          nowDate.getDate() + 1,
+          0, 0, 0, 0
+        );
 
 
       const {
@@ -428,10 +541,20 @@ function setStatusFilter(filter) {
         await supabaseClient
           .from("staff_assignments")
           .select(
-            "user_id,role,start_at,end_at"
+            "id,user_id,role,start_at,end_at"
           )
-          .lte("start_at", now)
-          .gte("end_at", now);
+          .lt(
+            "start_at",
+            endOfDay.toISOString()
+          )
+          .gt(
+            "end_at",
+            startOfDay.toISOString()
+          )
+          .order(
+            "start_at",
+            { ascending: true }
+          );
 
 
       if (assignmentError) {
@@ -444,46 +567,27 @@ function setStatusFilter(filter) {
       }
 
 
-      const today =
-  new Date();
-
-const startOfDay =
-  new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-    0, 0, 0, 0
-  );
-
-const endOfDay =
-  new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() + 1,
-    0, 0, 0, 0
-  );
-
-const {
-  data: attendance,
-  error: attendanceError
-} =
-  await supabaseClient
-    .from("staff_attendance")
-    .select(
-      "id,user_id,role,clock_in,clock_out,attendance_state"
-    )
-    .gte(
-      "clock_in",
-      startOfDay.toISOString()
-    )
-    .lt(
-      "clock_in",
-      endOfDay.toISOString()
-    )
-    .order(
-      "clock_in",
-      { ascending: true }
-    );
+      const {
+        data: attendance,
+        error: attendanceError
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select(
+            "id,user_id,role,clock_in,clock_out,attendance_state"
+          )
+          .gte(
+            "clock_in",
+            startOfDay.toISOString()
+          )
+          .lt(
+            "clock_in",
+            endOfDay.toISOString()
+          )
+          .order(
+            "clock_in",
+            { ascending: true }
+          );
 
 
       if (attendanceError) {
@@ -496,213 +600,225 @@ const {
       }
 
 
-      const assignmentMap = {};
+      const assignmentsByUser = {};
 
       for (const item of assignments || []) {
-        assignmentMap[item.user_id] =
-          item;
+
+        if (!assignmentsByUser[item.user_id]) {
+          assignmentsByUser[item.user_id] = [];
+        }
+
+        assignmentsByUser[item.user_id].push(item);
       }
 
 
-      const attendanceMap = {};
+      const attendanceByUser = {};
 
       for (const item of attendance || []) {
-        attendanceMap[item.user_id] =
+
+        if (!attendanceByUser[item.user_id]) {
+          attendanceByUser[item.user_id] = [];
+        }
+
+        attendanceByUser[item.user_id].push(item);
+      }
+
+
+      const latestAttendanceMap = {};
+
+      for (const item of attendance || []) {
+        latestAttendanceMap[item.user_id] =
           item;
       }
 
 
-let workingCount = 0;
-let breakCount = 0;
-let registerCount = 0;
-let unconfirmedCount = 0;
-let lateCount = 0;
-let overtimeCount = 0;
+      let workingCount = 0;
+      let breakCount = 0;
+      let registerCount = 0;
+      let unconfirmedCount = 0;
+      let lateCount = 0;
+      let overtimeCount = 0;
 
-for (const item of Object.values(attendanceMap)) {
 
-  if (
-    item.attendance_state === "working"
-  ) {
-    workingCount++;
-  }
+      for (
+        const item of Object.values(
+          latestAttendanceMap
+        )
+      ) {
 
-  if (
-    item.attendance_state === "break"
-  ) {
-    breakCount++;
-  }
+        if (
+          item.attendance_state ===
+          "working"
+        ) {
+          workingCount++;
+        }
 
-  if (
-    item.attendance_state === "working" &&
-    item.role === "register"
-  ) {
-    registerCount++;
-  }
+        if (
+          item.attendance_state ===
+          "break"
+        ) {
+          breakCount++;
+        }
 
-  if (!item.role) {
-    unconfirmedCount++;
-  }
-}
+        if (
+          item.attendance_state ===
+            "working" &&
+          item.role === "register"
+        ) {
+          registerCount++;
+        }
 
+        if (!item.role) {
+          unconfirmedCount++;
+        }
       }
 
-for (const staff of staffMembers || []) {
 
-  const assignment =
-    assignmentMap[staff.user_id];
+      const statusByUser = {};
 
-  const actual =
-    attendanceMap[staff.user_id];
+      for (const staff of staffMembers || []) {
 
-  let isLate = false;
-let isOvertime = false;
+        const userAssignments =
+          assignmentsByUser[
+            staff.user_id
+          ] || [];
 
-if (assignment) {
+        const currentAssignment =
+          userAssignments.find(
+            item =>
+              new Date(item.start_at) <=
+                nowDate &&
+              new Date(item.end_at) >=
+                nowDate
+          ) || null;
 
-  const plannedStart =
-    new Date(assignment.start_at);
+        const pastAssignments =
+          userAssignments.filter(
+            item =>
+              new Date(item.end_at) <
+              nowDate
+          );
 
-  const plannedEnd =
-    new Date(assignment.end_at);
+        const lastPastAssignment =
+          pastAssignments.length
+            ? pastAssignments[
+                pastAssignments.length - 1
+              ]
+            : null;
 
-  const nowDate =
-    new Date();
+        const actual =
+          latestAttendanceMap[
+            staff.user_id
+          ] || null;
 
-  if (
-    nowDate > plannedStart &&
-    nowDate <= plannedEnd &&
-    !actual
-  ) {
-    isLate = true;
-  }
+        const userAttendance =
+          attendanceByUser[
+            staff.user_id
+          ] || [];
 
-  if (
-    nowDate > plannedEnd &&
-    actual?.attendance_state === "working"
-  ) {
-    isOvertime = true;
-  }
-}
+        const hasStartedCurrentShift =
+          currentAssignment
+            ? userAttendance.some(
+                item => {
+                  const clockIn =
+                    new Date(
+                      item.clock_in
+                    );
 
-if (
-  currentStatusFilter === "working" &&
-  actual?.attendance_state !== "working"
-) {
-  continue;
-}
+                  return (
+                    clockIn >=
+                      new Date(
+                        currentAssignment.start_at
+                      ) &&
+                    clockIn <=
+                      new Date(
+                        currentAssignment.end_at
+                      )
+                  );
+                }
+              )
+            : false;
 
-if (
-  currentStatusFilter === "break" &&
-  actual?.attendance_state !== "break"
-) {
-  continue;
-}
+        const isLate =
+          !!currentAssignment &&
+          !hasStartedCurrentShift &&
+          !(
+            actual?.attendance_state ===
+            "working"
+          );
 
-if (
-  currentStatusFilter === "register" &&
-  !(
-    actual?.attendance_state === "working" &&
-    actual?.role === "register"
-  )
-) {
-  continue;
-}
+        const referenceAssignment =
+          currentAssignment ||
+          lastPastAssignment;
 
-if (
-  currentStatusFilter === "late" &&
-  !isLate
-) {
-  continue;
-}
+        const isOvertime =
+          !!referenceAssignment &&
+          nowDate >
+            new Date(
+              referenceAssignment.end_at
+            ) &&
+          actual?.attendance_state ===
+            "working";
 
-if (
-  currentStatusFilter === "overtime" &&
-  !isOvertime
-) {
-  continue;
-}
+        if (isLate) {
+          lateCount++;
+        }
 
-if (
-  currentStatusFilter === "unconfirmed" &&
-  !(
-    actual &&
-    !actual.role
-  )
-) {
-  continue;
-}
+        if (isOvertime) {
+          overtimeCount++;
+        }
 
-  if (!assignment) {
-    continue;
-  }
+        statusByUser[staff.user_id] = {
+          currentAssignment,
+          actual,
+          isLate,
+          isOvertime
+        };
+      }
 
-  const plannedStart =
-    new Date(assignment.start_at);
 
-  const plannedEnd =
-    new Date(assignment.end_at);
+      summary.innerHTML = `
+        <button onclick="setStatusFilter('working')">
+          現在勤務中：
+          <strong>${workingCount}人</strong>
+        </button>
 
-  const nowDate =
-    new Date();
+        <button onclick="setStatusFilter('break')">
+          休憩中：
+          <strong>${breakCount}人</strong>
+        </button>
 
-  if (
-    nowDate > plannedStart &&
-    nowDate <= plannedEnd &&
-    !actual
-  ) {
-    lateCount++;
-  }
+        <button onclick="setStatusFilter('register')">
+          レジ：
+          <strong>${registerCount}人</strong>
+        </button>
 
-  if (
-    nowDate > plannedEnd &&
-    actual?.attendance_state === "working"
-  ) {
-    overtimeCount++;
-  }
-}
+        <button onclick="setStatusFilter('late')">
+          🔴 遅刻中：
+          <strong>${lateCount}人</strong>
+        </button>
 
-summary.innerHTML = `
-  <button onclick="setStatusFilter('working')">
-    現在勤務中：
-    <strong>${workingCount}人</strong>
-  </button>
+        <button onclick="setStatusFilter('overtime')">
+          🟠 残業中：
+          <strong>${overtimeCount}人</strong>
+        </button>
 
-  <button onclick="setStatusFilter('break')">
-    休憩中：
-    <strong>${breakCount}人</strong>
-  </button>
+        <button onclick="setStatusFilter('unconfirmed')">
+          ⚠️ 未確定勤務：
+          <strong>${unconfirmedCount}件</strong>
+        </button>
 
-  <button onclick="setStatusFilter('register')">
-    レジ：
-    <strong>${registerCount}人</strong>
-  </button>
+        <button onclick="setStatusFilter('all')">
+          全員表示
+        </button>
+      `;
 
-  <button onclick="setStatusFilter('late')">
-    🔴 遅刻中：
-    <strong>${lateCount}人</strong>
-  </button>
 
-  <button onclick="setStatusFilter('overtime')">
-    🟠 残業中：
-    <strong>${overtimeCount}人</strong>
-  </button>
-
-  <button onclick="setStatusFilter('unconfirmed')">
-    ⚠️ 未確定勤務：
-    <strong>${unconfirmedCount}件</strong>
-  </button>
-
-  <button onclick="setStatusFilter('all')">
-    全員表示
-  </button>
-`;
-
-    renderTimeline(
-  staffMembers,
-  assignments,
-  attendance
-);
+      renderTimeline(
+        staffMembers,
+        assignments,
+        attendance
+      );
 
 
       let html = "";
@@ -710,11 +826,73 @@ summary.innerHTML = `
 
       for (const staff of staffMembers || []) {
 
+        const status =
+          statusByUser[
+            staff.user_id
+          ];
+
         const assignment =
-          assignmentMap[staff.user_id];
+          status.currentAssignment;
 
         const actual =
-          attendanceMap[staff.user_id];
+          status.actual;
+
+        if (
+          currentStatusFilter ===
+            "working" &&
+          actual?.attendance_state !==
+            "working"
+        ) {
+          continue;
+        }
+
+        if (
+          currentStatusFilter ===
+            "break" &&
+          actual?.attendance_state !==
+            "break"
+        ) {
+          continue;
+        }
+
+        if (
+          currentStatusFilter ===
+            "register" &&
+          !(
+            actual?.attendance_state ===
+              "working" &&
+            actual?.role === "register"
+          )
+        ) {
+          continue;
+        }
+
+        if (
+          currentStatusFilter ===
+            "late" &&
+          !status.isLate
+        ) {
+          continue;
+        }
+
+        if (
+          currentStatusFilter ===
+            "overtime" &&
+          !status.isOvertime
+        ) {
+          continue;
+        }
+
+        if (
+          currentStatusFilter ===
+            "unconfirmed" &&
+          !(
+            actual &&
+            !actual.role
+          )
+        ) {
+          continue;
+        }
 
 
         const plannedText =
@@ -730,73 +908,106 @@ summary.innerHTML = `
                   assignment.end_at
                 )
               }`
-            : "予定なし";
+            : "現在の予定なし";
 
 
         let actualText =
-  "未出勤";
+          "未出勤";
 
-let statusText =
-  "⚪ 未出勤";
+        let statusText =
+          "⚪ 未出勤";
 
-let cardClass =
-  "card";
+        let cardClass =
+          "card";
 
-const nowDate =
-  new Date();
 
-if (actual) {
+        if (actual) {
 
-  cardClass += " working";
+          if (
+            actual.attendance_state ===
+            "working"
+          ) {
 
-  actualText =
-    `${roleText(actual.role)} ` +
-    `${timeText(actual.clock_in)}〜勤務中`;
+            cardClass += " working";
 
-  statusText =
-    "🟢 勤務中";
+            statusText =
+              actual.role === "register"
+                ? "🧾 レジ勤務中"
+                : "🟢 勤務中";
 
-  if (!actual.role) {
-    cardClass =
-      "card warning";
+            actualText =
+              `${roleText(
+                actual.role
+              )} ${
+                timeText(
+                  actual.clock_in
+                )
+              }〜勤務中`;
 
-    statusText =
-      "⚠️ 予定外・役割未確定";
-  }
+          } else if (
+            actual.attendance_state ===
+            "break"
+          ) {
 
-} else if (assignment) {
+            statusText =
+              "☕ 休憩中";
 
-  const plannedStart =
-    new Date(assignment.start_at);
+            actualText =
+              `${timeText(
+                actual.clock_out
+              )}から休憩中`;
 
-  const plannedEnd =
-    new Date(assignment.end_at);
+          } else {
 
-  if (nowDate > plannedEnd) {
+            statusText =
+              "🔵 退勤済み";
 
-    statusText =
-      "🔵 予定終了";
+            actualText =
+              `${roleText(
+                actual.role
+              )} ${
+                timeText(
+                  actual.clock_in
+                )
+              }〜${
+                timeText(
+                  actual.clock_out
+                )
+              }`;
+          }
 
-    actualText =
-      "現在勤務していません";
 
-  } else if (nowDate > plannedStart) {
+          if (!actual.role) {
 
-    statusText =
-      "🔴 未出勤・遅刻の可能性";
+            cardClass =
+              "card warning";
 
-    actualText =
-      "予定開始時刻を過ぎています";
+            statusText =
+              "⚠️ 予定外・役割未確定";
+          }
 
-  } else {
+        } else if (status.isLate) {
 
-    statusText =
-      "⚪ 未出勤";
+          statusText =
+            "🔴 未出勤・遅刻の可能性";
 
-    actualText =
-      "まだ予定開始前です";
-  }
-}
+          actualText =
+            "予定開始時刻を過ぎています";
+
+        } else if (assignment) {
+
+          statusText =
+            "⚪ 未出勤";
+
+          actualText =
+            "現在の予定時間内です";
+        }
+
+
+        if (status.isOvertime) {
+          statusText =
+            "🟠 残業中";
+        }
 
 
         html += `
@@ -818,34 +1029,34 @@ if (actual) {
               style="display:none;"
             >
 
-              <strong>予定</strong>
+              <strong>現在の予定</strong>
               <br>
               ${plannedText}
 
               <br><br>
 
               <strong>状態</strong>
-<br>
-${statusText}
+              <br>
+              ${statusText}
 
-<br><br>
+              <br><br>
 
-              <strong>現在の実績</strong>
+              <strong>最新の実績</strong>
               <br>
               ${actualText}
 
               <br><br>
 
-<button
-  onclick="
-    openAttendanceEditor(
-      '${staff.user_id}',
-      '${staff.staff_name}'
-    )
-  "
->
-  勤怠を編集
-</button>
+              <button
+                onclick="
+                  openAttendanceEditor(
+                    '${staff.user_id}',
+                    '${staff.staff_name}'
+                  )
+                "
+              >
+                勤怠を編集
+              </button>
 
             </div>
 
@@ -854,7 +1065,9 @@ ${statusText}
       }
 
 
-      list.innerHTML = html;
+      list.innerHTML =
+        html ||
+        "該当するスタッフはいません。";
     }
 
 
@@ -892,109 +1105,6 @@ ${statusText}
 
 let editingUserId = null;
 let editingAttendanceId = null;
-
-
-async function openAttendanceEditor(
-  userId,
-  staffName
-) {
-
-  editingUserId = userId;
-  editingAttendanceId = null;
-
-  document.getElementById(
-    "editorStaffName"
-  ).textContent =
-    staffName + " の勤怠編集";
-
-  document.getElementById(
-    "attendanceEditor"
-  ).style.display =
-    "block";
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "勤怠を読み込んでいます...";
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("staff_attendance")
-      .select(
-        "id,role,clock_in,clock_out"
-      )
-      .eq("user_id", userId)
-      .order(
-        "clock_in",
-        { ascending: false }
-      )
-      .limit(1)
-      .maybeSingle();
-
-  if (error) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "取得エラー：" +
-      error.message;
-
-    return;
-  }
-
-  if (!data) {
-
-    document.getElementById(
-      "editorClockIn"
-    ).value = "";
-
-    document.getElementById(
-      "editorClockOut"
-    ).value = "";
-
-    document.getElementById(
-      "editorRole"
-    ).value = "";
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "勤怠記録はありません。";
-
-    return;
-  }
-
-  editingAttendanceId =
-    data.id;
-
-  document.getElementById(
-    "editorClockIn"
-  ).value =
-    toLocalDateTimeInput(
-      data.clock_in
-    );
-
-  document.getElementById(
-    "editorClockOut"
-  ).value =
-    data.clock_out
-      ? toLocalDateTimeInput(
-          data.clock_out
-        )
-      : "";
-
-  document.getElementById(
-    "editorRole"
-  ).value =
-    data.role ?? "";
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent = "";
-}
 
 
 function toLocalDateTimeInput(value) {
@@ -1192,7 +1302,12 @@ async function addAttendance() {
           new Date().toISOString(),
 
         correction_note:
-          note || "裏番による追加"
+          note || "裏番による追加",
+
+        attendance_state:
+          clockOutValue
+            ? "finished"
+            : "working"
       })
       .select("id")
       .single();
@@ -1566,11 +1681,50 @@ function renderTimeline(
       dayStart.getTime()
     ) / 60000;
 
+  const clampPercent =
+    value =>
+      Math.max(
+        0,
+        Math.min(100, value)
+      );
 
   let html = `
-    <div style="
-      min-width:900px;
-    ">
+    <div class="timeline-scroll">
+      <div class="timeline-grid">
+
+        <div class="timeline-header">
+          <div class="timeline-name">
+            名前
+          </div>
+
+          <div class="timeline-hours">
+  `;
+
+  for (let hour = 8; hour <= 20; hour++) {
+
+    const minutes =
+      (hour - 8) * 60;
+
+    const left =
+      clampPercent(
+        minutes /
+        totalMinutes *
+        100
+      );
+
+    html += `
+      <span
+        class="timeline-hour"
+        style="left:${left}%"
+      >
+        ${hour}:00
+      </span>
+    `;
+  }
+
+  html += `
+          </div>
+        </div>
   `;
 
 
@@ -1596,36 +1750,23 @@ function renderTimeline(
 
 
     html += `
-      <div
-        style="
-          display:grid;
-          grid-template-columns:120px 1fr;
-          margin-bottom:14px;
-          align-items:center;
-        "
-      >
+      <div class="timeline-row">
 
-        <button
-          onclick="
-            toggleStaffDetail(
-              '${staff.user_id}'
-            )
-          "
-          style="
-            margin:0;
-            text-align:left;
-          "
-        >
-          ${staff.staff_name}
-        </button>
+        <div class="timeline-name">
+          <button
+            class="timeline-name-button"
+            onclick="
+              openAttendanceEditor(
+                '${staff.user_id}',
+                '${staff.staff_name}'
+              )
+            "
+          >
+            ${staff.staff_name}
+          </button>
+        </div>
 
-        <div
-          style="
-            position:relative;
-            height:54px;
-            border-left:1px solid #ccc;
-          "
-        >
+        <div class="timeline-track">
     `;
 
 
@@ -1633,45 +1774,70 @@ function renderTimeline(
       const item of staffAssignments
     ) {
 
-      const startMin =
+      const rawStart =
         minutesFromStart(
           item.start_at,
           dayStart
         );
 
-      const endMin =
+      const rawEnd =
         minutesFromStart(
           item.end_at,
           dayStart
         );
 
-      const left =
+      const startMin =
         Math.max(
           0,
-          startMin / totalMinutes * 100
+          Math.min(
+            totalMinutes,
+            rawStart
+          )
         );
 
-      const width =
+      const endMin =
         Math.max(
-          1,
-          (
-            endMin - startMin
-          ) / totalMinutes * 100
+          0,
+          Math.min(
+            totalMinutes,
+            rawEnd
+          )
         );
+
+      if (endMin <= startMin) {
+        continue;
+      }
+
+      const left =
+        startMin /
+        totalMinutes *
+        100;
+
+      const width =
+        (
+          endMin -
+          startMin
+        ) /
+        totalMinutes *
+        100;
 
       html += `
         <div
+          class="
+            timeline-bar
+            timeline-plan
+          "
           style="
-            position:absolute;
-            top:4px;
             left:${left}%;
             width:${width}%;
-            height:18px;
-            background:#bbb;
-            border-radius:9px;
-            overflow:hidden;
-            white-space:nowrap;
-            font-size:12px;
+          "
+          title="
+            予定：
+            ${timeText(item.start_at)}
+            〜
+            ${timeText(item.end_at)}
+            /
+            ${roleText(item.role)}
           "
         >
           ${roleText(item.role)}
@@ -1684,7 +1850,7 @@ function renderTimeline(
       const item of staffAttendance
     ) {
 
-      const startMin =
+      const rawStart =
         minutesFromStart(
           item.clock_in,
           dayStart
@@ -1695,28 +1861,53 @@ function renderTimeline(
           ? new Date(item.clock_out)
           : new Date();
 
-      const endMin =
+      const rawEnd =
         minutesFromStart(
           actualEnd,
           dayStart
         );
 
-      const left =
+      const startMin =
         Math.max(
           0,
-          startMin / totalMinutes * 100
+          Math.min(
+            totalMinutes,
+            rawStart
+          )
         );
 
-      const width =
+      const endMin =
         Math.max(
-          1,
-          (
-            endMin - startMin
-          ) / totalMinutes * 100
+          0,
+          Math.min(
+            totalMinutes,
+            rawEnd
+          )
         );
+
+      if (endMin <= startMin) {
+        continue;
+      }
+
+      const left =
+        startMin /
+        totalMinutes *
+        100;
+
+      const width =
+        (
+          endMin -
+          startMin
+        ) /
+        totalMinutes *
+        100;
 
       html += `
         <div
+          class="
+            timeline-bar
+            timeline-actual
+          "
           onclick="
             openAttendanceEditor(
               '${staff.user_id}',
@@ -1724,16 +1915,11 @@ function renderTimeline(
             )
           "
           style="
-            position:absolute;
-            top:30px;
             left:${left}%;
             width:${width}%;
-            height:18px;
-            background:#333;
-            border-radius:9px;
-            cursor:pointer;
           "
           title="
+            実績：
             ${timeText(item.clock_in)}
             〜
             ${
@@ -1744,7 +1930,9 @@ function renderTimeline(
             /
             ${roleText(item.role)}
           "
-        ></div>
+        >
+          ${roleText(item.role)}
+        </div>
       `;
     }
 
@@ -1757,11 +1945,13 @@ function renderTimeline(
 
 
   html += `
+      </div>
     </div>
   `;
 
   area.innerHTML = html;
 }
+
 
     async function checkLogin() {
 
