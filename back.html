@@ -9,12 +9,25 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: sans-serif;
-      max-width: 700px;
+      max-width: 760px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 16px;
       text-align: center;
+      color: #111;
+    }
+
+    h1 {
+      margin: 20px 0 28px;
+    }
+
+    h2 {
+      margin-top: 0;
     }
 
     input,
@@ -22,7 +35,7 @@
     button {
       width: 100%;
       box-sizing: border-box;
-      padding: 14px;
+      padding: 13px;
       margin-top: 10px;
       font-size: 16px;
     }
@@ -31,14 +44,26 @@
       border: none;
       border-radius: 10px;
       cursor: pointer;
+      background: #f0f0f0;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: default;
     }
 
     .card {
-      margin-top: 12px;
-      padding: 15px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
+      margin-top: 14px;
+      padding: 16px;
+      border: 1px solid #d5d5d5;
+      border-radius: 14px;
       text-align: left;
+      background: #fff;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 13px;
     }
 
     .warning {
@@ -49,13 +74,120 @@
       background: #e8f7e8;
     }
 
-    .detail {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #ccc;
+    .danger-text {
+      color: #b42318;
     }
 
+    .success-text {
+      color: #087443;
+    }
 
+    #backArea {
+      display: none;
+    }
+
+    /* 日付 */
+    .date-toolbar {
+      display: grid;
+      grid-template-columns: 52px 1fr 52px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .date-toolbar button {
+      margin-top: 0;
+      padding: 11px 6px;
+    }
+
+    .date-toolbar input {
+      margin-top: 0;
+    }
+
+    .quick-days {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .quick-days button {
+      padding: 10px 4px;
+      margin-top: 0;
+      font-size: 13px;
+    }
+
+    .calendar-head {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      margin-top: 14px;
+    }
+
+    .calendar-head button {
+      margin-top: 0;
+      padding: 9px 4px;
+    }
+
+    .calendar-title {
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .calendar-week {
+      font-size: 12px;
+      text-align: center;
+      padding: 4px 0;
+      color: #666;
+    }
+
+    .calendar-day {
+      margin-top: 0;
+      padding: 9px 2px;
+      min-height: 40px;
+      font-size: 13px;
+      background: #f5f5f5;
+    }
+
+    .calendar-day.selected {
+      outline: 2px solid #333;
+      font-weight: bold;
+      background: #fff;
+    }
+
+    .calendar-day.other-month {
+      opacity: .35;
+    }
+
+    /* 集計 */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .summary-grid button {
+      margin-top: 0;
+      min-height: 58px;
+      padding: 10px;
+    }
+
+    .summary-grid button.active {
+      outline: 2px solid #333;
+    }
+
+    .summary-grid strong {
+      font-size: 20px;
+    }
+
+    /* タイムライン */
     .timeline-scroll {
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
@@ -65,13 +197,13 @@
     }
 
     .timeline-grid {
-      min-width: 980px;
+      min-width: 1080px;
     }
 
     .timeline-header,
     .timeline-row {
       display: grid;
-      grid-template-columns: 120px 1fr;
+      grid-template-columns: 116px 1fr;
     }
 
     .timeline-name {
@@ -80,7 +212,7 @@
       z-index: 4;
       background: #fff;
       border-right: 1px solid #ddd;
-      padding: 8px;
+      padding: 6px;
       min-width: 0;
     }
 
@@ -91,21 +223,21 @@
 
     .timeline-hours {
       position: relative;
-      height: 36px;
+      height: 38px;
       border-bottom: 1px solid #ddd;
     }
 
     .timeline-hour {
       position: absolute;
-      top: 0;
+      top: 10px;
       transform: translateX(-50%);
-      font-size: 12px;
+      font-size: 11px;
       white-space: nowrap;
     }
 
     .timeline-track {
       position: relative;
-      height: 62px;
+      height: 66px;
       border-bottom: 1px solid #eee;
       background-image:
         linear-gradient(
@@ -118,7 +250,7 @@
 
     .timeline-bar {
       position: absolute;
-      border-radius: 8px;
+      border-radius: 7px;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -127,17 +259,21 @@
       font-size: 11px;
       line-height: 18px;
       cursor: pointer;
+      border: none;
+      margin: 0;
+      text-align: left;
     }
 
     .timeline-plan {
       top: 7px;
-      height: 22px;
-      background: #cfcfcf;
+      height: 23px;
+      background: #d3d3d3;
+      color: #111;
     }
 
     .timeline-actual {
-      top: 34px;
-      height: 22px;
+      top: 36px;
+      height: 23px;
       background: #333;
       color: #fff;
     }
@@ -145,14 +281,104 @@
     .timeline-name-button {
       width: 100%;
       margin: 0;
-      padding: 8px;
+      padding: 8px 5px;
       text-align: left;
-      font-size: 14px;
+      font-size: 13px;
       background: #f5f5f5;
     }
 
-    #backArea {
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      margin: 8px 0 12px;
+    }
+
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 22px;
+      height: 8px;
+      border-radius: 5px;
+      margin-right: 5px;
+    }
+
+    .legend-plan::before {
+      background: #d3d3d3;
+    }
+
+    .legend-actual::before {
+      background: #333;
+    }
+
+    /* 詳細 */
+    .detail-panel {
       display: none;
+      margin-top: 12px;
+    }
+
+    .shift-block {
+      border-top: 1px solid #ddd;
+      padding: 10px 0;
+    }
+
+    .shift-block:first-child {
+      border-top: none;
+    }
+
+    .name-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .name-list button {
+      margin-top: 0;
+      text-align: left;
+    }
+
+    .filter-note {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .quick-role-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .quick-role-buttons button {
+      margin-top: 0;
+      padding: 10px 5px;
+    }
+
+    .editor-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .editor-actions button {
+      margin-top: 10px;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-days {
+        grid-template-columns: repeat(3, 1fr);
+      }
     }
   </style>
 </head>
@@ -162,17 +388,18 @@
   <h1>シグマ祭 裏番</h1>
 
   <div id="loginArea">
-
     <input
       id="email"
       type="email"
       placeholder="メールアドレス"
+      autocomplete="email"
     >
 
     <input
       id="password"
       type="password"
       placeholder="パスワード"
+      autocomplete="current-password"
     >
 
     <button onclick="login()">
@@ -180,7 +407,6 @@
     </button>
 
     <p id="loginMessage"></p>
-
   </div>
 
 
@@ -191,152 +417,197 @@
     </button>
 
     <div class="card">
+      <h2>日付</h2>
 
-      <h2>現在の勤務状況</h2>
+      <div class="date-toolbar">
+        <button onclick="moveSelectedDate(-1)" aria-label="前日">◀</button>
 
-      <p id="summary">
-        集計しています...
-      </p>
+        <input
+          id="selectedDate"
+          type="date"
+          onchange="onDateChanged()"
+        >
 
+        <button onclick="moveSelectedDate(1)" aria-label="翌日">▶</button>
+      </div>
+
+      <div class="quick-days">
+        <button onclick="selectDate('2026-10-31')">10/31</button>
+        <button onclick="selectDate('2026-11-01')">11/1</button>
+        <button onclick="selectDate('2026-11-02')">11/2</button>
+        <button onclick="selectDate('2026-11-03')">11/3</button>
+        <button onclick="selectDate('2026-11-04')">11/4</button>
+      </div>
+
+      <div class="calendar-head">
+        <button onclick="moveCalendarMonth(-1)">‹</button>
+        <div id="calendarTitle" class="calendar-title"></div>
+        <button onclick="moveCalendarMonth(1)">›</button>
+      </div>
+
+      <div class="calendar-grid">
+        <div class="calendar-week">日</div>
+        <div class="calendar-week">月</div>
+        <div class="calendar-week">火</div>
+        <div class="calendar-week">水</div>
+        <div class="calendar-week">木</div>
+        <div class="calendar-week">金</div>
+        <div class="calendar-week">土</div>
+      </div>
+
+      <div id="calendarDays" class="calendar-grid"></div>
     </div>
 
 
-    <button onclick="loadStaffStatus()">
-      スタッフ状況を更新
-    </button>
+    <div class="card">
+      <h2 id="summaryTitle">勤務状況</h2>
+
+      <div id="summary">
+        集計しています...
+      </div>
+
+      <p id="filterNote" class="filter-note">
+        全員を表示中
+      </p>
+    </div>
+
 
     <div
       id="timelineArea"
       class="card"
-      style="margin-top:15px;"
     >
       <h2>予定・確定勤怠</h2>
 
-      <p style="font-size:13px; color:#666;">
-        上段：予定　／　下段：確定勤怠
+      <div class="legend">
+        <span class="legend-plan">予定</span>
+        <span class="legend-actual">確定勤怠</span>
+      </div>
+
+      <p class="muted">
+        名前または棒をタップすると詳細を確認できます。時間は分単位で反映されます。
       </p>
 
       <div id="timelineContent">
         読み込み前です。
       </div>
+
+      <div
+        id="barDetail"
+        class="card detail-panel"
+      ></div>
     </div>
 
-   
-    <div id="staffList"></div>
 
-<div
-  id="attendanceEditor"
-  class="card"
-  style="display:none;"
->
+    <div class="card">
+      <h2>スタッフ個別確認</h2>
 
-  <h2 id="editorStaffName">
-    勤怠編集
-  </h2>
+      <button onclick="loadStaffStatus()">
+        最新情報に更新
+      </button>
 
-  <div id="attendanceHistory"></div>
+      <div id="staffList"></div>
 
-<hr style="margin:20px 0;">
+      <div
+        id="staffDetail"
+        class="card detail-panel"
+      ></div>
+    </div>
 
-  <input
-    id="editorClockIn"
-    type="datetime-local"
-  >
 
-  <input
-    id="editorClockOut"
-    type="datetime-local"
-  >
+    <div
+      id="attendanceEditor"
+      class="card"
+      style="display:none;"
+    >
+      <h2 id="editorStaffName">
+        勤怠編集
+      </h2>
 
-  <select id="editorRole">
-    <option value="">役割未確定</option>
-    <option value="seller">売り子</option>
-    <option value="tent">テント内</option>
-    <option value="front">表番</option>
-    <option value="back">裏番</option>
-    <option value="register">レジ</option>
-  </select>
+      <div id="attendanceHistory"></div>
 
-  <div
-  id="quickRoleButtons"
-  style="
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    margin-top:10px;
-  "
->
-  <button
-    type="button"
-    onclick="setQuickRole('seller')"
-  >
-    売り子
-  </button>
+      <hr style="margin:20px 0;">
 
-  <button
-    type="button"
-    onclick="setQuickRole('tent')"
-  >
-    テント内
-  </button>
+      <label>
+        開始日時
+        <input
+          id="editorClockIn"
+          type="datetime-local"
+        >
+      </label>
 
-  <button
-    type="button"
-    onclick="setQuickRole('front')"
-  >
-    表番
-  </button>
+      <label>
+        終了日時
+        <input
+          id="editorClockOut"
+          type="datetime-local"
+        >
+      </label>
 
-  <button
-    type="button"
-    onclick="setQuickRole('back')"
-  >
-    裏番
-  </button>
+      <label>
+        役割
+        <select id="editorRole">
+          <option value="">役割未確定</option>
+          <option value="seller">売り子</option>
+          <option value="tent">テント内</option>
+          <option value="front">表番</option>
+          <option value="back">裏番</option>
+          <option value="register">レジ</option>
+        </select>
+      </label>
 
-  <button
-    type="button"
-    onclick="setQuickRole('register')"
-  >
-    レジ
-  </button>
-</div>
+      <div class="quick-role-buttons">
+        <button type="button" onclick="setQuickRole('seller')">売り子</button>
+        <button type="button" onclick="setQuickRole('tent')">テント内</button>
+        <button type="button" onclick="setQuickRole('front')">表番</button>
+        <button type="button" onclick="setQuickRole('back')">裏番</button>
+        <button type="button" onclick="setQuickRole('register')">レジ</button>
+        <button type="button" onclick="setQuickRole('')">未確定</button>
+      </div>
 
-  <input
-    id="editorNote"
-    type="text"
-    placeholder="修正理由 例：打刻忘れ"
-  >
+      <label>
+        勤怠状態
+        <select id="editorState">
+          <option value="working">勤務中</option>
+          <option value="break">休憩中</option>
+          <option value="finished">勤務終了</option>
+        </select>
+      </label>
 
-  <button onclick="saveAttendanceEdit()">
-    修正を保存
-  </button>
+      <input
+        id="editorNote"
+        type="text"
+        placeholder="修正理由 例：打刻忘れ"
+      >
 
-  <button onclick="prepareNewAttendance()">
-  新しい勤務を入力
-</button>
+      <div class="editor-actions">
+        <button onclick="saveAttendanceEdit()">
+          修正を保存
+        </button>
 
-<button onclick="addAttendance()">
-  この内容で勤務を追加
-</button>
+        <button onclick="prepareNewAttendance()">
+          新しい勤務
+        </button>
 
-  <button onclick="deleteAttendance()">
-    この勤怠を削除
-  </button>
+        <button onclick="addAttendance()">
+          勤務を追加
+        </button>
 
-  <button onclick="closeAttendanceEditor()">
-    閉じる
-  </button>
+        <button onclick="deleteAttendance()">
+          この勤怠を削除
+        </button>
+      </div>
 
-  <p id="editorMessage"></p>
+      <button onclick="closeAttendanceEditor()">
+        閉じる
+      </button>
 
-</div>
-    
+      <p id="editorMessage"></p>
+    </div>
+
   </div>
 
 
   <script>
-
     const SUPABASE_URL =
       "https://gsniytemgrbtgfywhqlu.supabase.co";
 
@@ -349,9 +620,131 @@
         SUPABASE_KEY
       );
 
+    let currentStatusFilter = "all";
+    let selectedDateString = "";
+    let calendarYear = 0;
+    let calendarMonth = 0;
+
+    let editingUserId = null;
+    let editingAttendanceId = null;
+
+    let cachedStaffMembers = [];
+    let cachedAssignments = [];
+    let cachedAttendance = [];
+
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+
+    function dateToYmd(date) {
+      return (
+        date.getFullYear() +
+        "-" +
+        pad2(date.getMonth() + 1) +
+        "-" +
+        pad2(date.getDate())
+      );
+    }
+
+
+    function ymdToLocalDate(value) {
+      const [year, month, day] =
+        value.split("-").map(Number);
+
+      return new Date(
+        year,
+        month - 1,
+        day,
+        0, 0, 0, 0
+      );
+    }
+
+
+    function selectedDayRange() {
+      const start =
+        ymdToLocalDate(selectedDateString);
+
+      const end =
+        new Date(
+          start.getFullYear(),
+          start.getMonth(),
+          start.getDate() + 1,
+          0, 0, 0, 0
+        );
+
+      return { start, end };
+    }
+
+
+    function isSelectedToday() {
+      return (
+        selectedDateString ===
+        dateToYmd(new Date())
+      );
+    }
+
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+
+    function roleText(role) {
+      if (role === "seller") return "売り子";
+      if (role === "tent") return "テント内";
+      if (role === "front") return "表番";
+      if (role === "back") return "裏番";
+      if (role === "register") return "レジ";
+      return "未確定";
+    }
+
+
+    function stateText(state) {
+      if (state === "working") return "勤務中";
+      if (state === "break") return "休憩中";
+      if (state === "finished") return "勤務終了";
+      return "不明";
+    }
+
+
+    function timeText(value) {
+      if (!value) return "勤務中";
+
+      return new Date(value)
+        .toLocaleTimeString(
+          "ja-JP",
+          {
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+    }
+
+
+    function dateTimeText(value) {
+      if (!value) return "未入力";
+
+      return new Date(value)
+        .toLocaleString(
+          "ja-JP",
+          {
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+    }
+
 
     async function login() {
-
       const email =
         document.getElementById("email").value;
 
@@ -360,6 +753,9 @@
 
       const message =
         document.getElementById("loginMessage");
+
+      message.textContent =
+        "ログインしています...";
 
       const { error } =
         await supabaseClient.auth
@@ -375,12 +771,13 @@
         return;
       }
 
+      message.textContent = "";
+
       await showBackArea();
     }
 
 
     async function logout() {
-
       await supabaseClient.auth.signOut();
 
       document.getElementById("backArea")
@@ -392,7 +789,6 @@
 
 
     async function showBackArea() {
-
       const {
         data: { user }
       } =
@@ -402,19 +798,20 @@
         return;
       }
 
-      const { data: allowed } =
+      const {
+        data: allowed,
+        error
+      } =
         await supabaseClient
           .rpc("is_current_back");
 
-      if (!allowed) {
-
+      if (error || !allowed) {
         document.getElementById(
           "loginMessage"
         ).textContent =
           "現在、裏番として利用できません。";
 
         await supabaseClient.auth.signOut();
-
         return;
       }
 
@@ -424,92 +821,216 @@
       document.getElementById("backArea")
         .style.display = "block";
 
+      initializeDate();
+
       await loadStaffStatus();
     }
 
 
-    function roleText(role) {
-
-      if (role === "seller") {
-        return "売り子";
+    function initializeDate() {
+      if (!selectedDateString) {
+        selectedDateString =
+          dateToYmd(new Date());
       }
 
-      if (role === "tent") {
-        return "テント内";
-      }
+      document.getElementById(
+        "selectedDate"
+      ).value =
+        selectedDateString;
 
-      if (role === "front") {
-        return "表番";
-      }
+      const date =
+        ymdToLocalDate(selectedDateString);
 
-      if (role === "back") {
-        return "裏番";
-      }
+      calendarYear =
+        date.getFullYear();
 
-      if (role === "register") {
-        return "レジ";
-      }
+      calendarMonth =
+        date.getMonth();
 
-      return "未確定";
+      renderCalendar();
     }
 
 
-    function timeText(value) {
+    function selectDate(value) {
+      selectedDateString = value;
 
-      if (!value) {
-        return "勤務中";
+      document.getElementById(
+        "selectedDate"
+      ).value = value;
+
+      const date =
+        ymdToLocalDate(value);
+
+      calendarYear =
+        date.getFullYear();
+
+      calendarMonth =
+        date.getMonth();
+
+      currentStatusFilter = "all";
+
+      renderCalendar();
+      clearOpenPanels();
+      loadStaffStatus();
+    }
+
+
+    function onDateChanged() {
+      const value =
+        document.getElementById(
+          "selectedDate"
+        ).value;
+
+      if (!value) return;
+
+      selectDate(value);
+    }
+
+
+    function moveSelectedDate(days) {
+      const date =
+        ymdToLocalDate(selectedDateString);
+
+      date.setDate(
+        date.getDate() + days
+      );
+
+      selectDate(
+        dateToYmd(date)
+      );
+    }
+
+
+    function moveCalendarMonth(amount) {
+      calendarMonth += amount;
+
+      if (calendarMonth < 0) {
+        calendarMonth = 11;
+        calendarYear--;
       }
 
-      return new Date(value)
-        .toLocaleTimeString(
-          "ja-JP",
-          {
-            hour: "2-digit",
-            minute: "2-digit"
-          }
+      if (calendarMonth > 11) {
+        calendarMonth = 0;
+        calendarYear++;
+      }
+
+      renderCalendar();
+    }
+
+
+    function renderCalendar() {
+      const title =
+        document.getElementById(
+          "calendarTitle"
         );
+
+      const daysArea =
+        document.getElementById(
+          "calendarDays"
+        );
+
+      title.textContent =
+        `${calendarYear}年${calendarMonth + 1}月`;
+
+      const first =
+        new Date(
+          calendarYear,
+          calendarMonth,
+          1
+        );
+
+      const gridStart =
+        new Date(
+          calendarYear,
+          calendarMonth,
+          1 - first.getDay()
+        );
+
+      let html = "";
+
+      for (let i = 0; i < 42; i++) {
+        const day =
+          new Date(
+            gridStart.getFullYear(),
+            gridStart.getMonth(),
+            gridStart.getDate() + i
+          );
+
+        const value =
+          dateToYmd(day);
+
+        const classes = [
+          "calendar-day"
+        ];
+
+        if (
+          day.getMonth() !==
+          calendarMonth
+        ) {
+          classes.push("other-month");
+        }
+
+        if (
+          value ===
+          selectedDateString
+        ) {
+          classes.push("selected");
+        }
+
+        html += `
+          <button
+            class="${classes.join(" ")}"
+            onclick="selectDate('${value}')"
+          >
+            ${day.getDate()}
+          </button>
+        `;
+      }
+
+      daysArea.innerHTML = html;
     }
 
-    let currentStatusFilter = "all";
 
-function setStatusFilter(filter) {
+    function clearOpenPanels() {
+      document.getElementById(
+        "barDetail"
+      ).style.display = "none";
 
-  currentStatusFilter = filter;
+      document.getElementById(
+        "staffDetail"
+      ).style.display = "none";
 
-  loadStaffStatus();
-}
+      closeAttendanceEditor();
+    }
+
+
+    function setStatusFilter(filter) {
+      currentStatusFilter = filter;
+
+      renderStaffList();
+      renderSummary();
+    }
 
 
     async function loadStaffStatus() {
-
       const list =
-        document.getElementById("staffList");
+        document.getElementById(
+          "staffList"
+        );
 
-      const summary =
-        document.getElementById("summary");
+      const timeline =
+        document.getElementById(
+          "timelineContent"
+        );
 
       list.innerHTML =
         "読み込み中...";
 
-      const nowDate =
-        new Date();
+      timeline.innerHTML =
+        "読み込み中...";
 
-      const startOfDay =
-        new Date(
-          nowDate.getFullYear(),
-          nowDate.getMonth(),
-          nowDate.getDate(),
-          0, 0, 0, 0
-        );
-
-      const endOfDay =
-        new Date(
-          nowDate.getFullYear(),
-          nowDate.getMonth(),
-          nowDate.getDate() + 1,
-          0, 0, 0, 0
-        );
-
+      const { start, end } =
+        selectedDayRange();
 
       const {
         data: staffMembers,
@@ -523,16 +1044,12 @@ function setStatusFilter(filter) {
           .eq("is_active", true)
           .order("staff_name");
 
-
       if (staffError) {
-
         list.innerHTML =
           "スタッフ取得エラー：" +
           staffError.message;
-
         return;
       }
-
 
       const {
         data: assignments,
@@ -545,27 +1062,23 @@ function setStatusFilter(filter) {
           )
           .lt(
             "start_at",
-            endOfDay.toISOString()
+            end.toISOString()
           )
           .gt(
             "end_at",
-            startOfDay.toISOString()
+            start.toISOString()
           )
           .order(
             "start_at",
             { ascending: true }
           );
 
-
       if (assignmentError) {
-
         list.innerHTML =
           "予定取得エラー：" +
           assignmentError.message;
-
         return;
       }
-
 
       const {
         data: attendance,
@@ -574,63 +1087,286 @@ function setStatusFilter(filter) {
         await supabaseClient
           .from("staff_attendance")
           .select(
-            "id,user_id,role,clock_in,clock_out,attendance_state"
+            "id,user_id,role,clock_in,clock_out,attendance_state,corrected_at,correction_note"
           )
           .gte(
             "clock_in",
-            startOfDay.toISOString()
+            start.toISOString()
           )
           .lt(
             "clock_in",
-            endOfDay.toISOString()
+            end.toISOString()
           )
           .order(
             "clock_in",
             { ascending: true }
           );
 
-
       if (attendanceError) {
-
         list.innerHTML =
           "勤怠取得エラー：" +
           attendanceError.message;
-
         return;
       }
 
+      cachedStaffMembers =
+        staffMembers || [];
 
+      cachedAssignments =
+        assignments || [];
+
+      cachedAttendance =
+        attendance || [];
+
+      renderSummary();
+      renderTimeline();
+      renderStaffList();
+    }
+
+
+    function buildMaps() {
       const assignmentsByUser = {};
-
-      for (const item of assignments || []) {
-
-        if (!assignmentsByUser[item.user_id]) {
-          assignmentsByUser[item.user_id] = [];
-        }
-
-        assignmentsByUser[item.user_id].push(item);
-      }
-
-
       const attendanceByUser = {};
-
-      for (const item of attendance || []) {
-
-        if (!attendanceByUser[item.user_id]) {
-          attendanceByUser[item.user_id] = [];
-        }
-
-        attendanceByUser[item.user_id].push(item);
-      }
-
-
       const latestAttendanceMap = {};
 
-      for (const item of attendance || []) {
-        latestAttendanceMap[item.user_id] =
-          item;
+      for (
+        const item of cachedAssignments
+      ) {
+        if (
+          !assignmentsByUser[
+            item.user_id
+          ]
+        ) {
+          assignmentsByUser[
+            item.user_id
+          ] = [];
+        }
+
+        assignmentsByUser[
+          item.user_id
+        ].push(item);
       }
 
+      for (
+        const item of cachedAttendance
+      ) {
+        if (
+          !attendanceByUser[
+            item.user_id
+          ]
+        ) {
+          attendanceByUser[
+            item.user_id
+          ] = [];
+        }
+
+        attendanceByUser[
+          item.user_id
+        ].push(item);
+
+        latestAttendanceMap[
+          item.user_id
+        ] = item;
+      }
+
+      return {
+        assignmentsByUser,
+        attendanceByUser,
+        latestAttendanceMap
+      };
+    }
+
+
+    function getStatusForStaff(
+      staff,
+      maps
+    ) {
+      const userAssignments =
+        maps.assignmentsByUser[
+          staff.user_id
+        ] || [];
+
+      const userAttendance =
+        maps.attendanceByUser[
+          staff.user_id
+        ] || [];
+
+      const actual =
+        maps.latestAttendanceMap[
+          staff.user_id
+        ] || null;
+
+      let currentAssignment = null;
+      let isLate = false;
+      let isOvertime = false;
+
+      if (isSelectedToday()) {
+        const now =
+          new Date();
+
+        currentAssignment =
+          userAssignments.find(
+            item =>
+              new Date(item.start_at) <=
+                now &&
+              new Date(item.end_at) >=
+                now
+          ) || null;
+
+        if (currentAssignment) {
+          const started =
+            userAttendance.some(
+              item => {
+                const clockIn =
+                  new Date(item.clock_in);
+
+                return (
+                  clockIn >=
+                    new Date(
+                      currentAssignment.start_at
+                    ) &&
+                  clockIn <=
+                    new Date(
+                      currentAssignment.end_at
+                    )
+                );
+              }
+            );
+
+          isLate =
+            !started &&
+            !(
+              actual?.attendance_state ===
+              "working"
+            );
+        }
+
+        const pastAssignments =
+          userAssignments.filter(
+            item =>
+              new Date(item.end_at) <
+              now
+          );
+
+        const reference =
+          currentAssignment ||
+          (
+            pastAssignments.length
+              ? pastAssignments[
+                  pastAssignments.length - 1
+                ]
+              : null
+          );
+
+        isOvertime =
+          !!reference &&
+          now >
+            new Date(reference.end_at) &&
+          actual?.attendance_state ===
+            "working";
+      }
+
+      return {
+        userAssignments,
+        userAttendance,
+        actual,
+        currentAssignment,
+        isLate,
+        isOvertime
+      };
+    }
+
+
+    function filterMatches(status) {
+      if (
+        currentStatusFilter === "all"
+      ) {
+        return true;
+      }
+
+      if (
+        currentStatusFilter ===
+        "working"
+      ) {
+        return (
+          status.actual
+            ?.attendance_state ===
+          "working"
+        );
+      }
+
+      if (
+        currentStatusFilter ===
+        "break"
+      ) {
+        return (
+          status.actual
+            ?.attendance_state ===
+          "break"
+        );
+      }
+
+      if (
+        currentStatusFilter ===
+        "register"
+      ) {
+        return (
+          status.actual
+            ?.attendance_state ===
+            "working" &&
+          status.actual?.role ===
+            "register"
+        );
+      }
+
+      if (
+        currentStatusFilter ===
+        "late"
+      ) {
+        return status.isLate;
+      }
+
+      if (
+        currentStatusFilter ===
+        "overtime"
+      ) {
+        return status.isOvertime;
+      }
+
+      if (
+        currentStatusFilter ===
+        "unconfirmed"
+      ) {
+        return (
+          status.userAttendance
+            .some(
+              item => !item.role
+            )
+        );
+      }
+
+      return true;
+    }
+
+
+    function renderSummary() {
+      const summary =
+        document.getElementById(
+          "summary"
+        );
+
+      const title =
+        document.getElementById(
+          "summaryTitle"
+        );
+
+      const filterNote =
+        document.getElementById(
+          "filterNote"
+        );
+
+      const maps =
+        buildMaps();
 
       let workingCount = 0;
       let breakCount = 0;
@@ -639,1287 +1375,537 @@ function setStatusFilter(filter) {
       let lateCount = 0;
       let overtimeCount = 0;
 
-
       for (
-        const item of Object.values(
-          latestAttendanceMap
-        )
+        const staff of cachedStaffMembers
       ) {
+        const status =
+          getStatusForStaff(
+            staff,
+            maps
+          );
 
         if (
-          item.attendance_state ===
+          status.actual
+            ?.attendance_state ===
           "working"
         ) {
           workingCount++;
         }
 
         if (
-          item.attendance_state ===
+          status.actual
+            ?.attendance_state ===
           "break"
         ) {
           breakCount++;
         }
 
         if (
-          item.attendance_state ===
+          status.actual
+            ?.attendance_state ===
             "working" &&
-          item.role === "register"
+          status.actual?.role ===
+            "register"
         ) {
           registerCount++;
         }
 
-        if (!item.role) {
+        if (
+          status.userAttendance.some(
+            item => !item.role
+          )
+        ) {
           unconfirmedCount++;
         }
-      }
 
-
-      const statusByUser = {};
-
-      for (const staff of staffMembers || []) {
-
-        const userAssignments =
-          assignmentsByUser[
-            staff.user_id
-          ] || [];
-
-        const currentAssignment =
-          userAssignments.find(
-            item =>
-              new Date(item.start_at) <=
-                nowDate &&
-              new Date(item.end_at) >=
-                nowDate
-          ) || null;
-
-        const pastAssignments =
-          userAssignments.filter(
-            item =>
-              new Date(item.end_at) <
-              nowDate
-          );
-
-        const lastPastAssignment =
-          pastAssignments.length
-            ? pastAssignments[
-                pastAssignments.length - 1
-              ]
-            : null;
-
-        const actual =
-          latestAttendanceMap[
-            staff.user_id
-          ] || null;
-
-        const userAttendance =
-          attendanceByUser[
-            staff.user_id
-          ] || [];
-
-        const hasStartedCurrentShift =
-          currentAssignment
-            ? userAttendance.some(
-                item => {
-                  const clockIn =
-                    new Date(
-                      item.clock_in
-                    );
-
-                  return (
-                    clockIn >=
-                      new Date(
-                        currentAssignment.start_at
-                      ) &&
-                    clockIn <=
-                      new Date(
-                        currentAssignment.end_at
-                      )
-                  );
-                }
-              )
-            : false;
-
-        const isLate =
-          !!currentAssignment &&
-          !hasStartedCurrentShift &&
-          !(
-            actual?.attendance_state ===
-            "working"
-          );
-
-        const referenceAssignment =
-          currentAssignment ||
-          lastPastAssignment;
-
-        const isOvertime =
-          !!referenceAssignment &&
-          nowDate >
-            new Date(
-              referenceAssignment.end_at
-            ) &&
-          actual?.attendance_state ===
-            "working";
-
-        if (isLate) {
+        if (status.isLate) {
           lateCount++;
         }
 
-        if (isOvertime) {
+        if (status.isOvertime) {
           overtimeCount++;
         }
-
-        statusByUser[staff.user_id] = {
-          currentAssignment,
-          actual,
-          isLate,
-          isOvertime
-        };
       }
 
+      title.textContent =
+        isSelectedToday()
+          ? "現在の勤務状況"
+          : `${selectedDateString} の状況`;
+
+      const counts = {
+        working: workingCount,
+        break: breakCount,
+        register: registerCount,
+        late: lateCount,
+        overtime: overtimeCount,
+        unconfirmed: unconfirmedCount
+      };
+
+      const button =
+        (
+          filter,
+          label,
+          count
+        ) => `
+          <button
+            class="${
+              currentStatusFilter ===
+              filter
+                ? "active"
+                : ""
+            }"
+            onclick="
+              setStatusFilter('${filter}')
+            "
+          >
+            ${label}<br>
+            <strong>${count}</strong>
+          </button>
+        `;
 
       summary.innerHTML = `
-        <button onclick="setStatusFilter('working')">
-          現在勤務中：
-          <strong>${workingCount}人</strong>
-        </button>
+        <div class="summary-grid">
+          ${button(
+            "working",
+            "🟢 勤務中",
+            counts.working + "人"
+          )}
 
-        <button onclick="setStatusFilter('break')">
-          休憩中：
-          <strong>${breakCount}人</strong>
-        </button>
+          ${button(
+            "break",
+            "☕ 休憩中",
+            counts.break + "人"
+          )}
 
-        <button onclick="setStatusFilter('register')">
-          レジ：
-          <strong>${registerCount}人</strong>
-        </button>
+          ${button(
+            "register",
+            "🧾 レジ",
+            counts.register + "人"
+          )}
 
-        <button onclick="setStatusFilter('late')">
-          🔴 遅刻中：
-          <strong>${lateCount}人</strong>
-        </button>
+          ${button(
+            "late",
+            "🔴 遅刻中",
+            counts.late + "人"
+          )}
 
-        <button onclick="setStatusFilter('overtime')">
-          🟠 残業中：
-          <strong>${overtimeCount}人</strong>
-        </button>
+          ${button(
+            "overtime",
+            "🟠 残業中",
+            counts.overtime + "人"
+          )}
 
-        <button onclick="setStatusFilter('unconfirmed')">
-          ⚠️ 未確定勤務：
-          <strong>${unconfirmedCount}件</strong>
-        </button>
+          ${button(
+            "unconfirmed",
+            "⚠️ 未確定勤務",
+            counts.unconfirmed + "件"
+          )}
+        </div>
 
-        <button onclick="setStatusFilter('all')">
+        <button
+          class="${
+            currentStatusFilter ===
+            "all"
+              ? "active"
+              : ""
+          }"
+          onclick="
+            setStatusFilter('all')
+          "
+        >
           全員表示
         </button>
       `;
 
+      const labels = {
+        all: "全員を表示中",
+        working: "勤務中だけ表示中",
+        break: "休憩中だけ表示中",
+        register: "レジ担当だけ表示中",
+        late: "遅刻中だけ表示中",
+        overtime: "残業中だけ表示中",
+        unconfirmed:
+          "未確定勤務がある人だけ表示中"
+      };
 
-      renderTimeline(
-        staffMembers,
-        assignments,
-        attendance
-      );
-
-
-      let html = "";
-
-
-      for (const staff of staffMembers || []) {
-
-        const status =
-          statusByUser[
-            staff.user_id
-          ];
-
-        const assignment =
-          status.currentAssignment;
-
-        const actual =
-          status.actual;
-
-        if (
-          currentStatusFilter ===
-            "working" &&
-          actual?.attendance_state !==
-            "working"
-        ) {
-          continue;
-        }
-
-        if (
-          currentStatusFilter ===
-            "break" &&
-          actual?.attendance_state !==
-            "break"
-        ) {
-          continue;
-        }
-
-        if (
-          currentStatusFilter ===
-            "register" &&
-          !(
-            actual?.attendance_state ===
-              "working" &&
-            actual?.role === "register"
-          )
-        ) {
-          continue;
-        }
-
-        if (
-          currentStatusFilter ===
-            "late" &&
-          !status.isLate
-        ) {
-          continue;
-        }
-
-        if (
-          currentStatusFilter ===
-            "overtime" &&
-          !status.isOvertime
-        ) {
-          continue;
-        }
-
-        if (
-          currentStatusFilter ===
-            "unconfirmed" &&
-          !(
-            actual &&
-            !actual.role
-          )
-        ) {
-          continue;
-        }
+      filterNote.textContent =
+        labels[currentStatusFilter] ||
+        "";
+    }
 
 
-        const plannedText =
-          assignment
-            ? `${roleText(
-                assignment.role
-              )} ${
-                timeText(
-                  assignment.start_at
-                )
-              }〜${
-                timeText(
-                  assignment.end_at
-                )
-              }`
-            : "現在の予定なし";
+    function minutesFromStart(
+      value,
+      dayStart
+    ) {
+      return (
+        new Date(value).getTime() -
+        dayStart.getTime()
+      ) / 60000;
+    }
 
 
-        let actualText =
-          "未出勤";
+    function renderTimeline() {
+      const area =
+        document.getElementById(
+          "timelineContent"
+        );
 
-        let statusText =
-          "⚪ 未出勤";
+      const selected =
+        ymdToLocalDate(
+          selectedDateString
+        );
 
-        let cardClass =
-          "card";
+      const dayStart =
+        new Date(
+          selected.getFullYear(),
+          selected.getMonth(),
+          selected.getDate(),
+          8, 0, 0, 0
+        );
 
+      const dayEnd =
+        new Date(
+          selected.getFullYear(),
+          selected.getMonth(),
+          selected.getDate(),
+          20, 0, 0, 0
+        );
 
-        if (actual) {
+      const totalMinutes =
+        (
+          dayEnd.getTime() -
+          dayStart.getTime()
+        ) / 60000;
 
-          if (
-            actual.attendance_state ===
-            "working"
-          ) {
+      const clampMinutes =
+        value =>
+          Math.max(
+            0,
+            Math.min(
+              totalMinutes,
+              value
+            )
+          );
 
-            cardClass += " working";
+      const maps =
+        buildMaps();
 
-            statusText =
-              actual.role === "register"
-                ? "🧾 レジ勤務中"
-                : "🟢 勤務中";
+      let html = `
+        <div class="timeline-scroll">
+          <div class="timeline-grid">
 
-            actualText =
-              `${roleText(
-                actual.role
-              )} ${
-                timeText(
-                  actual.clock_in
-                )
-              }〜勤務中`;
+            <div class="timeline-header">
+              <div class="timeline-name">
+                名前
+              </div>
 
-          } else if (
-            actual.attendance_state ===
-            "break"
-          ) {
+              <div class="timeline-hours">
+      `;
 
-            statusText =
-              "☕ 休憩中";
+      for (
+        let hour = 8;
+        hour <= 20;
+        hour++
+      ) {
+        const minutes =
+          (hour - 8) * 60;
 
-            actualText =
-              `${timeText(
-                actual.clock_out
-              )}から休憩中`;
-
-          } else {
-
-            statusText =
-              "🔵 退勤済み";
-
-            actualText =
-              `${roleText(
-                actual.role
-              )} ${
-                timeText(
-                  actual.clock_in
-                )
-              }〜${
-                timeText(
-                  actual.clock_out
-                )
-              }`;
-          }
-
-
-          if (!actual.role) {
-
-            cardClass =
-              "card warning";
-
-            statusText =
-              "⚠️ 予定外・役割未確定";
-          }
-
-        } else if (status.isLate) {
-
-          statusText =
-            "🔴 未出勤・遅刻の可能性";
-
-          actualText =
-            "予定開始時刻を過ぎています";
-
-        } else if (assignment) {
-
-          statusText =
-            "⚪ 未出勤";
-
-          actualText =
-            "現在の予定時間内です";
-        }
-
-
-        if (status.isOvertime) {
-          statusText =
-            "🟠 残業中";
-        }
-
+        const left =
+          minutes /
+          totalMinutes *
+          100;
 
         html += `
-          <div class="${cardClass}">
+          <span
+            class="timeline-hour"
+            style="left:${left}%"
+          >
+            ${hour}:00
+          </span>
+        `;
+      }
 
-            <button
-              onclick="
-                toggleStaffDetail(
-                  '${staff.user_id}'
-                )
-              "
-            >
-              ${staff.staff_name}
-            </button>
+      html += `
+              </div>
+            </div>
+      `;
 
-            <div
-              id="detail-${staff.user_id}"
-              class="detail"
-              style="display:none;"
-            >
+      let shown = 0;
 
-              <strong>現在の予定</strong>
-              <br>
-              ${plannedText}
+      for (
+        const staff of cachedStaffMembers
+      ) {
+        const status =
+          getStatusForStaff(
+            staff,
+            maps
+          );
 
-              <br><br>
+        if (!filterMatches(status)) {
+          continue;
+        }
 
-              <strong>状態</strong>
-              <br>
-              ${statusText}
+        shown++;
 
-              <br><br>
+        const userId =
+          staff.user_id;
 
-              <strong>最新の実績</strong>
-              <br>
-              ${actualText}
+        const safeName =
+          escapeHtml(
+            staff.staff_name
+          );
 
-              <br><br>
+        html += `
+          <div class="timeline-row">
 
+            <div class="timeline-name">
               <button
+                class="timeline-name-button"
                 onclick="
-                  openAttendanceEditor(
-                    '${staff.user_id}',
-                    '${staff.staff_name}'
+                  showStaffDetail(
+                    '${userId}'
                   )
                 "
               >
-                勤怠を編集
+                ${safeName}
               </button>
-
             </div>
 
+            <div class="timeline-track">
+        `;
+
+        for (
+          const item of
+            status.userAssignments
+        ) {
+          const startMin =
+            clampMinutes(
+              minutesFromStart(
+                item.start_at,
+                dayStart
+              )
+            );
+
+          const endMin =
+            clampMinutes(
+              minutesFromStart(
+                item.end_at,
+                dayStart
+              )
+            );
+
+          if (
+            endMin <= startMin
+          ) {
+            continue;
+          }
+
+          const left =
+            startMin /
+            totalMinutes *
+            100;
+
+          const width =
+            (
+              endMin -
+              startMin
+            ) /
+            totalMinutes *
+            100;
+
+          html += `
+            <button
+              class="
+                timeline-bar
+                timeline-plan
+              "
+              style="
+                left:${left}%;
+                width:${width}%;
+              "
+              onclick="
+                showBarDetail(
+                  'plan',
+                  '${userId}',
+                  '${item.id}'
+                )
+              "
+            >
+              ${escapeHtml(
+                roleText(item.role)
+              )}
+            </button>
+          `;
+        }
+
+        for (
+          const item of
+            status.userAttendance
+        ) {
+          const actualEnd =
+            item.clock_out
+              ? new Date(
+                  item.clock_out
+                )
+              : (
+                  isSelectedToday()
+                    ? new Date()
+                    : dayEnd
+                );
+
+          const startMin =
+            clampMinutes(
+              minutesFromStart(
+                item.clock_in,
+                dayStart
+              )
+            );
+
+          const endMin =
+            clampMinutes(
+              minutesFromStart(
+                actualEnd,
+                dayStart
+              )
+            );
+
+          if (
+            endMin <= startMin
+          ) {
+            continue;
+          }
+
+          const left =
+            startMin /
+            totalMinutes *
+            100;
+
+          const width =
+            (
+              endMin -
+              startMin
+            ) /
+            totalMinutes *
+            100;
+
+          html += `
+            <button
+              class="
+                timeline-bar
+                timeline-actual
+              "
+              style="
+                left:${left}%;
+                width:${width}%;
+              "
+              onclick="
+                showBarDetail(
+                  'actual',
+                  '${userId}',
+                  '${item.id}'
+                )
+              "
+            >
+              ${escapeHtml(
+                roleText(item.role)
+              )}
+            </button>
+          `;
+        }
+
+        html += `
+            </div>
           </div>
         `;
       }
 
-
-      list.innerHTML =
-        html ||
-        "該当するスタッフはいません。";
-    }
-
-
-    function toggleStaffDetail(userId) {
-
-      const target =
-        document.getElementById(
-          "detail-" + userId
-        );
-
-      const details =
-        document.querySelectorAll(
-          ".detail"
-        );
-
-      for (const item of details) {
-
-        if (item !== target) {
-          item.style.display =
-            "none";
-        }
-      }
-
-      if (
-        target.style.display ===
-        "none"
-      ) {
-        target.style.display =
-          "block";
-      } else {
-        target.style.display =
-          "none";
-      }
-    }
-
-let editingUserId = null;
-let editingAttendanceId = null;
-
-
-function toLocalDateTimeInput(value) {
-
-  const date =
-    new Date(value);
-
-  const local =
-    new Date(
-      date.getTime() -
-      date.getTimezoneOffset() *
-      60000
-    );
-
-  return local
-    .toISOString()
-    .slice(0, 16);
-}
-
-
-async function saveAttendanceEdit() {
-
-  if (!editingAttendanceId) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "修正する勤怠がありません。";
-
-    return;
-  }
-
-  const clockInValue =
-    document.getElementById(
-      "editorClockIn"
-    ).value;
-
-  const clockOutValue =
-    document.getElementById(
-      "editorClockOut"
-    ).value;
-
-  const roleValue =
-    document.getElementById(
-      "editorRole"
-    ).value;
-
-  const note =
-    document.getElementById(
-      "editorNote"
-    ).value.trim();
-
-  if (!clockInValue) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "開始時刻を入力してください。";
-
-    return;
-  }
-
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth
-      .getUser();
-
-  const updates = {
-    clock_in:
-      new Date(
-        clockInValue
-      ).toISOString(),
-
-    clock_out:
-      clockOutValue
-        ? new Date(
-            clockOutValue
-          ).toISOString()
-        : null,
-
-    role:
-      roleValue || null,
-
-    corrected_by:
-      user.id,
-
-    corrected_at:
-      new Date().toISOString(),
-
-    correction_note:
-      note || null
-  };
-
-  const { error } =
-    await supabaseClient
-      .from("staff_attendance")
-      .update(updates)
-      .eq(
-        "id",
-        editingAttendanceId
-      );
-
-  if (error) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "保存エラー：" +
-      error.message;
-
-    return;
-  }
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "✅ 勤怠を修正しました。";
-
-  await loadStaffStatus();
-}
-
-
-async function addAttendance() {
-
-  if (!editingUserId) {
-    return;
-  }
-
-  const clockInValue =
-    document.getElementById(
-      "editorClockIn"
-    ).value;
-
-  const clockOutValue =
-    document.getElementById(
-      "editorClockOut"
-    ).value;
-
-  const roleValue =
-    document.getElementById(
-      "editorRole"
-    ).value;
-
-  const note =
-    document.getElementById(
-      "editorNote"
-    ).value.trim();
-
-  if (!clockInValue) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "開始時刻を入力してください。";
-
-    return;
-  }
-
-  const {
-    data: { user }
-  } =
-    await supabaseClient.auth
-      .getUser();
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("staff_attendance")
-      .insert({
-        user_id:
-          editingUserId,
-
-        role:
-          roleValue || null,
-
-        clock_in:
-          new Date(
-            clockInValue
-          ).toISOString(),
-
-        clock_out:
-          clockOutValue
-            ? new Date(
-                clockOutValue
-              ).toISOString()
-            : null,
-
-        corrected_by:
-          user.id,
-
-        corrected_at:
-          new Date().toISOString(),
-
-        correction_note:
-          note || "裏番による追加",
-
-        attendance_state:
-          clockOutValue
-            ? "finished"
-            : "working"
-      })
-      .select("id")
-      .single();
-
-  if (error) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "追加エラー：" +
-      error.message;
-
-    return;
-  }
-
-  editingAttendanceId =
-    data.id;
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "✅ 勤務を追加しました。";
-
-  await loadStaffStatus();
-}
-
-
-async function deleteAttendance() {
-
-  if (!editingAttendanceId) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "削除する勤怠がありません。";
-
-    return;
-  }
-
-  const confirmed =
-    confirm(
-      "この勤怠記録を削除しますか？"
-    );
-
-  if (!confirmed) {
-    return;
-  }
-
-  const { error } =
-    await supabaseClient
-      .from("staff_attendance")
-      .delete()
-      .eq(
-        "id",
-        editingAttendanceId
-      );
-
-  if (error) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "削除エラー：" +
-      error.message;
-
-    return;
-  }
-
-  editingAttendanceId = null;
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "✅ 勤怠を削除しました。";
-
-  await loadStaffStatus();
-}
-
-
-function closeAttendanceEditor() {
-
-  document.getElementById(
-    "attendanceEditor"
-  ).style.display =
-    "none";
-
-  editingUserId = null;
-  editingAttendanceId = null;
-}
-
-    async function openAttendanceEditor(
-  userId,
-  staffName
-) {
-
-  editingUserId = userId;
-  editingAttendanceId = null;
-
-  document.getElementById(
-    "editorStaffName"
-  ).textContent =
-    staffName + " の勤怠編集";
-
-  document.getElementById(
-    "attendanceEditor"
-  ).style.display =
-    "block";
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "今日の勤怠を読み込んでいます...";
-
-  const now =
-    new Date();
-
-  const startOfDay =
-    new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-      0
-    );
-
-  const endOfDay =
-    new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1,
-      0,
-      0,
-      0,
-      0
-    );
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("staff_attendance")
-      .select(
-        "id,role,clock_in,clock_out"
-      )
-      .eq("user_id", userId)
-      .gte(
-        "clock_in",
-        startOfDay.toISOString()
-      )
-      .lt(
-        "clock_in",
-        endOfDay.toISOString()
-      )
-      .order(
-        "clock_in",
-        { ascending: true }
-      );
-
-  if (error) {
-
-    document.getElementById(
-      "editorMessage"
-    ).textContent =
-      "取得エラー：" +
-      error.message;
-
-    return;
-  }
-
-  showAttendanceHistory(
-    data || []
-  );
-}
-
-    function showAttendanceHistory(
-  attendance
-) {
-
-  const area =
-    document.getElementById(
-      "attendanceHistory"
-    );
-
-  if (
-    !attendance ||
-    attendance.length === 0
-  ) {
-
-    area.innerHTML =
-      "今日の勤怠記録はありません。";
-
-    return;
-  }
-
-  let html =
-    "<h3>今日の実績</h3>";
-
-  for (const item of attendance) {
-
-    const start =
-      timeText(
-        item.clock_in
-      );
-
-    const end =
-      item.clock_out
-        ? timeText(
-            item.clock_out
-          )
-        : "勤務中";
-
-    html += `
-      <button
-        onclick="
-          selectAttendance(
-            '${item.id}',
-            '${item.role ?? ""}',
-            '${item.clock_in}',
-            '${item.clock_out ?? ""}'
-          )
-        "
-        style="
-          text-align:left;
-          margin-top:8px;
-        "
-      >
-        ${start}〜${end}
-        ／
-        ${roleText(item.role)}
-      </button>
-    `;
-  }
-
-  area.innerHTML = html;
-}
-
-    function selectAttendance(
-  id,
-  role,
-  clockIn,
-  clockOut
-) {
-
-  editingAttendanceId =
-    id;
-
-  document.getElementById(
-    "editorClockIn"
-  ).value =
-    toLocalDateTimeInput(
-      clockIn
-    );
-
-  document.getElementById(
-    "editorClockOut"
-  ).value =
-    clockOut
-      ? toLocalDateTimeInput(
-          clockOut
-        )
-      : "";
-
-  document.getElementById(
-    "editorRole"
-  ).value =
-    role || "";
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "この勤務を編集中です。";
-}
-
-    function clearAttendanceEditor() {
-
-  editingAttendanceId =
-    null;
-
-  document.getElementById(
-    "editorClockIn"
-  ).value = "";
-
-  document.getElementById(
-    "editorClockOut"
-  ).value = "";
-
-  document.getElementById(
-    "editorRole"
-  ).value = "";
-
-  document.getElementById(
-    "editorNote"
-  ).value = "";
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "新しい勤務を入力してください。";
-}
-
-    function prepareNewAttendance() {
-
-  clearAttendanceEditor();
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "新しい勤務を入力してください。";
-}
-
-    function setQuickRole(role) {
-
-  document.getElementById(
-    "editorRole"
-  ).value = role;
-
-  document.getElementById(
-    "editorMessage"
-  ).textContent =
-    "役割を選択しました。保存すると確定します。";
-}
-
-    function minutesFromStart(
-  date,
-  dayStart
-) {
-
-  return (
-    new Date(date).getTime() -
-    dayStart.getTime()
-  ) / 60000;
-}
-
-
-function renderTimeline(
-  staffMembers,
-  assignments,
-  attendance
-) {
-
-  const area =
-    document.getElementById(
-      "timelineContent"
-    );
-
-  const today =
-    new Date();
-
-  const dayStart =
-    new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      8, 0, 0, 0
-    );
-
-  const dayEnd =
-    new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      20, 0, 0, 0
-    );
-
-  const totalMinutes =
-    (
-      dayEnd.getTime() -
-      dayStart.getTime()
-    ) / 60000;
-
-  const clampPercent =
-    value =>
-      Math.max(
-        0,
-        Math.min(100, value)
-      );
-
-  let html = `
-    <div class="timeline-scroll">
-      <div class="timeline-grid">
-
-        <div class="timeline-header">
-          <div class="timeline-name">
-            名前
-          </div>
-
-          <div class="timeline-hours">
-  `;
-
-  for (let hour = 8; hour <= 20; hour++) {
-
-    const minutes =
-      (hour - 8) * 60;
-
-    const left =
-      clampPercent(
-        minutes /
-        totalMinutes *
-        100
-      );
-
-    html += `
-      <span
-        class="timeline-hour"
-        style="left:${left}%"
-      >
-        ${hour}:00
-      </span>
-    `;
-  }
-
-  html += `
-          </div>
-        </div>
-  `;
-
-
-  for (
-    const staff of staffMembers || []
-  ) {
-
-    const staffAssignments =
-      (assignments || [])
-        .filter(
-          item =>
-            item.user_id ===
-            staff.user_id
-        );
-
-    const staffAttendance =
-      (attendance || [])
-        .filter(
-          item =>
-            item.user_id ===
-            staff.user_id
-        );
-
-
-    html += `
-      <div class="timeline-row">
-
-        <div class="timeline-name">
-          <button
-            class="timeline-name-button"
-            onclick="
-              openAttendanceEditor(
-                '${staff.user_id}',
-                '${staff.staff_name}'
-              )
-            "
-          >
-            ${staff.staff_name}
-          </button>
-        </div>
-
-        <div class="timeline-track">
-    `;
-
-
-    for (
-      const item of staffAssignments
-    ) {
-
-      const rawStart =
-        minutesFromStart(
-          item.start_at,
-          dayStart
-        );
-
-      const rawEnd =
-        minutesFromStart(
-          item.end_at,
-          dayStart
-        );
-
-      const startMin =
-        Math.max(
-          0,
-          Math.min(
-            totalMinutes,
-            rawStart
-          )
-        );
-
-      const endMin =
-        Math.max(
-          0,
-          Math.min(
-            totalMinutes,
-            rawEnd
-          )
-        );
-
-      if (endMin <= startMin) {
-        continue;
-      }
-
-      const left =
-        startMin /
-        totalMinutes *
-        100;
-
-      const width =
-        (
-          endMin -
-          startMin
-        ) /
-        totalMinutes *
-        100;
-
       html += `
-        <div
-          class="
-            timeline-bar
-            timeline-plan
-          "
-          style="
-            left:${left}%;
-            width:${width}%;
-          "
-          title="
-            予定：
+          </div>
+        </div>
+      `;
+
+      if (shown === 0) {
+        html += `
+          <p>
+            この条件に該当するスタッフはいません。
+          </p>
+        `;
+      }
+
+      area.innerHTML = html;
+    }
+
+
+    function getStaff(userId) {
+      return (
+        cachedStaffMembers.find(
+          item =>
+            item.user_id ===
+            userId
+        ) || null
+      );
+    }
+
+
+    function showBarDetail(
+      kind,
+      userId,
+      recordId
+    ) {
+      const area =
+        document.getElementById(
+          "barDetail"
+        );
+
+      const staff =
+        getStaff(userId);
+
+      if (!staff) return;
+
+      if (kind === "plan") {
+        const item =
+          cachedAssignments.find(
+            record =>
+              String(record.id) ===
+              String(recordId)
+          );
+
+        if (!item) return;
+
+        area.innerHTML = `
+          <h3>${escapeHtml(staff.staff_name)}</h3>
+          <p><strong>予定シフト</strong></p>
+          <p>
+            ${escapeHtml(roleText(item.role))}
+            <br>
             ${timeText(item.start_at)}
             〜
             ${timeText(item.end_at)}
-            /
-            ${roleText(item.role)}
-          "
-        >
-          ${roleText(item.role)}
-        </div>
-      `;
-    }
+          </p>
+          <p class="muted">
+            予定シフトの編集は管理者画面で行います。
+          </p>
+          <button onclick="closeBarDetail()">
+            閉じる
+          </button>
+        `;
+      } else {
+        const item =
+          cachedAttendance.find(
+            record =>
+              String(record.id) ===
+              String(recordId)
+          );
 
+        if (!item) return;
 
-    for (
-      const item of staffAttendance
-    ) {
-
-      const rawStart =
-        minutesFromStart(
-          item.clock_in,
-          dayStart
-        );
-
-      const actualEnd =
-        item.clock_out
-          ? new Date(item.clock_out)
-          : new Date();
-
-      const rawEnd =
-        minutesFromStart(
-          actualEnd,
-          dayStart
-        );
-
-      const startMin =
-        Math.max(
-          0,
-          Math.min(
-            totalMinutes,
-            rawStart
-          )
-        );
-
-      const endMin =
-        Math.max(
-          0,
-          Math.min(
-            totalMinutes,
-            rawEnd
-          )
-        );
-
-      if (endMin <= startMin) {
-        continue;
-      }
-
-      const left =
-        startMin /
-        totalMinutes *
-        100;
-
-      const width =
-        (
-          endMin -
-          startMin
-        ) /
-        totalMinutes *
-        100;
-
-      html += `
-        <div
-          class="
-            timeline-bar
-            timeline-actual
-          "
-          onclick="
-            openAttendanceEditor(
-              '${staff.user_id}',
-              '${staff.staff_name}'
-            )
-          "
-          style="
-            left:${left}%;
-            width:${width}%;
-          "
-          title="
-            実績：
+        area.innerHTML = `
+          <h3>${escapeHtml(staff.staff_name)}</h3>
+          <p><strong>確定勤怠</strong></p>
+          <p>
+            ${escapeHtml(roleText(item.role))}
+            <br>
             ${timeText(item.clock_in)}
             〜
             ${
@@ -1927,34 +1913,852 @@ function renderTimeline(
                 ? timeText(item.clock_out)
                 : "勤務中"
             }
-            /
-            ${roleText(item.role)}
-          "
-        >
-          ${roleText(item.role)}
-        </div>
-      `;
+          </p>
+          <p>
+            状態：
+            ${escapeHtml(
+              stateText(
+                item.attendance_state
+              )
+            )}
+          </p>
+          ${
+            item.correction_note
+              ? `
+                <p class="muted">
+                  修正理由：
+                  ${escapeHtml(
+                    item.correction_note
+                  )}
+                </p>
+              `
+              : ""
+          }
+          <button
+            onclick="
+              openAttendanceEditor(
+                '${userId}',
+                '${item.id}'
+              )
+            "
+          >
+            この勤怠を編集
+          </button>
+          <button onclick="closeBarDetail()">
+            閉じる
+          </button>
+        `;
+      }
+
+      area.style.display = "block";
+
+      area.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest"
+      });
     }
 
 
-    html += `
-        </div>
-      </div>
-    `;
-  }
+    function closeBarDetail() {
+      document.getElementById(
+        "barDetail"
+      ).style.display = "none";
+    }
 
 
-  html += `
-      </div>
-    </div>
-  `;
+    function renderStaffList() {
+      const list =
+        document.getElementById(
+          "staffList"
+        );
 
-  area.innerHTML = html;
-}
+      const maps =
+        buildMaps();
+
+      let html =
+        `<div class="name-list">`;
+
+      let shown = 0;
+
+      for (
+        const staff of cachedStaffMembers
+      ) {
+        const status =
+          getStatusForStaff(
+            staff,
+            maps
+          );
+
+        if (!filterMatches(status)) {
+          continue;
+        }
+
+        shown++;
+
+        html += `
+          <button
+            onclick="
+              showStaffDetail(
+                '${staff.user_id}'
+              )
+            "
+          >
+            ${escapeHtml(staff.staff_name)}
+          </button>
+        `;
+      }
+
+      html += "</div>";
+
+      list.innerHTML =
+        shown
+          ? html
+          : "該当するスタッフはいません。";
+    }
+
+
+    function showStaffDetail(userId) {
+      const area =
+        document.getElementById(
+          "staffDetail"
+        );
+
+      const staff =
+        getStaff(userId);
+
+      if (!staff) return;
+
+      const maps =
+        buildMaps();
+
+      const assignments =
+        maps.assignmentsByUser[
+          userId
+        ] || [];
+
+      const attendance =
+        maps.attendanceByUser[
+          userId
+        ] || [];
+
+      let planHtml =
+        "予定なし";
+
+      if (assignments.length) {
+        planHtml =
+          assignments.map(
+            item => `
+              <div class="shift-block">
+                ${escapeHtml(
+                  roleText(item.role)
+                )}
+                <br>
+                ${timeText(item.start_at)}
+                〜
+                ${timeText(item.end_at)}
+              </div>
+            `
+          ).join("");
+      }
+
+      let actualHtml =
+        "勤怠記録なし";
+
+      if (attendance.length) {
+        actualHtml =
+          attendance.map(
+            item => `
+              <div class="shift-block">
+                ${escapeHtml(
+                  roleText(item.role)
+                )}
+                <br>
+                ${timeText(item.clock_in)}
+                〜
+                ${
+                  item.clock_out
+                    ? timeText(
+                        item.clock_out
+                      )
+                    : "勤務中"
+                }
+                <br>
+                <span class="muted">
+                  ${escapeHtml(
+                    stateText(
+                      item.attendance_state
+                    )
+                  )}
+                </span>
+              </div>
+            `
+          ).join("");
+      }
+
+      area.innerHTML = `
+        <h3>${escapeHtml(staff.staff_name)}</h3>
+
+        <strong>予定シフト</strong>
+        ${planHtml}
+
+        <br>
+        <strong>確定勤怠</strong>
+        ${actualHtml}
+
+        <button
+          onclick="
+            openAttendanceEditor(
+              '${userId}'
+            )
+          "
+        >
+          勤怠を確認・編集
+        </button>
+
+        <button onclick="closeStaffDetail()">
+          閉じる
+        </button>
+      `;
+
+      area.style.display =
+        "block";
+
+      area.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest"
+      });
+    }
+
+
+    function closeStaffDetail() {
+      document.getElementById(
+        "staffDetail"
+      ).style.display =
+        "none";
+    }
+
+
+    function toLocalDateTimeInput(
+      value
+    ) {
+      const date =
+        new Date(value);
+
+      const local =
+        new Date(
+          date.getTime() -
+          date.getTimezoneOffset() *
+          60000
+        );
+
+      return local
+        .toISOString()
+        .slice(0, 16);
+    }
+
+
+    async function openAttendanceEditor(
+      userId,
+      attendanceId = null
+    ) {
+      editingUserId = userId;
+      editingAttendanceId = null;
+
+      const staff =
+        getStaff(userId);
+
+      document.getElementById(
+        "editorStaffName"
+      ).textContent =
+        (
+          staff?.staff_name ||
+          "スタッフ"
+        ) +
+        " の勤怠編集";
+
+      document.getElementById(
+        "attendanceEditor"
+      ).style.display =
+        "block";
+
+      document.getElementById(
+        "editorMessage"
+      ).textContent =
+        "勤怠を読み込んでいます...";
+
+      const { start, end } =
+        selectedDayRange();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .select(
+            "id,role,clock_in,clock_out,attendance_state,corrected_at,correction_note"
+          )
+          .eq("user_id", userId)
+          .gte(
+            "clock_in",
+            start.toISOString()
+          )
+          .lt(
+            "clock_in",
+            end.toISOString()
+          )
+          .order(
+            "clock_in",
+            { ascending: true }
+          );
+
+      if (error) {
+        document.getElementById(
+          "editorMessage"
+        ).textContent =
+          "取得エラー：" +
+          error.message;
+
+        return;
+      }
+
+      showAttendanceHistory(
+        data || []
+      );
+
+      if (attendanceId) {
+        const selected =
+          (data || []).find(
+            item =>
+              String(item.id) ===
+              String(attendanceId)
+          );
+
+        if (selected) {
+          selectAttendance(
+            selected.id,
+            selected.role,
+            selected.clock_in,
+            selected.clock_out,
+            selected.attendance_state
+          );
+        }
+      } else {
+        clearAttendanceEditor();
+      }
+
+      document.getElementById(
+        "attendanceEditor"
+      ).scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+
+
+    function showAttendanceHistory(
+      attendance
+    ) {
+      const area =
+        document.getElementById(
+          "attendanceHistory"
+        );
+
+      if (
+        !attendance ||
+        attendance.length === 0
+      ) {
+        area.innerHTML =
+          "この日の勤怠記録はありません。";
+        return;
+      }
+
+      let html =
+        "<h3>この日の実績</h3>";
+
+      for (
+        const item of attendance
+      ) {
+        html += `
+          <button
+            onclick="
+              selectAttendance(
+                '${item.id}',
+                '${item.role ?? ""}',
+                '${item.clock_in}',
+                '${item.clock_out ?? ""}',
+                '${item.attendance_state ?? "finished"}'
+              )
+            "
+            style="text-align:left;"
+          >
+            ${timeText(item.clock_in)}
+            〜
+            ${
+              item.clock_out
+                ? timeText(
+                    item.clock_out
+                  )
+                : "勤務中"
+            }
+            ／
+            ${escapeHtml(
+              roleText(item.role)
+            )}
+            ／
+            ${escapeHtml(
+              stateText(
+                item.attendance_state
+              )
+            )}
+          </button>
+        `;
+      }
+
+      area.innerHTML = html;
+    }
+
+
+    function selectAttendance(
+      id,
+      role,
+      clockIn,
+      clockOut,
+      attendanceState
+    ) {
+      editingAttendanceId = id;
+
+      document.getElementById(
+        "editorClockIn"
+      ).value =
+        toLocalDateTimeInput(
+          clockIn
+        );
+
+      document.getElementById(
+        "editorClockOut"
+      ).value =
+        clockOut
+          ? toLocalDateTimeInput(
+              clockOut
+            )
+          : "";
+
+      document.getElementById(
+        "editorRole"
+      ).value =
+        role || "";
+
+      document.getElementById(
+        "editorState"
+      ).value =
+        attendanceState ||
+        (
+          clockOut
+            ? "finished"
+            : "working"
+        );
+
+      document.getElementById(
+        "editorMessage"
+      ).textContent =
+        "この勤務を編集中です。";
+    }
+
+
+    function defaultNewClockIn() {
+      const date =
+        ymdToLocalDate(
+          selectedDateString
+        );
+
+      date.setHours(9, 0, 0, 0);
+
+      return toLocalDateTimeInput(
+        date.toISOString()
+      );
+    }
+
+
+    function clearAttendanceEditor() {
+      editingAttendanceId = null;
+
+      document.getElementById(
+        "editorClockIn"
+      ).value =
+        defaultNewClockIn();
+
+      document.getElementById(
+        "editorClockOut"
+      ).value = "";
+
+      document.getElementById(
+        "editorRole"
+      ).value = "";
+
+      document.getElementById(
+        "editorState"
+      ).value = "working";
+
+      document.getElementById(
+        "editorNote"
+      ).value = "";
+
+      document.getElementById(
+        "editorMessage"
+      ).textContent =
+        "新しい勤務を入力できます。";
+    }
+
+
+    function prepareNewAttendance() {
+      clearAttendanceEditor();
+    }
+
+
+    function setQuickRole(role) {
+      document.getElementById(
+        "editorRole"
+      ).value = role;
+
+      document.getElementById(
+        "editorMessage"
+      ).textContent =
+        role
+          ? "役割を選択しました。保存すると確定します。"
+          : "役割を未確定にしました。";
+    }
+
+
+    function validateEditorTimes(
+      clockInValue,
+      clockOutValue,
+      stateValue
+    ) {
+      if (!clockInValue) {
+        return "開始時刻を入力してください。";
+      }
+
+      if (
+        clockOutValue &&
+        new Date(clockOutValue) <=
+          new Date(clockInValue)
+      ) {
+        return "終了時刻は開始時刻より後にしてください。";
+      }
+
+      if (
+        stateValue !== "working" &&
+        !clockOutValue
+      ) {
+        return "休憩中・勤務終了にする場合は終了時刻を入力してください。";
+      }
+
+      return "";
+    }
+
+
+    async function saveAttendanceEdit() {
+      const message =
+        document.getElementById(
+          "editorMessage"
+        );
+
+      if (!editingAttendanceId) {
+        message.textContent =
+          "修正する勤怠を選択してください。";
+        return;
+      }
+
+      const clockInValue =
+        document.getElementById(
+          "editorClockIn"
+        ).value;
+
+      const clockOutValue =
+        document.getElementById(
+          "editorClockOut"
+        ).value;
+
+      const roleValue =
+        document.getElementById(
+          "editorRole"
+        ).value;
+
+      const stateValue =
+        document.getElementById(
+          "editorState"
+        ).value;
+
+      const note =
+        document.getElementById(
+          "editorNote"
+        ).value.trim();
+
+      const validation =
+        validateEditorTimes(
+          clockInValue,
+          clockOutValue,
+          stateValue
+        );
+
+      if (validation) {
+        message.textContent =
+          validation;
+        return;
+      }
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth
+          .getUser();
+
+      const { error } =
+        await supabaseClient
+          .from("staff_attendance")
+          .update({
+            clock_in:
+              new Date(
+                clockInValue
+              ).toISOString(),
+
+            clock_out:
+              clockOutValue
+                ? new Date(
+                    clockOutValue
+                  ).toISOString()
+                : null,
+
+            role:
+              roleValue || null,
+
+            attendance_state:
+              stateValue,
+
+            corrected_by:
+              user.id,
+
+            corrected_at:
+              new Date().toISOString(),
+
+            correction_note:
+              note || null
+          })
+          .eq(
+            "id",
+            editingAttendanceId
+          );
+
+      if (error) {
+        message.textContent =
+          "保存エラー：" +
+          error.message;
+        return;
+      }
+
+      message.textContent =
+        "✅ 勤怠を修正しました。";
+
+      await loadStaffStatus();
+
+      await openAttendanceEditor(
+        editingUserId,
+        editingAttendanceId
+      );
+    }
+
+
+    async function addAttendance() {
+      const message =
+        document.getElementById(
+          "editorMessage"
+        );
+
+      if (!editingUserId) {
+        return;
+      }
+
+      if (editingAttendanceId) {
+        message.textContent =
+          "既存勤怠を選択中です。「新しい勤務」を押してから追加してください。";
+        return;
+      }
+
+      const clockInValue =
+        document.getElementById(
+          "editorClockIn"
+        ).value;
+
+      const clockOutValue =
+        document.getElementById(
+          "editorClockOut"
+        ).value;
+
+      const roleValue =
+        document.getElementById(
+          "editorRole"
+        ).value;
+
+      const stateValue =
+        document.getElementById(
+          "editorState"
+        ).value;
+
+      const note =
+        document.getElementById(
+          "editorNote"
+        ).value.trim();
+
+      const validation =
+        validateEditorTimes(
+          clockInValue,
+          clockOutValue,
+          stateValue
+        );
+
+      if (validation) {
+        message.textContent =
+          validation;
+        return;
+      }
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth
+          .getUser();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_attendance")
+          .insert({
+            user_id:
+              editingUserId,
+
+            role:
+              roleValue || null,
+
+            clock_in:
+              new Date(
+                clockInValue
+              ).toISOString(),
+
+            clock_out:
+              clockOutValue
+                ? new Date(
+                    clockOutValue
+                  ).toISOString()
+                : null,
+
+            attendance_state:
+              stateValue,
+
+            corrected_by:
+              user.id,
+
+            corrected_at:
+              new Date().toISOString(),
+
+            correction_note:
+              note ||
+              "裏番による追加"
+          })
+          .select("id")
+          .single();
+
+      if (error) {
+        message.textContent =
+          "追加エラー：" +
+          error.message;
+        return;
+      }
+
+      editingAttendanceId =
+        data.id;
+
+      message.textContent =
+        "✅ 勤務を追加しました。";
+
+      await loadStaffStatus();
+
+      await openAttendanceEditor(
+        editingUserId,
+        data.id
+      );
+    }
+
+
+    async function deleteAttendance() {
+      const message =
+        document.getElementById(
+          "editorMessage"
+        );
+
+      if (!editingAttendanceId) {
+        message.textContent =
+          "削除する勤怠を選択してください。";
+        return;
+      }
+
+      const confirmed =
+        confirm(
+          "この勤怠記録を削除しますか？"
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const userId =
+        editingUserId;
+
+      const { error } =
+        await supabaseClient
+          .from("staff_attendance")
+          .delete()
+          .eq(
+            "id",
+            editingAttendanceId
+          );
+
+      if (error) {
+        message.textContent =
+          "削除エラー：" +
+          error.message;
+        return;
+      }
+
+      editingAttendanceId = null;
+
+      await loadStaffStatus();
+
+      await openAttendanceEditor(
+        userId
+      );
+
+      document.getElementById(
+        "editorMessage"
+      ).textContent =
+        "✅ 勤怠を削除しました。";
+    }
+
+
+    function closeAttendanceEditor() {
+      document.getElementById(
+        "attendanceEditor"
+      ).style.display =
+        "none";
+
+      editingUserId = null;
+      editingAttendanceId = null;
+    }
 
 
     async function checkLogin() {
-
       const {
         data: { session }
       } =
@@ -1968,7 +2772,6 @@ function renderTimeline(
 
 
     checkLogin();
-
   </script>
 
 </body>
