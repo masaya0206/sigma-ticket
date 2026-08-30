@@ -7,6 +7,7 @@
   <title>シグマ祭 チケット発行</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     body {
@@ -116,6 +117,35 @@
         grid-template-columns: 1fr;
       }
     }
+  
+    .claim-qr-wrap {
+      margin-top: 16px;
+      padding: 18px;
+      text-align: center;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--sigma-line, #ece7e4);
+    }
+
+    #claimQrCode {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0 10px;
+    }
+
+    .handoff-title {
+      margin: 0 0 6px;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .handoff-note {
+      margin: 0;
+      color: var(--sigma-muted, #6e6e73);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
   </style>
 
   <meta name="theme-color" content="#111111">
@@ -382,8 +412,8 @@
       </button>
 
       <p class="small">
-        発行直後は「受け取り待ち」です。
-        購入者が受け取りページを開いて確定すると有効になります。
+        発行すると受け取り用QRが表示されます。
+        購入者にその場で読み取ってもらうとチケットが有効になります。
       </p>
     </div>
 
@@ -907,24 +937,28 @@
             ${data.buyer_name}
           </p>
 
-          <p>
-            <strong>状態</strong><br>
-            🟡 受け取り待ち
-          </p>
+          <div class="claim-qr-wrap">
+            <p class="handoff-title">
+              購入者にこのQRを読み取ってもらってください
+            </p>
+
+            <p class="handoff-note">
+              QRには受け取りURLが入っています。
+              売り子がURLを送る必要はありません。
+            </p>
+
+            <div id="claimQrCode"></div>
+
+            <p class="handoff-note">
+              読み取り後、購入者のスマホに本番用チケットQRが表示されます。
+            </p>
+          </div>
 
           <p>
-            <strong>チケットID</strong><br>
-            <span class="ticket-code">
-              ${data.ticket_code}
+            <strong>受け取りURL</strong><br>
+            <span class="link-text">
+              ${claimUrl}
             </span>
-          </p>
-
-          <p>
-            このURLを購入者本人に送ってください。
-          </p>
-
-          <p class="link-text">
-            ${claimUrl}
           </p>
 
           <button
@@ -958,6 +992,20 @@
               : ""
           }
         `;
+
+        new QRCode(
+          document.getElementById(
+            "claimQrCode"
+          ),
+          {
+            text:
+              claimUrl,
+            width:
+              240,
+            height:
+              240
+          }
+        );
 
         document.getElementById(
           "buyerName"
