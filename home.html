@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>シグマ祭 ポータル</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{font-family:sans-serif;max-width:560px;margin:0 auto;padding:20px;text-align:center;background:#fafafa}
+    h1{margin-bottom:8px}.subtitle{color:#666;margin-bottom:18px}
+    input,button{width:100%;box-sizing:border-box;padding:14px;margin-top:10px;font-size:16px}
+    input{border:1px solid #ccc;border-radius:10px;background:#fff}
+    button{border:none;border-radius:10px;cursor:pointer}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .card{margin-top:16px;padding:18px;background:#f2f2f2;border-radius:12px;text-align:left}
+    .success{background:#e8f7e8!important}.danger{background:#ffe8e8!important}
+    .menu-button{text-align:left;padding:16px}.menu-title{font-size:17px;font-weight:bold}
+    .menu-desc{display:block;margin-top:4px;font-size:13px;color:#555}
+    .status-line{margin:7px 0}.small{font-size:13px;color:#666;line-height:1.5}
+    #portalArea,#newPasswordArea{display:none}
+  </style>
+</head>
+<body>
+  <h1>シグマ祭 ポータル</h1>
+  <div class="subtitle">このページを入口にすればOKです</div>
+
+  <div id="loginArea" class="card">
+    <h2>ログイン</h2>
+    <input id="email" type="email" placeholder="メールアドレス" autocomplete="email">
+    <input id="password" type="password" placeholder="パスワード" autocomplete="current-password">
+    <button onclick="login()">ログイン</button>
+    <button onclick="resetPassword()">パスワードを設定・再設定</button>
+    <p id="loginMessage"></p>
+  </div>
+
+  <div id="newPasswordArea" class="card">
+    <h2>新しいパスワードを設定</h2>
+    <input id="newPassword" type="password" placeholder="新しいパスワード">
+    <button onclick="saveNewPassword()">パスワードを保存</button>
+    <p id="passwordMessage"></p>
+  </div>
+
+  <div id="portalArea">
+    <div class="card success">
+      <h2>ログイン中</h2>
+      <div class="status-line">スタッフ：<strong id="staffName">-</strong></div>
+      <div class="status-line">現在の予定：<strong id="plannedRole">-</strong></div>
+      <div class="status-line">現在の勤務：<strong id="workingRole">-</strong></div>
+      <div class="status-line">管理者：<strong id="adminStatus">-</strong></div>
+      <button onclick="refreshPortal()">状態を更新</button>
+      <button onclick="logout()">ログアウト</button>
+    </div>
+
+    <div class="card">
+      <h2>メニュー</h2>
+
+      <button class="menu-button" onclick="location.href='staff.html'">
+        <span class="menu-title">👤 スタッフ画面</span>
+        <span class="menu-desc">出勤・休憩・退勤・レジ勤務</span>
+      </button>
+
+      <button class="menu-button" onclick="location.href='seller.html'">
+        <span class="menu-title">🎫 チケット発行</span>
+        <span class="menu-desc">前売り券の発行・販売履歴</span>
+      </button>
+
+      <button id="registerButton" class="menu-button" onclick="location.href='index.html'" style="display:none;">
+        <span class="menu-title">📷 レジ受付</span>
+        <span class="menu-desc">QRコードを読み取って使用済みにする</span>
+      </button>
+
+      <button id="frontButton" class="menu-button" onclick="location.href='front.html'" style="display:none;">
+        <span class="menu-title">📊 表番</span>
+        <span class="menu-desc">来客数・混雑度・チケット利用状況</span>
+      </button>
+
+      <button id="backButton" class="menu-button" onclick="location.href='back.html'" style="display:none;">
+        <span class="menu-title">🧭 裏番</span>
+        <span class="menu-desc">全体状況・勤怠確認・修正</span>
+      </button>
+
+      <button id="adminButton" class="menu-button" onclick="location.href='admin.html'" style="display:none;">
+        <span class="menu-title">⚙️ 管理者画面</span>
+        <span class="menu-desc">スタッフ・シフト・チケット管理</span>
+      </button>
+    </div>
+
+    <div class="card">
+      <strong>役割ページについて</strong>
+      <p class="small">レジ・表番・裏番のボタンは、現在その役割で勤務しているときだけ表示されます。</p>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+    const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+    const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+    function roleText(role){
+      if(role==="seller") return "売り子";
+      if(role==="tent") return "テント内";
+      if(role==="front") return "表番";
+      if(role==="back") return "裏番";
+      if(role==="register") return "レジ";
+      return "なし";
+    }
+
+    async function login(){
+      const email=document.getElementById("email").value;
+      const password=document.getElementById("password").value;
+      const message=document.getElementById("loginMessage");
+      message.textContent="ログインしています...";
+      const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+      if(error){message.textContent="ログイン失敗："+error.message;return;}
+      message.textContent="";
+      await showPortal();
+    }
+
+    async function resetPassword(){
+      const email=document.getElementById("email").value;
+      const message=document.getElementById("loginMessage");
+      if(!email){message.textContent="メールアドレスを入力してください。";return;}
+      const {error}=await supabaseClient.auth.resetPasswordForEmail(
+        email,
+        {redirectTo:"https://masaya0206.github.io/sigma-ticket/home.html"}
+      );
+      if(error){message.textContent="エラー："+error.message;return;}
+      message.textContent="パスワード設定用メールを送信しました。";
+    }
+
+    async function saveNewPassword(){
+      const password=document.getElementById("newPassword").value;
+      const message=document.getElementById("passwordMessage");
+      if(!password){message.textContent="新しいパスワードを入力してください。";return;}
+      const {error}=await supabaseClient.auth.updateUser({password});
+      if(error){message.textContent="エラー："+error.message;return;}
+      message.textContent="✅ パスワードを設定しました。";
+      await showPortal();
+    }
+
+    supabaseClient.auth.onAuthStateChange(async(event)=>{
+      if(event==="PASSWORD_RECOVERY"){
+        document.getElementById("loginArea").style.display="none";
+        document.getElementById("portalArea").style.display="none";
+        document.getElementById("newPasswordArea").style.display="block";
+      }
+    });
+
+    async function showPortal(){
+      const {data:{user}}=await supabaseClient.auth.getUser();
+      if(!user) return;
+
+      const {data:staff,error}=await supabaseClient
+        .from("staff_members")
+        .select("staff_name,is_active")
+        .eq("user_id",user.id)
+        .maybeSingle();
+
+      if(error||!staff){
+        document.getElementById("loginMessage").textContent="スタッフ情報が見つかりません。";
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      if(!staff.is_active){
+        document.getElementById("loginMessage").textContent="このスタッフアカウントは停止中です。";
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      document.getElementById("staffName").textContent=staff.staff_name;
+      document.getElementById("loginArea").style.display="none";
+      document.getElementById("newPasswordArea").style.display="none";
+      document.getElementById("portalArea").style.display="block";
+      await refreshPortal();
+    }
+
+    async function refreshPortal(){
+      const {data:{user}}=await supabaseClient.auth.getUser();
+      if(!user) return;
+
+      const now=new Date().toISOString();
+
+      const [assignmentResult,attendanceResult,adminResult]=await Promise.all([
+        supabaseClient
+          .from("staff_assignments")
+          .select("role,start_at,end_at")
+          .eq("user_id",user.id)
+          .lte("start_at",now)
+          .gte("end_at",now)
+          .order("start_at",{ascending:false})
+          .limit(1)
+          .maybeSingle(),
+
+        supabaseClient
+          .from("staff_attendance")
+          .select("role,attendance_state,clock_in")
+          .eq("user_id",user.id)
+          .eq("attendance_state","working")
+          .is("clock_out",null)
+          .order("clock_in",{ascending:false})
+          .limit(1)
+          .maybeSingle(),
+
+        supabaseClient
+          .from("admins")
+          .select("user_id")
+          .eq("user_id",user.id)
+          .maybeSingle()
+      ]);
+
+      const assignment=assignmentResult.data;
+      const attendance=attendanceResult.data;
+      const isAdmin=!!adminResult.data;
+
+      document.getElementById("plannedRole").textContent=
+        assignment ? roleText(assignment.role) : "なし";
+
+      document.getElementById("workingRole").textContent=
+        attendance ? roleText(attendance.role) : "勤務なし";
+
+      document.getElementById("adminStatus").textContent=
+        isAdmin ? "はい" : "いいえ";
+
+      document.getElementById("registerButton").style.display=
+        attendance?.role==="register" ? "block" : "none";
+
+      document.getElementById("frontButton").style.display=
+        attendance?.role==="front" ? "block" : "none";
+
+      document.getElementById("backButton").style.display=
+        attendance?.role==="back" ? "block" : "none";
+
+      document.getElementById("adminButton").style.display=
+        isAdmin ? "block" : "none";
+    }
+
+    async function logout(){
+      await supabaseClient.auth.signOut();
+      document.getElementById("portalArea").style.display="none";
+      document.getElementById("loginArea").style.display="block";
+      document.getElementById("password").value="";
+    }
+
+    async function checkLogin(){
+      const {data:{session}}=await supabaseClient.auth.getSession();
+      if(session) await showPortal();
+    }
+
+    checkLogin();
+  </script>
+</body>
+</html>
