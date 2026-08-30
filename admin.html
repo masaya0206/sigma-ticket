@@ -145,6 +145,14 @@ select {
 
 <div id="sellerList"></div>
 
+    <h2>スタッフ管理</h2>
+
+<button onclick="loadStaffMembers()">
+  スタッフ一覧を表示
+</button>
+
+<div id="staffMemberList"></div>
+    
     <h2>ポイント設定</h2>
 
 <input
@@ -920,6 +928,126 @@ document.getElementById("newSellerEmail").value = "";
         </div>
       `;
     }).join("");
+}
+
+    async function loadStaffMembers() {
+
+  const list =
+    document.getElementById("staffMemberList");
+
+  list.innerHTML =
+    "読み込み中...";
+
+  const { data, error } =
+    await supabaseClient
+      .from("staff_members")
+      .select(
+        "user_id,staff_name,is_active,can_sell,can_scan"
+      )
+      .order("staff_name");
+
+  if (error) {
+    list.innerHTML =
+      "取得エラー：" + error.message;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML =
+      "スタッフはまだ登録されていません。";
+    return;
+  }
+
+  list.innerHTML =
+    data.map(staff => {
+
+      return `
+        <div
+          style="
+            border:1px solid #ccc;
+            padding:12px;
+            margin:10px 0;
+            border-radius:8px;
+            text-align:left;
+          "
+        >
+          <strong>
+            ${staff.staff_name}
+          </strong>
+
+          <br><br>
+
+          <label>
+            <input
+              type="checkbox"
+              ${staff.can_sell ? "checked" : ""}
+              onchange="
+                updateStaffPermission(
+                  '${staff.user_id}',
+                  'can_sell',
+                  this.checked
+                )
+              "
+            >
+            チケット発行
+          </label>
+
+          <br>
+
+          <label>
+            <input
+              type="checkbox"
+              ${staff.can_scan ? "checked" : ""}
+              onchange="
+                updateStaffPermission(
+                  '${staff.user_id}',
+                  'can_scan',
+                  this.checked
+                )
+              "
+            >
+            チケットスキャン
+          </label>
+
+          <br><br>
+
+          状態：
+          ${
+            staff.is_active
+              ? "🟢 有効"
+              : "🔴 停止中"
+          }
+        </div>
+      `;
+    }).join("");
+}
+    async function updateStaffPermission(
+  userId,
+  field,
+  value
+) {
+
+  const updates = {};
+
+  updates[field] = value;
+
+  const { error } =
+    await supabaseClient
+      .from("staff_members")
+      .update(updates)
+      .eq("user_id", userId);
+
+  if (error) {
+    alert(
+      "変更エラー：" +
+      error.message
+    );
+
+    await loadStaffMembers();
+    return;
+  }
+
+  alert("権限を変更しました。");
 }
 
     async function toggleSeller(userId, currentStatus) {
