@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 スタッフ</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    input,
+    button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .card {
+      margin-top: 20px;
+      padding: 18px;
+      background: #f2f2f2;
+      border-radius: 12px;
+      text-align: left;
+    }
+
+    #staffArea {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>シグマ祭 スタッフ</h1>
+
+  <div id="loginArea">
+
+    <input
+      id="email"
+      type="email"
+      placeholder="メールアドレス"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="パスワード"
+    >
+
+    <button onclick="login()">
+      ログイン
+    </button>
+
+    <p id="loginMessage"></p>
+
+  </div>
+
+
+  <div id="staffArea">
+
+    <button onclick="logout()">
+      ログアウト
+    </button>
+
+    <div class="card">
+      <h2 id="staffName">
+        スタッフ
+      </h2>
+
+      <p id="currentRole">
+        今日の予定を確認しています...
+      </p>
+    </div>
+
+
+    <div class="card">
+
+      <h2>勤怠</h2>
+
+      <button onclick="clockIn()">
+        出勤
+      </button>
+
+      <button onclick="startBreak()">
+        休憩開始
+      </button>
+
+      <button onclick="endBreak()">
+        休憩終了
+      </button>
+
+      <button onclick="clockOut()">
+        退勤
+      </button>
+
+      <p id="attendanceMessage"></p>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+    const SUPABASE_URL =
+      "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
+
+
+    async function login() {
+
+      const email =
+        document.getElementById("email").value;
+
+      const password =
+        document.getElementById("password").value;
+
+      const message =
+        document.getElementById("loginMessage");
+
+      const { error } =
+        await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+      if (error) {
+        message.textContent =
+          "ログイン失敗：" + error.message;
+        return;
+      }
+
+      message.textContent = "";
+
+      await showStaffArea();
+    }
+
+
+    async function logout() {
+
+      await supabaseClient.auth.signOut();
+
+      document.getElementById("staffArea")
+        .style.display = "none";
+
+      document.getElementById("loginArea")
+        .style.display = "block";
+    }
+
+
+    async function showStaffArea() {
+
+      const {
+        data: { user }
+      } =
+        await supabaseClient.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      const {
+        data: staff,
+        error
+      } =
+        await supabaseClient
+          .from("staff_members")
+          .select(
+            "staff_name,is_active,can_sell,can_scan"
+          )
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+      if (error || !staff) {
+
+        document.getElementById("loginMessage")
+          .textContent =
+          "スタッフ情報が見つかりません。";
+
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      if (!staff.is_active) {
+
+        document.getElementById("loginMessage")
+          .textContent =
+          "このスタッフアカウントは停止中です。";
+
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      document.getElementById("loginArea")
+        .style.display = "none";
+
+      document.getElementById("staffArea")
+        .style.display = "block";
+
+      document.getElementById("staffName")
+        .textContent = staff.staff_name;
+
+      await loadTodayAssignment(user.id);
+    }
+
+
+    async function loadTodayAssignment(userId) {
+
+      const now =
+        new Date().toISOString();
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("staff_assignments")
+          .select(
+            "role,start_at,end_at"
+          )
+          .eq("user_id", userId)
+          .lte("start_at", now)
+          .gte("end_at", now)
+          .order("start_at", {
+            ascending: false
+          })
+          .limit(1)
+          .maybeSingle();
+
+      const area =
+        document.getElementById("currentRole");
+
+      if (error) {
+        area.textContent =
+          "予定シフト取得エラー";
+        return;
+      }
+
+      if (!data) {
+        area.textContent =
+          "現在の予定シフトはありません。";
+        return;
+      }
+
+      const roleText =
+        data.role === "seller"
+          ? "売り子"
+          : data.role === "tent"
+          ? "テント内"
+          : "裏番";
+
+      const start =
+        new Date(data.start_at)
+          .toLocaleTimeString(
+            "ja-JP",
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          );
+
+      const end =
+        new Date(data.end_at)
+          .toLocaleTimeString(
+            "ja-JP",
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          );
+
+      area.textContent =
+        `予定：${roleText} ${start}〜${end}`;
+    }
+
+
+    async function clockIn() {
+      document.getElementById(
+        "attendanceMessage"
+      ).textContent =
+        "出勤処理は次に実装します。";
+    }
+
+
+    async function startBreak() {
+      document.getElementById(
+        "attendanceMessage"
+      ).textContent =
+        "休憩開始処理は次に実装します。";
+    }
+
+
+    async function endBreak() {
+      document.getElementById(
+        "attendanceMessage"
+      ).textContent =
+        "休憩終了処理は次に実装します。";
+    }
+
+
+    async function clockOut() {
+      document.getElementById(
+        "attendanceMessage"
+      ).textContent =
+        "退勤処理は次に実装します。";
+    }
+
+
+    async function checkLogin() {
+
+      const {
+        data: { session }
+      } =
+        await supabaseClient.auth.getSession();
+
+      if (session) {
+        await showStaffArea();
+      }
+    }
+
+
+    checkLogin();
+
+  </script>
+
+</body>
+</html>
