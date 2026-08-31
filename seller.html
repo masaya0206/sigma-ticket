@@ -323,7 +323,7 @@
 
 <body>
 
-  <h1>シグマ祭 チケット発行</h1>
+  <h1>シグマ祭 450円前売り券</h1>
 
 
   <div id="loginArea" class="card">
@@ -385,13 +385,17 @@
       🏠 ポータルに戻る
     </button>
 
+    <button onclick="location.href='seller-team.html'">
+      👥 売り子チーム
+    </button>
+
     <button onclick="logout()">
       ログアウト
     </button>
 
 
     <div class="card">
-      <h2>チケット発行</h2>
+      <h2>450円前売り券を発行</h2>
 
       <p>
         発行者：
@@ -408,7 +412,7 @@
         id="issueButton"
         onclick="issueTicket()"
       >
-        チケットを1枚発行
+        450円券を1枚発行
       </button>
 
       <p class="small">
@@ -428,6 +432,13 @@
 
     <div class="card">
       <h2>自分の販売状況</h2>
+
+      <input
+        id="historySearch"
+        type="search"
+        placeholder="購入者名で履歴検索"
+        oninput="loadMySummary()"
+      >
 
       <button onclick="loadMySummary()">
         販売状況を更新
@@ -869,7 +880,7 @@
                 ticketCode,
 
               product_name:
-                "チャーハン前売り券",
+                "前売り券（炒飯1個 / 胡麻団子2個）",
 
               seller_name:
                 currentSeller.seller_name,
@@ -1093,7 +1104,7 @@
         await supabaseClient
           .from("tickets")
           .select(
-            "ticket_code,status,created_at,buyer_name,product_name"
+            "ticket_code,status,created_at,buyer_name,product_name,claim_token,seller_team_id,seller_share_ratio"
           )
           .eq(
             "seller_id",
@@ -1115,6 +1126,15 @@
 
         return;
       }
+
+      const searchText = (
+        document.getElementById("historySearch")?.value || ""
+      ).trim().toLowerCase();
+
+      const visibleData = (data || []).filter((ticket) =>
+        !searchText ||
+        String(ticket.buyer_name || "").toLowerCase().includes(searchText)
+      );
 
       let total = 0;
       let pending = 0;
@@ -1179,8 +1199,7 @@
       `;
 
       if (
-        !data ||
-        data.length === 0
+        visibleData.length === 0
       ) {
 
         html +=
@@ -1188,7 +1207,11 @@
 
       } else {
 
-        for (const ticket of data) {
+        for (const ticket of visibleData) {
+
+          const claimUrl = ticket.claim_token
+            ? "https://masaya0206.github.io/sigma-ticket/claim.html?token=" + encodeURIComponent(ticket.claim_token)
+            : "";
 
           html += `
             <div class="subcard">
@@ -1221,6 +1244,24 @@
                 ticket.created_at
               )}
 
+              <br>
+
+              ${
+                claimUrl
+                  ? `
+                    <button
+                      onclick="reshowClaim('${ticket.claim_token}',decodeURIComponent('${encodeURIComponent(ticket.buyer_name || '')}'))"
+                    >
+                      受け取りQRを再表示
+                    </button>
+
+                    <button onclick="copyClaimUrl('${claimUrl}')">
+                      URLをコピー
+                    </button>
+                  `
+                  : ""
+              }
+
               ${
                 ticket.status ===
                 "pending"
@@ -1246,6 +1287,31 @@
       area.innerHTML = html;
     }
 
+
+
+    function reshowClaim(token, buyerName) {
+      const claimUrl =
+        "https://masaya0206.github.io/sigma-ticket/claim.html?token=" +
+        encodeURIComponent(token);
+
+      const result = document.getElementById("ticketResult");
+      result.className = "card success";
+      result.innerHTML = `
+        <h2>🔁 受け取りQR再表示</h2>
+        <p><strong>購入者</strong><br>${buyerName || "未登録"}</p>
+        <p class="small">新しい券は発行していません。元の券と同じ受け取りURLです。</p>
+        <div class="claim-qr-wrap"><div id="claimQrCode"></div></div>
+        <p><span class="link-text">${claimUrl}</span></p>
+        <button onclick="copyClaimUrl('${claimUrl}')">受け取りURLをコピー</button>
+        <button onclick="openClaimUrl('${claimUrl}')">受け取りページを開く</button>
+      `;
+      new QRCode(document.getElementById("claimQrCode"), {
+        text: claimUrl,
+        width: 240,
+        height: 240
+      });
+      result.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     async function cancelTicket(
       ticketCode
