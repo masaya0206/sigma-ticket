@@ -395,7 +395,7 @@
 
 
     <div class="card">
-      <h2>450円前売り券を発行</h2>
+      <h2 id="issueTitle">チケットを発行</h2>
 
       <p>
         発行者：
@@ -408,12 +408,12 @@
         placeholder="購入者の名前"
       >
 
-      <button
-        id="issueButton"
-        onclick="issueTicket()"
-      >
-        450円券を1枚発行
-      </button>
+      <div id="saleChoice" style="display:none">
+        <label for="ticketKind">販売する券</label>
+        <select id="ticketKind" onchange="refreshIssueButton()"></select>
+        <p id="ticketKindNote" class="small"></p>
+      </div>
+      <button id="issueButton" onclick="issueTicket()">チケットを1枚発行</button>
 
       <p class="small">
         発行すると受け取り用QRが表示されます。
@@ -467,6 +467,7 @@
       );
 
     let currentSeller = null;
+    let currentSalesStatus = null;
 
 
     function statusText(status) {
@@ -791,7 +792,31 @@
       ).style.display =
         "block";
 
+      await loadSalesStatus();
       await loadMySummary();
+    }
+
+    async function loadSalesStatus() {
+      const { data, error } = await supabaseClient.rpc("my_presale_status");
+      if (error) { document.getElementById("ticketResult").textContent = "販売設定の取得エラー：" + error.message; return; }
+      currentSalesStatus = data;
+      const sel = document.getElementById("ticketKind");
+      sel.innerHTML = "";
+      if (data.presale_enabled) sel.insertAdjacentHTML("beforeend", `<option value="presale">前売り券（${data.presale_price}円）</option>`);
+      if (data.day_enabled) sel.insertAdjacentHTML("beforeend", `<option value="day">当日券（${data.day_price}円）</option>`);
+      if (data.day_enabled && Number(data.residual_remaining||0)>0) sel.insertAdjacentHTML("beforeend", `<option value="quota_residual">ノルマ残券（残り${data.residual_remaining}枚）</option>`);
+      document.getElementById("saleChoice").style.display = "block";
+      document.getElementById("issueButton").disabled = sel.options.length===0;
+      refreshIssueButton();
+    }
+
+    function refreshIssueButton(){
+      const sel=document.getElementById("ticketKind"); const k=sel.value;
+      const b=document.getElementById("issueButton"),n=document.getElementById("ticketKindNote");
+      if(k==="presale"){b.textContent=`前売り券を1枚発行（${currentSalesStatus?.presale_price??450}円）`;n.textContent="前売り実績・前売りptの対象です。";}
+      else if(k==="day"){b.textContent=`当日券を1枚発行（${currentSalesStatus?.day_price??450}円）`;n.textContent="当日の売り子実績・当日ptの対象です。";}
+      else if(k==="quota_residual"){b.textContent="ノルマ残券を1枚販売";n.textContent="残券を1枚減らします。当日売り子ptには加算されません。";}
+      else {b.textContent="現在販売できる券はありません";n.textContent="";}
     }
 
 
@@ -862,69 +887,12 @@
           );
         }
 
-        const ticketCode =
-          createTicketCode();
+        const kind = document.getElementById("ticketKind").value;
+        if (!kind) throw new Error("現在販売できる券がありません。");
+        const { data, error } = await supabaseClient.rpc("issue_managed_ticket", { p_buyer: buyerName, p_kind: kind });
+        if (error) throw error;
 
-        const claimToken =
-          crypto.randomUUID()
-            .replaceAll("-", "");
-
-        const {
-          data,
-          error
-        } =
-          await supabaseClient
-            .from("tickets")
-            .insert({
-              ticket_code:
-                ticketCode,
-
-              product_name:
-                "前売り券（炒飯1個 / 胡麻団子2個）",
-
-              seller_name:
-                currentSeller.seller_name,
-
-              seller_id:
-                user.id,
-
-              buyer_name:
-                buyerName,
-
-              status:
-                "pending",
-
-              claim_token:
-                claimToken,
-
-              sale_type:
-                "presale"
-            })
-            .select()
-            .single();
-
-        if (error) {
-          throw error;
-        }
-
-        const {
-          error: logError
-        } =
-          await supabaseClient
-            .from("ticket_logs")
-            .insert({
-              ticket_code:
-                data.ticket_code,
-
-              action:
-                "issued",
-
-              actor_id:
-                user.id,
-
-              actor_name:
-                currentSeller.seller_name
-            });
+        const logError = null;
 
         const claimUrl =
           "https://masaya0206.github.io/sigma-ticket/claim.html?token=" +
@@ -1021,6 +989,7 @@
         document.getElementById(
           "buyerName"
         ).value = "";
+        await loadSalesStatus();
 
         await loadMySummary();
 
