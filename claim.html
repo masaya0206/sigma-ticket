@@ -75,6 +75,11 @@
       color: #666;
       line-height: 1.5;
     }
+  
+    .festival-label { font-weight: 900; letter-spacing: .04em; }
+    .price-live { margin: 16px 0; padding: 14px; border-radius: 14px; background: #fff7f7; border: 1px solid #f0c9cc; }
+    .price-live strong { font-size: 18px; }
+    .sold { color: #b5121b; font-weight: 900; }
   </style>
 
   <meta name="theme-color" content="#111111">
@@ -259,7 +264,9 @@
     class="card"
   >
 
-    <h2>チケットを受け取る</h2>
+    <p class="festival-label">第十六回紫熊祭</p>
+    <p><strong>企画者名：Match Point</strong></p>
+    <h2>450円前売り券を受け取る</h2>
 
     <p>
       下のボタンを押すと、
@@ -302,70 +309,72 @@
       params.get("token");
 
 
-    function showTicket(ticket) {
+    function statusLabel(value) {
+      if (value === "sold_out") return "売り切れ";
+      if (value === "low") return "残りわずか";
+      return "販売中";
+    }
 
-      const claimArea =
-        document.getElementById(
-          "claimArea"
-        );
+    function currentPairPrice(menu) {
+      if (menu?.sesame_pair_enabled && menu?.sesame_pair_price != null) {
+        return menu.sesame_pair_price;
+      }
+      return (menu?.sesame_single_price ?? 300) * 2;
+    }
 
-      claimArea.className =
-        "card success";
+    function cashbackText(price) {
+      const amount = Math.max(450 - Number(price || 0), 0);
+      return amount > 0 ? ` → 前売り券利用時 <strong>${amount}円返金</strong>` : "";
+    }
 
-      claimArea.innerHTML = `
-        <h2>✅ 受け取り完了</h2>
-
-        <p>
-          <strong>商品</strong><br>
-          ${ticket.product_name}
-        </p>
-
-        <p>
-          <strong>販売者</strong><br>
-          ${ticket.seller_name}
-        </p>
-
-        <p>
-          <strong>購入者</strong><br>
-          ${ticket.buyer_name ?? "未登録"}
-        </p>
-
-        <p>
-          <strong>チケットID</strong><br>
-          <span class="ticket-code">
-            ${ticket.ticket_code}
-          </span>
-        </p>
-
-        <div id="qrcode"></div>
-
-        <p>
-          当日はこのQRコードを
-          店舗スタッフに提示してください。
-        </p>
-
-        <p class="small">
-          このQRはスクリーンショット保存して大丈夫です。<br>
-          同じ受け取りURLを別のスマホで開いても、
-          同じチケットQRを表示できます。<br>
-          ただしチケット自体は1枚なので、
-          どれか1つが使用されると他のコピーも使用済みになります。
-        </p>
+    function renderMenuState(menu) {
+      const box = document.getElementById("liveMenuState");
+      if (!box || !menu) return;
+      const pair = currentPairPrice(menu);
+      box.innerHTML = `
+        <strong>現在の当日価格</strong><br>
+        炒飯1個：${menu.fried_rice_price}円
+        <span class="${menu.fried_rice_status === 'sold_out' ? 'sold' : ''}">（${statusLabel(menu.fried_rice_status)}）</span>
+        ${cashbackText(menu.fried_rice_price)}<br>
+        胡麻団子1個：${menu.sesame_single_price}円<br>
+        胡麻団子2個：${pair}円
+        <span class="${menu.sesame_status === 'sold_out' ? 'sold' : ''}">（${statusLabel(menu.sesame_status)}）</span>
+        ${cashbackText(pair)}
+        ${menu.notice ? `<hr><strong>お知らせ</strong><br>${menu.notice}` : ""}
       `;
+    }
 
-      new QRCode(
-        document.getElementById(
-          "qrcode"
-        ),
-        {
-          text:
-            ticket.ticket_code,
-          width:
-            220,
-          height:
-            220
-        }
-      );
+    async function loadMenuState() {
+      const { data } = await supabaseClient.from("menu_state").select("*").eq("id",1).maybeSingle();
+      if (data) renderMenuState(data);
+    }
+
+    function subscribeMenuState() {
+      supabaseClient.channel("claim-menu-live")
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "menu_state", filter: "id=eq.1" },
+          (payload) => renderMenuState(payload.new))
+        .subscribe();
+    }
+
+    function showTicket(ticket) {
+      const claimArea = document.getElementById("claimArea");
+      claimArea.className = "card success";
+      claimArea.innerHTML = `
+        <p class="festival-label">第十六回紫熊祭</p>
+        <p><strong>企画者名：Match Point</strong></p>
+        <h2>🎫 450円前売り券</h2>
+        <p><strong>交換内容</strong><br>炒飯1個 または 胡麻団子2個</p>
+        <p><strong>購入者</strong><br>${ticket.buyer_name ?? "未登録"}</p>
+        <p><strong>発行者</strong><br>${ticket.seller_name}</p>
+        <p><strong>チケットID</strong><br><span class="ticket-code">${ticket.ticket_code}</span></p>
+        <div id="qrcode"></div>
+        <p><strong>当日はこのQRをレジスタッフに提示してください。</strong></p>
+        <p class="small">このQRは固定です。スクリーンショット保存して大丈夫です。コピーされてもチケット自体は1枚で、どれか1つが使用されるとすべて使用済みになります。</p>
+        <div id="liveMenuState" class="price-live">現在価格を確認しています...</div>
+      `;
+      new QRCode(document.getElementById("qrcode"), { text: ticket.ticket_code, width:220, height:220 });
+      loadMenuState();
+      subscribeMenuState();
     }
 
 
