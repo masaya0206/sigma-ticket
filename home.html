@@ -712,9 +712,83 @@
               </span>
             </button>
 
-            <button onclick="location.href='points-my.html'">⭐ マイポイント</button>
-<button onclick="location.href='shopping.html'">🚗 買い出し</button>
-<button
+            <button
+              class="menu-card"
+              onclick="location.href='points-my.html'"
+            >
+              <span class="menu-icon">★</span>
+              <span class="menu-name">マイポイント</span>
+              <span class="menu-desc">
+                暫定・最終ポイントを確認
+              </span>
+            </button>
+
+            <button
+              id="shoppingButton"
+              class="menu-card"
+              onclick="location.href='shopping.html'"
+              style="display:none;"
+            >
+              <span class="menu-icon">車</span>
+              <span class="menu-name">買い出し</span>
+              <span class="menu-desc">
+                要請・運転手・手伝い
+              </span>
+            </button>
+
+            <button
+              id="orderEntryButton"
+              class="menu-card"
+              onclick="location.href='order-entry.html'"
+              style="display:none;"
+            >
+              <span class="menu-icon">票</span>
+              <span class="menu-name">伝票入力</span>
+              <span class="menu-desc">
+                炒飯・胡麻団子の品数入力
+              </span>
+            </button>
+
+            <button
+              id="registerTeamsButton"
+              class="menu-card"
+              onclick="location.href='register-teams.html'"
+              style="display:none;"
+            >
+              <span class="menu-icon">組</span>
+              <span class="menu-name">レジ編成</span>
+              <span class="menu-desc">
+                レジ1〜3の派遣・入替
+              </span>
+            </button>
+
+            <button
+              id="roleControlButton"
+              class="menu-card"
+              onclick="location.href='role-control.html'"
+              style="display:none;"
+            >
+              <span class="menu-icon">役</span>
+              <span class="menu-name">役職変更</span>
+              <span class="menu-desc">
+                売り子から各役職へ切替
+              </span>
+            </button>
+
+            <button
+              id="pointsAdminButton"
+              class="menu-card"
+              onclick="location.href='points-admin.html'"
+              style="display:none;"
+            >
+              <span class="menu-icon">計</span>
+              <span class="menu-name">ポイント管理</span>
+              <span class="menu-desc">
+                係数・再計算・ランキング
+              </span>
+            </button>
+
+            <button
               id="adminButton"
               class="menu-card"
               onclick="location.href='admin.html'"
@@ -733,9 +807,9 @@
         </section>
 
         <div class="notice">
-          レジ・表番・裏番は、
-          現在その役割で勤務しているときだけ表示されます。
-          チケット発行と勤怠画面は常時利用できます。
+          このアプリから勤怠・チケット・ポイント・伝票入力・
+          レジ編成・役職変更・買い出しまで操作できます。
+          権限が必要な機能は、現在の役職または管理者権限に応じて表示されます。
         </div>
 
       </div>
@@ -1209,6 +1283,57 @@
 
       document.getElementById(
         "adminButton"
+      ).style.display =
+        isAdmin
+          ? "block"
+          : "none";
+
+      document.getElementById(
+        "orderEntryButton"
+      ).style.display =
+        (
+          isAdmin ||
+          attendance?.role === "front"
+        )
+          ? "block"
+          : "none";
+
+      document.getElementById(
+        "registerTeamsButton"
+      ).style.display =
+        (
+          isAdmin ||
+          attendance?.role === "front" ||
+          attendance?.role === "back"
+        )
+          ? "block"
+          : "none";
+
+      document.getElementById(
+        "roleControlButton"
+      ).style.display =
+        (
+          isAdmin ||
+          attendance?.role === "front" ||
+          attendance?.role === "back"
+        )
+          ? "block"
+          : "none";
+
+      document.getElementById(
+        "shoppingButton"
+      ).style.display =
+        (
+          isAdmin ||
+          attendance?.role === "back" ||
+          attendance?.role === "shopping_driver" ||
+          attendance?.role === "shopping_helper"
+        )
+          ? "block"
+          : "none";
+
+      document.getElementById(
+        "pointsAdminButton"
       ).style.display =
         isAdmin
           ? "block"
