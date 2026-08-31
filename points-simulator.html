@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>シグマ祭 ポイントシミュレーション</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #faf6f4;
+      color: #181818;
+    }
+
+    header {
+      background: #b5121b;
+      color: white;
+      padding: 24px 18px;
+      border-radius: 0 0 24px 24px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 25px;
+    }
+
+    header p {
+      margin: 7px 0 0;
+      opacity: .9;
+      font-size: 13px;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 18px 16px 44px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #eadfdb;
+      border-radius: 18px;
+      padding: 18px;
+      margin-top: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.04);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    h3 {
+      margin: 16px 0 8px;
+      font-size: 16px;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      margin-top: 6px;
+      border: 1px solid #d9cfcb;
+      border-radius: 12px;
+      font-size: 16px;
+      background: white;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 14px;
+      border: 0;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: #c7111b;
+      color: white;
+    }
+
+    .secondary {
+      background: #fbecee;
+      color: #a80f17;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .result {
+      background: #fff8e7;
+      border: 1px solid #ead7a4;
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .score {
+      font-size: 27px;
+      font-weight: 900;
+      margin-top: 4px;
+    }
+
+    .small {
+      font-size: 12px;
+      color: #706763;
+      line-height: 1.6;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    .table th,
+    .table td {
+      padding: 10px 6px;
+      border-bottom: 1px solid #eee4df;
+      text-align: right;
+      font-size: 13px;
+    }
+
+    .table th:first-child,
+    .table td:first-child {
+      text-align: left;
+    }
+
+    .bar {
+      height: 10px;
+      background: #f0e5e2;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .bar > div {
+      height: 100%;
+      background: #b5121b;
+    }
+
+    #authMessage {
+      text-align: center;
+      padding: 24px 10px;
+      color: #7b161d;
+      font-weight: 800;
+    }
+
+    #app {
+      display: none;
+    }
+
+    @media(max-width: 520px) {
+      .grid2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>🧮 ポイントシミュレーション</h1>
+  <p>数値を変えて、役職ごとのポイント差をその場で比較します。</p>
+</header>
+
+<main>
+  <div id="authMessage">管理者権限を確認しています...</div>
+
+  <div id="app">
+    <div class="card">
+      <h2>① ポイント設定</h2>
+
+      <div class="grid2">
+        <div>
+          <label>基本活動ポイント / 1時間</label>
+          <input id="baseHourly" type="number" step="0.1" min="0" value="10">
+        </div>
+
+        <div>
+          <label>売り子：前売り券1枚</label>
+          <input id="sellerPerTicket" type="number" step="0.1" min="0" value="3">
+        </div>
+
+        <div>
+          <label>レジ：処理1件</label>
+          <input id="registerPerTicket" type="number" step="0.1" min="0" value="1">
+        </div>
+
+        <div>
+          <label>表番：1時間</label>
+          <input id="frontHourly" type="number" step="0.1" min="0" value="12">
+        </div>
+
+        <div>
+          <label>裏番：1時間</label>
+          <input id="backHourly" type="number" step="0.1" min="0" value="12">
+        </div>
+
+        <div>
+          <label>テント：基本1時間</label>
+          <input id="tentHourly" type="number" step="0.1" min="0" value="10">
+        </div>
+      </div>
+
+      <p class="small">
+        ここで変えた値はシミュレーション専用です。
+        現在の本番ポイント設定やSupabaseのデータは変更しません。
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>② 想定条件</h2>
+
+      <h3>売り子</h3>
+      <div class="grid2">
+        <div>
+          <label>活動時間</label>
+          <input id="sellerHours" type="number" step="0.25" min="0" value="4">
+        </div>
+        <div>
+          <label>本人が売った券数</label>
+          <input id="sellerTickets" type="number" step="1" min="0" value="15">
+        </div>
+        <div>
+          <label>チーム人数</label>
+          <input id="sellerTeamSize" type="number" step="1" min="1" value="1">
+        </div>
+        <div>
+          <label>販売者への配分率（%）</label>
+          <input id="sellerShare" type="number" step="0.1" min="0" max="100" value="100">
+        </div>
+      </div>
+
+      <h3>レジ</h3>
+      <div class="grid2">
+        <div>
+          <label>レジ勤務時間</label>
+          <input id="registerHours" type="number" step="0.25" min="0" value="4">
+        </div>
+        <div>
+          <label>チーム処理件数</label>
+          <input id="registerCount" type="number" step="1" min="0" value="80">
+        </div>
+        <div>
+          <label>レジチーム人数</label>
+          <input id="registerTeamSize" type="number" step="1" min="2" value="2">
+        </div>
+      </div>
+
+      <h3>テント</h3>
+      <div class="grid2">
+        <div>
+          <label>テント勤務時間</label>
+          <input id="tentHours" type="number" step="0.25" min="0" value="4">
+        </div>
+        <div>
+          <label>忙しさ倍率</label>
+          <input id="tentMultiplier" type="number" step="0.05" min="0" value="1.2">
+        </div>
+      </div>
+
+      <h3>表番・裏番</h3>
+      <div class="grid2">
+        <div>
+          <label>表番勤務時間</label>
+          <input id="frontHours" type="number" step="0.25" min="0" value="4">
+        </div>
+        <div>
+          <label>裏番勤務時間</label>
+          <input id="backHours" type="number" step="0.25" min="0" value="4">
+        </div>
+      </div>
+
+      <button class="primary" onclick="calculate()">
+        シミュレーション
+      </button>
+
+      <button class="secondary" onclick="setFairExample()">
+        標準例に戻す
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>③ 比較結果</h2>
+      <div id="results"></div>
+
+      <p class="small">
+        管理者は、平均的な働き方を入力して各役職のポイントが極端に偏っていないか確認できます。
+        「適用」機能はまだ付けていません。
+      </p>
+    </div>
+
+    <button class="secondary" onclick="location.href='admin.html'">
+      管理者画面へ戻る
+    </button>
+  </div>
+</main>
+
+<script>
+const SUPABASE_URL =
+  "https://gsniytemgrbtgfywhqlu.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+
+const sb =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+const num = (id) => {
+  const v = Number(
+    document.getElementById(id).value
+  );
+  return Number.isFinite(v) ? v : 0;
+};
+
+function sellerMinimumShare(teamSize) {
+  if (teamSize <= 1) return 100;
+  return 100 / teamSize;
+}
+
+function normalizeSellerShare() {
+  const size =
+    Math.max(
+      1,
+      Math.floor(num("sellerTeamSize"))
+    );
+
+  const field =
+    document.getElementById("sellerShare");
+
+  if (size === 1) {
+    field.min = 100;
+    field.max = 100;
+    field.value = 100;
+    return;
+  }
+
+  const min =
+    sellerMinimumShare(size);
+
+  field.min =
+    min.toFixed(2);
+
+  field.max = 99;
+
+  let share =
+    Number(field.value);
+
+  if (!Number.isFinite(share)) {
+    share = min;
+  }
+
+  if (share < min) share = min;
+  if (share > 99) share = 99;
+
+  field.value =
+    Number(share.toFixed(2));
+}
+
+function calculate() {
+  normalizeSellerShare();
+
+  const baseHourly =
+    num("baseHourly");
+  const sellerPerTicket =
+    num("sellerPerTicket");
+  const registerPerTicket =
+    num("registerPerTicket");
+  const frontHourly =
+    num("frontHourly");
+  const backHourly =
+    num("backHourly");
+  const tentHourly =
+    num("tentHourly");
+
+  const sellerHours =
+    num("sellerHours");
+  const sellerTickets =
+    num("sellerTickets");
+  const sellerTeamSize =
+    Math.max(
+      1,
+      Math.floor(num("sellerTeamSize"))
+    );
+  const sellerShare =
+    num("sellerShare") / 100;
+
+  const registerHours =
+    num("registerHours");
+  const registerCount =
+    num("registerCount");
+  const registerTeamSize =
+    Math.max(
+      2,
+      Math.floor(num("registerTeamSize"))
+    );
+
+  const tentHours =
+    num("tentHours");
+  const tentMultiplier =
+    num("tentMultiplier");
+
+  const frontHours =
+    num("frontHours");
+  const backHours =
+    num("backHours");
+
+  const sellerBase =
+    sellerHours * baseHourly;
+
+  const sellerSalesPool =
+    sellerTickets * sellerPerTicket;
+
+  const sellerScore =
+    sellerBase +
+    sellerSalesPool * sellerShare;
+
+  const sellerOtherShare =
+    sellerTeamSize > 1
+      ? (
+          sellerSalesPool *
+          (1 - sellerShare)
+        ) /
+        (sellerTeamSize - 1)
+      : 0;
+
+  const registerScore =
+    registerHours * baseHourly +
+    (
+      registerCount *
+      registerPerTicket
+    ) /
+    registerTeamSize;
+
+  const tentScore =
+    tentHours *
+    tentHourly *
+    tentMultiplier;
+
+  const frontScore =
+    frontHours *
+    frontHourly;
+
+  const backScore =
+    backHours *
+    backHourly;
+
+  const rows = [
+    {
+      name: "売り子（販売者）",
+      score: sellerScore,
+      note:
+        sellerTeamSize === 1
+          ? "ソロ"
+          : `チーム${sellerTeamSize}人 / 販売者${(sellerShare*100).toFixed(1)}%`
+    },
+    {
+      name: "レジ",
+      score: registerScore,
+      note:
+        `${registerTeamSize}人で${registerCount}件を均等割り`
+    },
+    {
+      name: "テント",
+      score: tentScore,
+      note:
+        `忙しさ ${tentMultiplier.toFixed(2)}倍`
+    },
+    {
+      name: "表番",
+      score: frontScore,
+      note: "時間制"
+    },
+    {
+      name: "裏番",
+      score: backScore,
+      note: "時間制"
+    }
+  ];
+
+  const maxScore =
+    Math.max(
+      1,
+      ...rows.map(r => r.score)
+    );
+
+  const avg =
+    rows.reduce(
+      (sum, r) => sum + r.score,
+      0
+    ) / rows.length;
+
+  const spread =
+    Math.max(...rows.map(r => r.score)) -
+    Math.min(...rows.map(r => r.score));
+
+  document.getElementById("results")
+    .innerHTML = `
+      <div class="result">
+        <strong>役職平均</strong>
+        <div class="score">${avg.toFixed(1)} pt</div>
+        <span class="small">
+          最大と最小の差：${spread.toFixed(1)} pt
+        </span>
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>役職</th>
+            <th>想定pt</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>
+                <strong>${r.name}</strong><br>
+                <span class="small">${r.note}</span>
+                <div class="bar">
+                  <div style="width:${Math.min(100, r.score/maxScore*100)}%"></div>
+                </div>
+              </td>
+              <td>
+                <strong>${r.score.toFixed(1)}</strong>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+
+      ${
+        sellerTeamSize > 1
+          ? `
+            <div class="result">
+              <strong>売り子チームの販売ポイント内訳</strong><br>
+              販売者：
+              ${(sellerSalesPool*sellerShare).toFixed(1)} pt<br>
+              その他1人あたり：
+              ${sellerOtherShare.toFixed(1)} pt
+              <div class="small">
+                ※時間ポイントは各本人に別途加算する想定です。
+              </div>
+            </div>
+          `
+          : ""
+      }
+    `;
+}
+
+function setFairExample() {
+  const defaults = {
+    baseHourly: 10,
+    sellerPerTicket: 3,
+    registerPerTicket: 1,
+    frontHourly: 12,
+    backHourly: 12,
+    tentHourly: 10,
+    sellerHours: 4,
+    sellerTickets: 15,
+    sellerTeamSize: 1,
+    sellerShare: 100,
+    registerHours: 4,
+    registerCount: 80,
+    registerTeamSize: 2,
+    tentHours: 4,
+    tentMultiplier: 1.2,
+    frontHours: 4,
+    backHours: 4
+  };
+
+  Object.entries(defaults)
+    .forEach(([id, value]) => {
+      document.getElementById(id).value =
+        value;
+    });
+
+  calculate();
+}
+
+async function checkAdmin() {
+  const {
+    data: { user },
+    error
+  } =
+    await sb.auth.getUser();
+
+  if (error || !user) {
+    document.getElementById("authMessage")
+      .textContent =
+      "管理者としてログインしてください。";
+    return;
+  }
+
+  const {
+    data: adminRow,
+    error: adminError
+  } =
+    await sb
+      .from("admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+  if (adminError || !adminRow) {
+    document.getElementById("authMessage")
+      .textContent =
+      "このアカウントには管理者権限がありません。";
+    return;
+  }
+
+  document.getElementById("authMessage")
+    .style.display = "none";
+
+  document.getElementById("app")
+    .style.display = "block";
+
+  calculate();
+}
+
+document.getElementById("sellerTeamSize")
+  .addEventListener(
+    "input",
+    () => {
+      normalizeSellerShare();
+      calculate();
+    }
+  );
+
+[
+  "baseHourly",
+  "sellerPerTicket",
+  "registerPerTicket",
+  "frontHourly",
+  "backHourly",
+  "tentHourly",
+  "sellerHours",
+  "sellerTickets",
+  "sellerShare",
+  "registerHours",
+  "registerCount",
+  "registerTeamSize",
+  "tentHours",
+  "tentMultiplier",
+  "frontHours",
+  "backHours"
+].forEach(id => {
+  document.getElementById(id)
+    .addEventListener(
+      "input",
+      calculate
+    );
+});
+
+checkAdmin();
+</script>
+</body>
+</html>
