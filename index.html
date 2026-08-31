@@ -680,22 +680,23 @@
             ${data.ticket_code}
           </p>
 
-          <button
-            id="useTicketButton"
-            onclick="
-              useTicket(
-                '${data.ticket_code}'
-              )
-            "
-          >
-            使用する
-          </button>
+          <div class="subcard">
+            <strong>交換する商品を選択</strong><br><br>
+            <button id="useRiceButton" onclick="useTicket('${data.ticket_code}','fried_rice')">
+              🍚 炒飯1個と交換
+            </button>
+            <button id="useSesameButton" onclick="useTicket('${data.ticket_code}','sesame_pair')">
+              ● 胡麻団子2個と交換
+            </button>
+            <div id="registerPriceInfo" class="small">現在価格を確認しています...</div>
+          </div>
 
           <button onclick="startScanner()">
             キャンセルして次を読む
           </button>
         `;
 
+        await showRegisterPriceInfo();
         return;
       }
 
@@ -777,8 +778,28 @@
     }
 
 
+
+    async function showRegisterPriceInfo() {
+      const box = document.getElementById("registerPriceInfo");
+      if (!box) return;
+      const { data } = await supabaseClient.from("menu_state").select("*").eq("id",1).maybeSingle();
+      if (!data) return;
+      const pair = data.sesame_pair_enabled && data.sesame_pair_price != null
+        ? data.sesame_pair_price : data.sesame_single_price * 2;
+      const riceRefund = Math.max(450 - data.fried_rice_price,0);
+      const sesameRefund = Math.max(450 - pair,0);
+      box.innerHTML = `
+        炒飯：${data.fried_rice_price}円${riceRefund ? ` → <strong>${riceRefund}円返金</strong>` : ""}<br>
+        胡麻団子2個：${pair}円${sesameRefund ? ` → <strong>${sesameRefund}円返金</strong>` : ""}
+      `;
+      const rb=document.getElementById("useRiceButton"), sb=document.getElementById("useSesameButton");
+      if(rb && data.fried_rice_status==='sold_out'){ rb.disabled=true; rb.textContent='🍚 炒飯 売り切れ'; }
+      if(sb && data.sesame_status==='sold_out'){ sb.disabled=true; sb.textContent='● 胡麻団子 売り切れ'; }
+    }
+
     async function useTicket(
-      ticketCode
+      ticketCode,
+      item
     ) {
 
       const resultBox =
@@ -786,14 +807,8 @@
           "result"
         );
 
-      const useButton =
-        document.getElementById(
-          "useTicketButton"
-        );
-
-      if (useButton) {
-        useButton.disabled = true;
-      }
+      const useButton = document.getElementById(item === "fried_rice" ? "useRiceButton" : "useSesameButton");
+      document.querySelectorAll("#useRiceButton,#useSesameButton").forEach((button) => button.disabled = true);
 
       const allowed =
         await checkRegisterPermission();
@@ -817,27 +832,11 @@
       resultBox.innerHTML =
         "使用処理中...";
 
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from("tickets")
-          .update({
-            status: "used",
-            used_at:
-              new Date().toISOString()
-          })
-          .eq(
-            "ticket_code",
-            ticketCode
-          )
-          .eq(
-            "status",
-            "active"
-          )
-          .select()
-          .maybeSingle();
+      const { data: rpcData, error } = await supabaseClient.rpc("use_ticket", {
+        p_ticket_code: ticketCode,
+        p_item: item
+      });
+      const data = rpcData?.[0] || null;
 
       if (error) {
 
@@ -925,8 +924,11 @@
         <h2>✅ 使用完了</h2>
 
         <p>
-          ${data.product_name}
+          ${data.redemption_item === "fried_rice" ? "炒飯1個" : "胡麻団子2個"}
         </p>
+
+        <p><strong>当日価格：</strong>${data.redemption_price}円</p>
+        ${data.cashback_amount > 0 ? `<p class="warning"><strong>💴 ${data.cashback_amount}円を購入者へ返金してください</strong></p>` : `<p>追加返金なし</p>`}
 
         <p>
           ${new Date(
