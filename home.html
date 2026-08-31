@@ -667,6 +667,11 @@
               </span>
             </button>
 
+            <button class="menu-card" onclick="location.href='presale.html'">
+              <span class="menu-icon">券</span><span class="menu-name">前売りノルマ</span>
+              <span class="menu-desc">ノルマ選択・前売りpt・残券確認</span>
+            </button>
+
             <button
               id="registerButton"
               class="menu-card"
@@ -786,6 +791,11 @@
               <span class="menu-desc">
                 係数・再計算・ランキング
               </span>
+            </button>
+
+            <button id="presaleAdminButton" class="menu-card" onclick="location.href='presale-admin.html'" style="display:none;">
+              <span class="menu-icon">管</span><span class="menu-name">前売り・券種管理</span>
+              <span class="menu-desc">ノルマ確定・価格・残券・インセンティブ</span>
             </button>
 
             <button
@@ -1287,6 +1297,8 @@
         isAdmin
           ? "block"
           : "none";
+
+      document.getElementById("presaleAdminButton").style.display = isAdmin ? "block" : "none";
 
       document.getElementById(
         "orderEntryButton"
