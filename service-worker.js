@@ -1,87 +1,28 @@
-const CACHE_NAME = "sigma-ticket-pwa-v4";
-
+const CACHE_NAME = "sigma-ticket-pwa-v5-1";
 const APP_SHELL = [
-  "./",
-  "./home.html",
-  "./staff.html",
-  "./seller.html",
-  "./seller-register.html",
-  "./claim.html",
-  "./index.html",
-  "./front.html",
-  "./back.html",
-  "./admin.html",
-  "./manifest.webmanifest",
-  "./icon-180.png",
-  "./icon-192.png",
-  "./icon-512.png"
+ "./",
+ "./home.html",
+ "./staff.html",
+ "./seller.html",
+ "./seller-register.html",
+ "./claim.html",
+ "./index.html",
+ "./front.html",
+ "./back.html",
+ "./admin.html",
+ "./operations.html",
+ "./seller-team.html",
+ "./points-admin.html",
+ "./points-my.html",
+ "./order-entry.html",
+ "./register-teams.html",
+ "./shopping.html",
+ "./role-control.html",
+ "./manifest.webmanifest",
+ "./icon-180.png",
+ "./icon-192.png",
+ "./icon-512.png"
 ];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
-        )
-      )
-      .then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", (event) => {
-  const request = event.request;
-
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
-
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  if (
-    request.mode === "navigate" ||
-    request.destination === "document"
-  ) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME)
-            .then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() =>
-          caches.match(request)
-            .then((cached) => cached || caches.match("./home.html"))
-        )
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request)
-      .then((cached) => {
-        if (cached) return cached;
-
-        return fetch(request)
-          .then((response) => {
-            const copy = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => cache.put(request, copy));
-            return response;
-          });
-      })
-  );
-});
+self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(APP_SHELL)).then(()=>self.skipWaiting())));
+self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener("fetch",e=>{const r=e.request;if(r.method!=="GET")return;const u=new URL(r.url);if(u.origin!==location.origin)return;if(r.mode==="navigate"||r.destination==="document"){e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(CACHE_NAME).then(c=>c.put(r,cp));return res}).catch(()=>caches.match(r).then(x=>x||caches.match("./home.html"))));return;}e.respondWith(caches.match(r).then(c=>c||fetch(r).then(res=>{const cp=res.clone();caches.open(CACHE_NAME).then(x=>x.put(r,cp));return res})));});
