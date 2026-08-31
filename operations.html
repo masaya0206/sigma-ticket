@@ -1,0 +1,26 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>シグマ祭 価格・販売管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="manifest" href="./manifest.webmanifest"><meta name="theme-color" content="#b5121b">
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff7f4;color:#222;max-width:760px;margin:auto;padding:20px}h1{color:#8f0e15}.card{background:#fff;border:1px solid #ead6d1;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 6px 20px #0001}button{background:#b5121b;color:white;border:0;border-radius:12px;padding:12px 16px;margin:6px 4px;font-weight:800}button.secondary{background:#555}input,select,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:10px;margin:6px 0 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ok{background:#edf8ef}.warn{background:#fff5d8}.danger{background:#ffe7e7}.small{font-size:13px;color:#666}.price{font-size:24px;font-weight:900}@media(max-width:600px){.grid{grid-template-columns:1fr}}</style></head><body><h1>価格・販売管理</h1><button onclick="location.href='home.html'">🏠 ポータル</button><div id="gate" class="card">権限を確認しています...</div>
+<div id="main" style="display:none">
+<div class="card"><h2>現在の価格</h2><div id="live"></div></div>
+<div class="card"><h2>変更</h2>
+<label>炒飯1個</label><input id="rice" type="number" min="0" step="50">
+<label>胡麻団子1個</label><input id="sesameSingle" type="number" min="0" step="50">
+<label><input id="pairEnabled" type="checkbox" style="width:auto"> 胡麻団子2個セット価格を使う</label>
+<input id="sesamePair" type="number" min="0" step="50" placeholder="2個セット価格">
+<div class="grid"><div><label>炒飯状態</label><select id="riceStatus"><option value="selling">販売中</option><option value="low">残りわずか</option><option value="sold_out">売り切れ</option></select></div><div><label>胡麻団子状態</label><select id="sesameStatus"><option value="selling">販売中</option><option value="low">残りわずか</option><option value="sold_out">売り切れ</option></select></div></div>
+<label>購入者向けお知らせ</label><textarea id="notice" rows="3" placeholder="例：胡麻団子2個500円実施中"></textarea>
+<button onclick="saveState()">変更を反映</button><p id="msg"></p></div>
+<div class="card"><h2>変更履歴</h2><button class="secondary" onclick="loadHistory()">更新</button><div id="history"></div></div></div>
+<script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+function statusText(v){return v==='sold_out'?'売り切れ':v==='low'?'残りわずか':'販売中'}
+function pairPrice(d){return d.sesame_pair_enabled&&d.sesame_pair_price!=null?d.sesame_pair_price:d.sesame_single_price*2}
+function render(d){document.getElementById('live').innerHTML=`<div class="grid"><div><div>炒飯1個</div><div class="price">${d.fried_rice_price}円</div><div>${statusText(d.fried_rice_status)}</div></div><div><div>胡麻団子</div><div class="price">1個 ${d.sesame_single_price}円</div><div>2個 ${pairPrice(d)}円 / ${statusText(d.sesame_status)}</div></div></div>${d.notice?`<p><strong>${d.notice}</strong></p>`:''}<p class="small">更新：${new Date(d.updated_at).toLocaleString('ja-JP')}</p>`;rice.value=d.fried_rice_price;sesameSingle.value=d.sesame_single_price;pairEnabled.checked=d.sesame_pair_enabled;sesamePair.value=d.sesame_pair_price??'';riceStatus.value=d.fried_rice_status;sesameStatus.value=d.sesame_status;notice.value=d.notice??''}
+async function load(){const {data,error}=await sb.from('menu_state').select('*').eq('id',1).maybeSingle();if(error){msg.textContent=error.message;return}render(data)}
+async function saveState(){msg.textContent='反映中...';const payload={fried_rice_price:+rice.value,sesame_single_price:+sesameSingle.value,sesame_pair_enabled:pairEnabled.checked,sesame_pair_price:pairEnabled.checked?+sesamePair.value:null,fried_rice_status:riceStatus.value,sesame_status:sesameStatus.value,notice:notice.value.trim()||null};const {error}=await sb.from('menu_state').update(payload).eq('id',1);msg.textContent=error?'エラー：'+error.message:'✅ 反映しました';if(!error){await load();await loadHistory()}}
+async function loadHistory(){const {data,error}=await sb.from('menu_state_history').select('*').order('changed_at',{ascending:false}).limit(30);history.innerHTML=error?error.message:(data||[]).map(x=>`<div class="card"><strong>${new Date(x.changed_at).toLocaleString('ja-JP')}</strong><br>炒飯 ${x.old_state.fried_rice_price}→${x.new_state.fried_rice_price}円 / 胡麻2個 ${pairPrice(x.old_state)}→${pairPrice(x.new_state)}円</div>`).join('')||'履歴なし'}
+async function init(){const {data:{user}}=await sb.auth.getUser();if(!user){gate.innerHTML='ログインが必要です。';return}const {data,error}=await sb.rpc('can_manage_menu');if(error||!data){gate.innerHTML='⛔ 価格変更権限がありません。<br><span class="small">管理者、または実際に勤務中の表番・裏番のみ利用できます。</span>';return}gate.innerHTML='✅ 価格変更権限あり';main.style.display='block';await load();await loadHistory();sb.channel('menu-admin-live').on('postgres_changes',{event:'UPDATE',schema:'public',table:'menu_state',filter:'id=eq.1'},p=>render(p.new)).subscribe()}
+init();
+</script><script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));</script></body></html>
