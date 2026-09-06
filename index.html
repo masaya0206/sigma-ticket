@@ -313,85 +313,43 @@
     async function checkRegisterPermission() {
 
       const status =
-        document.getElementById(
-          "registerStatus"
-        );
+        document.getElementById("registerStatus");
 
       const scanButton =
-        document.getElementById(
-          "scanButton"
-        );
+        document.getElementById("scanButton");
 
-      const user =
-        await getCurrentUser();
+      const user = await getCurrentUser();
 
       if (!user) {
-
-        scanButton.style.display =
-          "none";
-
-        status.textContent =
-          "スタッフ画面からログインしてください。";
-
+        location.href = "home.html";
         return false;
       }
 
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from("staff_attendance")
-          .select(
-            "id,clock_in,attendance_state"
-          )
-          .eq("user_id", user.id)
-          .eq("role", "register")
-          .eq(
-            "attendance_state",
-            "working"
-          )
-          .is("clock_out", null)
-          .order(
-            "clock_in",
-            { ascending: false }
-          )
-          .limit(1)
-          .maybeSingle();
+      const { data: allowed, error } =
+        await supabaseClient.rpc("is_current_register");
 
       if (error) {
-
-        scanButton.style.display =
-          "none";
-
+        scanButton.style.display = "none";
         status.textContent =
-          "レジ勤務状態を確認できませんでした。";
-
+          "レジ権限を確認できませんでした。";
         return false;
       }
 
-      if (!data) {
-
-        scanButton.style.display =
-          "none";
-
+      if (!allowed) {
+        scanButton.style.display = "none";
         status.textContent =
-          "現在レジ勤務中ではありません。";
-
+          "レジ勤務中または管理者のみ利用できます。";
         return false;
       }
 
       scanButton.style.display =
-        scanner
-          ? "none"
-          : "block";
+        scanner ? "none" : "block";
 
       status.textContent =
-        "🟢 レジ勤務中";
+        "🟢 レジ利用可能";
 
       return true;
     }
-
 
     async function startScanner() {
 
@@ -973,17 +931,7 @@
           .getSession();
 
       if (!session) {
-
-        document.getElementById(
-          "registerStatus"
-        ).textContent =
-          "スタッフ画面からログインしてください。";
-
-        document.getElementById(
-          "scanButton"
-        ).style.display =
-          "none";
-
+        location.href = "home.html";
         return;
       }
 
