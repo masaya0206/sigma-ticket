@@ -5,8 +5,21 @@
 <div class="card"><h2>確定内容</h2><div id="details">読み込み中...</div></div>
 <script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 async function updatePreview(){
-  const n=Math.max(6,Number(quota.value)||6);
-  quota.value=n;
+  const raw=quota.value.trim();
+
+  // 入力途中で空欄にしても6へ戻さない
+  if(raw===''){
+    preview.innerHTML='<span class="muted">6枚以上を入力してください。</span>';
+    return;
+  }
+
+  const n=Number(raw);
+
+  if(!Number.isInteger(n)||n<6){
+    preview.innerHTML='<span class="warn">最低ノルマは6枚です。</span>';
+    return;
+  }
+
   preview.innerHTML='計算中...';
   const{data,error}=await db.rpc('presale_points_for_quota',{p_quota:n});
   preview.innerHTML=error
@@ -15,4 +28,14 @@ async function updatePreview(){
 }
 quota.oninput=updatePreview;
 async function load(){const{data:{user}}=await db.auth.getUser();if(!user){location.href='home.html';return}const{data,error}=await db.rpc('my_presale_status');if(error){details.textContent='エラー: '+error.message;return}quota.value=data.requested_quota||6;await updatePreview();pt.textContent=Number(data.presale_points||0).toFixed(1)+' pt';res.textContent=(data.residual_remaining||0)+' 枚';resValue.textContent=(data.residual_remaining||0)>0?'残券相当額 '+Number(data.residual_value||0).toLocaleString()+'円':'残券なし ✓';const confirmed=!!data.confirmed_at;save.disabled=confirmed;quota.disabled=confirmed;details.innerHTML=`希望: <b>${data.requested_quota}枚</b><br>確定: <b>${confirmed?data.confirmed_quota+'枚':'未確定'}</b><br>確定時徴収額: <b>${data.collected_amount==null?'--':Number(data.collected_amount).toLocaleString()+'円'}</b><br>祭前販売: <b>${data.presale_sold}枚</b><br>超過販売: <b>${data.overflow_sold}枚</b><br><span class="muted">超過分は1枚=1pt</span>`;}
-async function saveQuota(){const n=Number(quota.value);msg.textContent='保存中...';const{error}=await db.rpc('select_presale_quota',{p_quota:n});msg.textContent=error?'エラー: '+error.message:'✅ 選択を保存しました';if(!error)load()}load();</script></main></body></html>
+async function saveQuota(){
+  const n=Number(quota.value);
+  if(!Number.isInteger(n)||n<6){
+    msg.textContent='6枚以上の整数を入力してください。';
+    return;
+  }
+  msg.textContent='保存中...';
+  const{error}=await db.rpc('select_presale_quota',{p_quota:n});
+  msg.textContent=error?'エラー: '+error.message:'✅ 選択を保存しました';
+  if(!error)load();
+}load();</script></main></body></html>
