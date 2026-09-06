@@ -25,9 +25,8 @@ button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 #reader{width:100%;overflow:hidden;border-radius:16px} .stat{padding:12px;background:#fff8f8;border-radius:14px}</style>
 </head><body><header><h1>👤 スタッフ・勤怠</h1></header><main>
 <div class="card"><h2>現在の状態</h2><div id="status">読み込み中...</div></div>
-<div class="card"><h2>ポイント・残券</h2><div class="grid"><div class="stat"><div class="small">前売りpt</div><div class="big" id="prePt">-</div></div><div class="stat"><div class="small">当日pt</div><div class="big" id="dayPt">-</div></div></div><div class="stat" style="margin-top:10px"><div class="small">ノルマ残券</div><div class="big" id="residual">-</div><div id="residualValue" class="small"></div></div><p class="small">前売りptと当日ptは別部門で計算します。総合ptは表示しません。</p></div>
 <div class="card"><h2>動的QRで出勤・退勤</h2><p class="small">会場に表示されている最新QRを読み取ります。同じQRを同じ人が2回使うことはできません。</p><button class="primary" id="scanBtn">QRを読み取る</button><button id="stopBtn" style="display:none">カメラを止める</button><div id="reader"></div><div id="scanMsg"></div></div>
-<div class="card"><button onclick="location.href='shift.html'">🗓 希望シフトを提出</button><button onclick="location.href='points-my.html'">⭐ ポイント詳細</button><button onclick="location.href='home.html'">ホームへ戻る</button></div>
+<div class="card"><button onclick="location.href='shift.html'">🗓 希望シフトを提出</button><button onclick="location.href='home.html'">ホームへ戻る</button></div>
 </main><script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 let scanner=null,busy=false;
