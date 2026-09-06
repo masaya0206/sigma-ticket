@@ -506,9 +506,9 @@
 
         <button
           class="secondary-button"
-          onclick="resetPassword()"
+          onclick="location.href='reset-password.html'"
         >
-          パスワードを設定・再設定
+          パスワードを忘れた方
         </button>
 
         <p
@@ -926,53 +926,6 @@
 
       await showPortal();
     }
-
-
-    async function resetPassword() {
-
-      const email =
-        document.getElementById(
-          "email"
-        ).value;
-
-      const message =
-        document.getElementById(
-          "loginMessage"
-        );
-
-      if (!email) {
-
-        message.textContent =
-          "メールアドレスを入力してください。";
-
-        return;
-      }
-
-      const {
-        error
-      } =
-        await supabaseClient.auth
-          .resetPasswordForEmail(
-            email,
-            {
-              redirectTo:
-                "https://masaya0206.github.io/sigma-ticket/home.html"
-            }
-          );
-
-      if (error) {
-
-        message.textContent =
-          "エラー：" +
-          error.message;
-
-        return;
-      }
-
-      message.textContent =
-        "パスワード設定用メールを送信しました。";
-    }
-
 
     async function saveNewPassword() {
 
