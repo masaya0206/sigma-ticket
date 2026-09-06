@@ -363,52 +363,7 @@
         表番勤務状態を確認しています...
       </p>
     </div>
-
-
-    <div class="card">
-      <h2>来客カウント</h2>
-      <p class="small">伝票1枚＝1組として自動カウントします。手動入力はありません。</p>
-      <div id="todayCustomerCount" class="big-number">0</div>
-      <p style="text-align:center;">本日の伝票数（注文組数）</p>
-      <button onclick="location.href='order-entry.html'">🧾 伝票を作成</button>
-      <p id="countMessage"></p>
-    </div>
-
-
-    <div class="card">
-      <h2>現在の混雑度</h2>
-
-      <p class="small">
-        表番の目視による補助情報です。
-        伝票数とは別の補助情報として記録します。
-      </p>
-
-      <div class="mini-grid">
-        <button onclick="setCrowdLevel('low')">
-          🟢 空いている
-        </button>
-
-        <button onclick="setCrowdLevel('medium')">
-          🟡 普通
-        </button>
-
-        <button onclick="setCrowdLevel('high')">
-          🔴 混雑
-        </button>
-      </div>
-
-      <p
-        id="crowdStatus"
-        class="status"
-      >
-        未入力
-      </p>
-
-      <p id="crowdMessage"></p>
-    </div>
-
-
-    <div class="card">
+<div class="card">
       <h2>今時間の集計</h2>
 
       <div id="currentHourSummary">
@@ -765,7 +720,7 @@
       } =
         await supabaseClient
           .from(
-            "order_slips"
+            "front_customer_events"
           )
           .insert({
             staff_user_id:
@@ -908,7 +863,7 @@
       } =
         await supabaseClient
           .from(
-            "order_slips"
+            "front_customer_events"
           )
           .select("count_delta")
           .gte(
@@ -1036,7 +991,11 @@
             "order_slips"
           )
           .select(
-            "count_delta,recorded_at"
+            "id,recorded_at"
+          )
+          .is(
+            "voided_at",
+            null
           )
           .gte(
             "recorded_at",
@@ -1091,11 +1050,7 @@
           hour >= 8 &&
           hour <= 20
         ) {
-
-          counts[hour] +=
-            Number(
-              item.count_delta
-            );
+          counts[hour] += 1;
         }
       }
 
@@ -1111,17 +1066,13 @@
                 </span>
 
                 <strong>
-                  ${Math.max(
-                    0,
-                    count
-                  )}人
+                  ${count}組
                 </strong>
               </div>
             `
           )
           .join("");
     }
-
 
     async function loadCurrentHourSummary() {
 
@@ -1132,14 +1083,24 @@
         currentHourRange();
 
       const {
-        data,
+        count,
         error
       } =
         await supabaseClient
           .from(
             "order_slips"
           )
-          .select("count_delta")
+          .select(
+            "id",
+            {
+              count: "exact",
+              head: true
+            }
+          )
+          .is(
+            "voided_at",
+            null
+          )
           .gte(
             "recorded_at",
             start.toISOString()
@@ -1162,20 +1123,6 @@
         return;
       }
 
-      const count =
-        (data || [])
-          .reduce(
-            (
-              sum,
-              item
-            ) =>
-              sum +
-              Number(
-                item.count_delta
-              ),
-            0
-          );
-
       const now =
         new Date();
 
@@ -1188,20 +1135,16 @@
           </span>
 
           <strong>
-            ${Math.max(
-              0,
-              count
-            )}人
+            ${count || 0}組
           </strong>
         </div>
 
         <p class="small">
-          この時間帯は終了後に
-          ポイント計算へ利用します。
+          伝票数から売り子・レジの
+          販売難易度を自動計算します。
         </p>
       `;
     }
-
 
     async function loadTicketUsage() {
 
@@ -1301,8 +1244,6 @@
     async function refreshAll() {
 
       await Promise.all([
-        loadTodayCustomerCount(),
-        loadCurrentCrowdLevel(),
         loadHourlyCounts(),
         loadCurrentHourSummary(),
         loadTicketUsage()
