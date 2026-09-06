@@ -440,9 +440,21 @@
         oninput="loadMySummary()"
       >
 
-      <button onclick="loadMySummary()">
-        販売状況を更新
-      </button>
+      <select id="historyPeriod" onchange="changeHistoryPeriod()">
+        <option value="today">今日</option>
+        <option value="yesterday">昨日</option>
+        <option value="7days" selected>直近7日</option>
+        <option value="30days">直近30日</option>
+        <option value="custom">期間指定</option>
+        <option value="all">すべて</option>
+      </select>
+
+      <div id="historyCustomArea" style="display:none;">
+        <label>開始日<input id="historyFrom" type="date" onchange="loadMySummary()"></label>
+        <label>終了日<input id="historyTo" type="date" onchange="loadMySummary()"></label>
+      </div>
+
+      <button onclick="loadMySummary()">販売状況を更新</button>
 
       <div id="mySummaryArea">
         販売状況はまだ表示されていません。
@@ -1042,6 +1054,42 @@
     }
 
 
+
+    function changeHistoryPeriod() {
+      const period = document.getElementById("historyPeriod")?.value || "7days";
+      document.getElementById("historyCustomArea").style.display =
+        period === "custom" ? "block" : "none";
+      loadMySummary();
+    }
+
+    function historyRange() {
+      const period = document.getElementById("historyPeriod")?.value || "7days";
+      if (period === "all") return { from: null, to: null };
+
+      const now = new Date();
+      const start = new Date(now);
+      const end = new Date(now);
+
+      if (period === "today") {
+        start.setHours(0,0,0,0); end.setHours(24,0,0,0);
+      } else if (period === "yesterday") {
+        start.setDate(start.getDate()-1); start.setHours(0,0,0,0); end.setHours(0,0,0,0);
+      } else if (period === "7days") {
+        start.setDate(start.getDate()-6); start.setHours(0,0,0,0); end.setHours(24,0,0,0);
+      } else if (period === "30days") {
+        start.setDate(start.getDate()-29); start.setHours(0,0,0,0); end.setHours(24,0,0,0);
+      } else if (period === "custom") {
+        const f = document.getElementById("historyFrom")?.value;
+        const t = document.getElementById("historyTo")?.value;
+        if (!f || !t) return { incomplete: true };
+        const cf = new Date(f+"T00:00:00");
+        const ct = new Date(t+"T00:00:00");
+        ct.setDate(ct.getDate()+1);
+        return { from: cf.toISOString(), to: ct.toISOString() };
+      }
+      return { from: start.toISOString(), to: end.toISOString() };
+    }
+
     async function loadMySummary() {
 
       const area =
@@ -1066,23 +1114,26 @@
         return;
       }
 
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
+      const range = historyRange();
+
+      if (range.incomplete) {
+        area.textContent = "開始日と終了日を選んでください。";
+        return;
+      }
+
+      let ticketQuery =
+        supabaseClient
           .from("tickets")
           .select(
             "ticket_code,status,created_at,buyer_name,product_name,claim_token,seller_team_id,seller_share_ratio"
           )
-          .eq(
-            "seller_id",
-            user.id
-          )
-          .order(
-            "created_at",
-            { ascending: false }
-          );
+          .eq("seller_id", user.id);
+
+      if (range.from) ticketQuery = ticketQuery.gte("created_at", range.from);
+      if (range.to) ticketQuery = ticketQuery.lt("created_at", range.to);
+
+      const { data, error } =
+        await ticketQuery.order("created_at", { ascending: false });
 
       if (error) {
 
@@ -1100,10 +1151,12 @@
         document.getElementById("historySearch")?.value || ""
       ).trim().toLowerCase();
 
-      const visibleData = (data || []).filter((ticket) =>
+      const filteredData = (data || []).filter((ticket) =>
         !searchText ||
         String(ticket.buyer_name || "").toLowerCase().includes(searchText)
       );
+
+      const visibleData = filteredData.slice(0, 50);
 
       let total = 0;
       let pending = 0;
@@ -1165,6 +1218,11 @@
         </p>
 
         <h3>発行履歴</h3>
+        <p class="small">${
+          filteredData.length > 50
+            ? `該当 ${filteredData.length}件中、最新50件を表示`
+            : `該当 ${filteredData.length}件`
+        }</p>
       `;
 
       if (
