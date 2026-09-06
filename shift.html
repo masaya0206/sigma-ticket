@@ -1,0 +1,34 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>希望シフト</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
+header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}
+main{max-width:720px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
+button,input,select,textarea{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
+input,select,textarea{border:1px solid #ddd5d1;background:#fff}
+button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
+.primary{background:#b5121b;color:#fff}
+.danger{background:#7f1d1d;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.small{font-size:12px;color:#6e6e73;line-height:1.55}
+.big{font-size:30px;font-weight:900}
+.row{padding:11px 0;border-top:1px solid #eee}
+.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:#b5121b;font-size:12px;font-weight:800}
+.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>🗓 希望シフト</h1></header><main>
+<div class="card"><h2>参加可能時間を追加</h2><label>日<select id="day"></select></label><label>開始<input id="from" type="datetime-local"></label><label>終了<input id="to" type="datetime-local"></label><label>メモ<textarea id="note" placeholder="例：午後から参加できます"></textarea></label><button class="primary" id="save">追加</button><div id="msg"></div><p class="small">これは希望時間です。ポイント計算には提出シフトではなく実際の勤怠時間を使います。</p></div>
+<div class="card"><h2>提出済み</h2><div id="list">読み込み中...</div></div><button onclick="location.href='staff.html'">スタッフ画面へ戻る</button></main>
+<script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");let days=[];
+const localInput=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,16)};
+async function loadDays(){const {data,error}=await sb.from('event_days').select('*').eq('is_enabled',true).order('id');if(error){msg.textContent=error.message;return}days=data||[];day.innerHTML=days.map(d=>`<option value="${d.id}">${d.label}</option>`).join('');syncTime()}
+function syncTime(){const d=days.find(x=>x.id==day.value);if(!d)return;from.value=localInput(d.starts_at);to.value=localInput(d.ends_at)}
+day.onchange=syncTime;
+save.onclick=async()=>{msg.textContent='保存中...';const {data,error}=await sb.rpc('save_my_availability',{p_event_day_id:+day.value,p_from:new Date(from.value).toISOString(),p_to:new Date(to.value).toISOString(),p_note:note.value});msg.innerHTML=error?'<span class="err">'+error.message+'</span>':'<span class="ok">✅ 追加しました</span>';if(!error){note.value='';await loadList()}};
+async function del(id){if(!confirm('この希望時間を削除しますか？'))return;const {error}=await sb.rpc('delete_my_availability',{p_id:id});if(error)alert(error.message);else loadList()}
+async function loadList(){const {data,error}=await sb.from('staff_availability').select('id,event_day_id,available_from,available_to,note').order('available_from');if(error){list.textContent=error.message;return}list.innerHTML=(data||[]).length?(data||[]).map(x=>{const d=days.find(y=>y.id===x.event_day_id);return `<div class="row"><b>${d?.label||''}</b><br>${new Date(x.available_from).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}〜${new Date(x.available_to).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}<br><span class="small">${x.note||''}</span><button onclick="del(${x.id})">削除</button></div>`}).join(''):'まだ提出していません。'}
+(async()=>{const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return}await loadDays();await loadList()})();
+</script></body></html>
