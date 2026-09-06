@@ -675,8 +675,8 @@
             <button
               id="registerButton"
               class="menu-card"
-              onclick="location.href='index.html'"
-              style="display:none;"
+              onclick="protectedNavigate('index.html',['register'],'レジ勤務中または管理者のみ利用できます。')"
+              
             >
               <span class="menu-icon">読</span>
               <span class="menu-name">
@@ -690,8 +690,8 @@
             <button
               id="frontButton"
               class="menu-card"
-              onclick="location.href='front.html'"
-              style="display:none;"
+              onclick="protectedNavigate('front.html',['front'],'表番勤務中または管理者のみ利用できます。')"
+              
             >
               <span class="menu-icon">表</span>
               <span class="menu-name">
@@ -705,8 +705,8 @@
             <button
               id="backButton"
               class="menu-card"
-              onclick="location.href='back.html'"
-              style="display:none;"
+              onclick="protectedNavigate('back.html',['back'],'裏番勤務中または管理者のみ利用できます。')"
+              
             >
               <span class="menu-icon">裏</span>
               <span class="menu-name">
@@ -744,8 +744,8 @@
             <button
               id="orderEntryButton"
               class="menu-card"
-              onclick="location.href='order-entry.html'"
-              style="display:none;"
+              onclick="protectedNavigate('order-entry.html',['front'],'表番勤務中または管理者のみ利用できます。')"
+              
             >
               <span class="menu-icon">票</span>
               <span class="menu-name">伝票入力</span>
@@ -757,8 +757,8 @@
             <button
               id="registerTeamsButton"
               class="menu-card"
-              onclick="location.href='register-teams.html'"
-              style="display:none;"
+              onclick="protectedNavigate('register-teams.html',['front','back'],'表番・裏番または管理者のみ利用できます。')"
+              
             >
               <span class="menu-icon">組</span>
               <span class="menu-name">レジ編成</span>
@@ -770,8 +770,8 @@
             <button
               id="roleControlButton"
               class="menu-card"
-              onclick="location.href='role-control.html'"
-              style="display:none;"
+              onclick="protectedNavigate('role-control.html',['front','back'],'表番・裏番または管理者のみ利用できます。')"
+              
             >
               <span class="menu-icon">役</span>
               <span class="menu-name">役職変更</span>
@@ -783,8 +783,8 @@
             <button
               id="pointsAdminButton"
               class="menu-card"
-              onclick="location.href='points-admin.html'"
-              style="display:none;"
+              onclick="protectedNavigate('points-admin.html',[],'管理者のみ利用できます。',true)"
+              
             >
               <span class="menu-icon">計</span>
               <span class="menu-name">ポイント管理</span>
@@ -793,37 +793,26 @@
               </span>
             </button>
 
-            <button id="presaleAdminButton" class="menu-card" onclick="location.href='presale-admin.html'" style="display:none;">
+            <button id="presaleAdminButton" class="menu-card" onclick="protectedNavigate('presale-admin.html',[],'管理者のみ利用できます。',true)" >
               <span class="menu-icon">管</span><span class="menu-name">前売り・券種管理</span>
               <span class="menu-desc">ノルマ確定・価格・残券・インセンティブ</span>
             </button>
-
-
-            <button
-              class="menu-card"
-              onclick="location.href='shift.html'"
-            >
-              <span class="menu-icon">予</span>
-              <span class="menu-name">希望シフト</span>
-              <span class="menu-desc">5日間の参加可能時間を提出</span>
-            </button>
-
-            <button
+<button
               id="attendanceQrButton"
               class="menu-card"
-              onclick="location.href='attendance-qr.html'"
-              style="display:none;"
+              onclick="protectedNavigate('attendance-qr.html',['front','back'],'表番・裏番または管理者のみ利用できます。')"
+              
             >
               <span class="menu-icon">QR</span>
-              <span class="menu-name">勤怠QR表示</span>
+              <span class="menu-name">勤怠QR管理</span>
               <span class="menu-desc">動的QRで出勤・退勤</span>
             </button>
 
             <button
               id="eventAdminButton"
               class="menu-card"
-              onclick="location.href='event-admin.html'"
-              style="display:none;"
+              onclick="protectedNavigate('event-admin.html',[],'管理者のみ利用できます。',true)"
+              
             >
               <span class="menu-icon">本</span>
               <span class="menu-name">本番運用設定</span>
@@ -833,8 +822,8 @@
             <button
               id="adminButton"
               class="menu-card"
-              onclick="location.href='admin.html'"
-              style="display:none;"
+              onclick="protectedNavigate('admin.html',[],'管理者のみ利用できます。',true)"
+              
             >
               <span class="menu-icon">管</span>
               <span class="menu-name">
@@ -849,9 +838,9 @@
         </section>
 
         <div class="notice">
-          このアプリから勤怠・チケット・ポイント・伝票入力・
-          レジ編成・役職変更・買い出しまで操作できます。
-          権限が必要な機能は、現在の役職または管理者権限に応じて表示されます。
+          全スタッフに同じメニューを表示します。
+          権限が必要な機能は、現在の役職または管理者権限がない場合は開きません。
+          管理者は役職に関係なくすべての管理機能を利用できます。
         </div>
 
       </div>
@@ -1238,6 +1227,20 @@
       const isAdmin =
         !!adminResult.data;
 
+      portalIsAdmin = isAdmin;
+
+      const {
+        data: currentRoleData
+      } = await supabaseClient.rpc(
+        "current_work_role",
+        { p_user: user.id }
+      );
+
+      portalCurrentRole =
+        currentRoleData ||
+        attendance?.role ||
+        null;
+
       const planned =
         assignment
           ? roleText(
@@ -1248,7 +1251,7 @@
       const working =
         attendance
           ? roleText(
-              attendance.role
+              portalCurrentRole
             )
           : "勤務なし";
 
@@ -1299,91 +1302,60 @@
           "勤務していません";
       }
 
-      document.getElementById(
-        "registerButton"
-      ).style.display =
-        attendance?.role ===
-        "register"
-          ? "block"
-          : "none";
+      
 
-      document.getElementById(
-        "frontButton"
-      ).style.display =
-        attendance?.role ===
-        "front"
-          ? "block"
-          : "none";
+      
 
-      document.getElementById(
-        "backButton"
-      ).style.display =
-        attendance?.role ===
-        "back"
-          ? "block"
-          : "none";
+      
 
-      document.getElementById(
-        "adminButton"
-      ).style.display =
-        isAdmin
-          ? "block"
-          : "none";
+      
 
-      document.getElementById("presaleAdminButton").style.display = isAdmin ? "block" : "none";
+      
 
-      document.getElementById(
-        "orderEntryButton"
-      ).style.display =
-        (
-          isAdmin ||
-          attendance?.role === "front"
-        )
-          ? "block"
-          : "none";
+      
 
-      document.getElementById(
-        "registerTeamsButton"
-      ).style.display =
-        (
-          isAdmin ||
-          attendance?.role === "front" ||
-          attendance?.role === "back"
-        )
-          ? "block"
-          : "none";
+      
 
-      document.getElementById(
-        "roleControlButton"
-      ).style.display =
-        (
-          isAdmin ||
-          attendance?.role === "front" ||
-          attendance?.role === "back"
-        )
-          ? "block"
-          : "none";
+      
 
-      document.getElementById(
-        "shoppingButton"
-      ).style.display =
-        (
-          isAdmin ||
-          attendance?.role === "back" ||
-          attendance?.role === "shopping_driver" ||
-          attendance?.role === "shopping_helper"
-        )
-          ? "block"
-          : "none";
+      
 
-      document.getElementById(
-        "pointsAdminButton"
-      ).style.display =
-        isAdmin
-          ? "block"
-          : "none";
+      
     }
 
+
+
+    let portalIsAdmin = false;
+    let portalCurrentRole = null;
+
+    function showAccessToast(message) {
+      const toast = document.getElementById("accessToast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      clearTimeout(window.__accessToastTimer);
+      window.__accessToastTimer = setTimeout(() => {
+        toast.style.display = "none";
+      }, 2600);
+    }
+
+    function protectedNavigate(page, roles = [], message = "この機能は利用できません。", adminOnly = false) {
+      if (portalIsAdmin) {
+        location.href = page;
+        return;
+      }
+
+      if (adminOnly) {
+        showAccessToast(message);
+        return;
+      }
+
+      if (roles.includes(portalCurrentRole)) {
+        location.href = page;
+        return;
+      }
+
+      showAccessToast(message);
+    }
 
     async function logout() {
 
@@ -1453,5 +1425,10 @@
     checkLogin();
   </script>
 
+<div id="accessToast" style="
+position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+background:#1f1f1f;color:white;padding:13px 18px;border-radius:14px;
+font-weight:700;max-width:88%;text-align:center;display:none;z-index:9999;
+box-shadow:0 8px 28px rgba(0,0,0,.25);"></div>
 </body>
 </html>
