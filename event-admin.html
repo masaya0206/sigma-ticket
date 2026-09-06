@@ -1,0 +1,36 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>本番運用設定</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
+header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}
+main{max-width:720px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
+button,input,select,textarea{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
+input,select,textarea{border:1px solid #ddd5d1;background:#fff}
+button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
+.primary{background:#b5121b;color:#fff}
+.danger{background:#7f1d1d;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.small{font-size:12px;color:#6e6e73;line-height:1.55}
+.big{font-size:30px;font-weight:900}
+.row{padding:11px 0;border-top:1px solid #eee}
+.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:#b5121b;font-size:12px;font-weight:800}
+.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>⚙️ 本番運用設定</h1></header><main>
+<div class="card"><h2>5日間の日時</h2><div id="days"></div><button class="primary" id="saveDays">日時を保存</button><div id="dayMsg"></div></div>
+<div class="card"><h2>希望シフト一覧</h2><button id="loadShifts">一覧を更新</button><div id="shifts"></div></div>
+<div class="card"><h2>本番前テストデータ初期化</h2><p class="small">スタッフ・管理者・価格・ポイント係数などの設定は残し、チケット、前売りノルマ実績、勤怠、役職、伝票、レジ、買い出し、ポイント等のテスト実績を消します。</p><input id="confirmText" placeholder="RESET と入力"><button class="danger" id="resetBtn">テスト実績を一括初期化</button><div id="resetMsg"></div></div>
+<button onclick="location.href='home.html'">ホームへ戻る</button></main>
+<script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");let dayRows=[];
+const lin=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,16)};
+async function check(){const {data:{user}}=await sb.auth.getUser();if(!user)return false;const {data}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data){document.body.innerHTML='管理者権限が必要です';return false}return true}
+async function loadDays(){const {data,error}=await sb.from('event_days').select('*').order('id');if(error){dayMsg.textContent=error.message;return}dayRows=data||[];days.innerHTML=dayRows.map(d=>`<div class="row"><b>${d.label}</b><input id="s${d.id}" type="datetime-local" value="${lin(d.starts_at)}"><input id="e${d.id}" type="datetime-local" value="${lin(d.ends_at)}"></div>`).join('')}
+saveDays.onclick=async()=>{dayMsg.textContent='保存中...';for(const d of dayRows){const {error}=await sb.from('event_days').update({starts_at:new Date(document.getElementById('s'+d.id).value).toISOString(),ends_at:new Date(document.getElementById('e'+d.id).value).toISOString(),updated_at:new Date().toISOString()}).eq('id',d.id);if(error){dayMsg.innerHTML='<span class="err">'+error.message+'</span>';return}}dayMsg.innerHTML='<span class="ok">✅ 保存しました</span>';await loadDays()};
+async function loadShiftList(){shifts.textContent='読み込み中...';const {data,error}=await sb.from('staff_availability').select('user_id,event_day_id,available_from,available_to,note').order('available_from');if(error){shifts.textContent=error.message;return}const {data:staff}=await sb.from('staff_members').select('user_id,staff_name');const names=Object.fromEntries((staff||[]).map(s=>[s.user_id,s.staff_name]));shifts.innerHTML=(data||[]).length?(data||[]).map(x=>`<div class="row"><b>${names[x.user_id]||x.user_id}</b> / ${dayRows.find(d=>d.id===x.event_day_id)?.label||''}<br>${new Date(x.available_from).toLocaleString('ja-JP')}〜${new Date(x.available_to).toLocaleTimeString('ja-JP')}<br><span class="small">${x.note||''}</span></div>`).join(''):'提出なし'}
+loadShifts.onclick=loadShiftList;
+resetBtn.onclick=async()=>{if(confirmText.value!=='RESET'){resetMsg.innerHTML='<span class="err">RESET と入力してください</span>';return}if(!confirm('本当にテスト実績をすべて初期化しますか？この操作は元に戻せません。'))return;resetBtn.disabled=true;resetMsg.textContent='初期化中...';const {data,error}=await sb.rpc('reset_test_operational_data');resetMsg.innerHTML=error?'<span class="err">'+error.message+'</span>':'<span class="ok">✅ '+data.message+'</span>';resetBtn.disabled=false};
+(async()=>{if(await check()){await loadDays();await loadShiftList()}})();
+</script></body></html>
