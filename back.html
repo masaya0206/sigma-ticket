@@ -986,12 +986,8 @@
           .rpc("is_current_back");
 
       if (error || !allowed) {
-        document.getElementById(
-          "loginMessage"
-        ).textContent =
-          "現在、裏番として利用できません。";
-
-        await supabaseClient.auth.signOut();
+        alert("裏番勤務中または管理者のみ利用できます。");
+        location.href = "home.html";
         return;
       }
 
@@ -2947,6 +2943,8 @@
 
       if (session) {
         await showBackArea();
+      } else {
+        location.href = "home.html";
       }
     }
 
