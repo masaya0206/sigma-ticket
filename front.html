@@ -367,60 +367,10 @@
 
     <div class="card">
       <h2>来客カウント</h2>
-
-      <p class="small">
-        テントに来たお客さんをカウントします。
-        後で時間帯別の混雑度・ポイント計算に利用します。
-      </p>
-
-      <div
-        id="todayCustomerCount"
-        class="big-number"
-      >
-        0
-      </div>
-
-      <p style="text-align:center;">
-        本日の累計来客数
-      </p>
-
-      <div class="button-grid">
-        <button onclick="addCustomers(1)">
-          ＋1
-        </button>
-
-        <button onclick="addCustomers(5)">
-          ＋5
-        </button>
-      </div>
-
-      <div class="button-grid">
-        <button onclick="addCustomers(-1)">
-          −1
-        </button>
-
-        <button onclick="openManualCount()">
-          数を指定
-        </button>
-      </div>
-
-      <div
-        id="manualCountArea"
-        style="display:none;"
-      >
-        <input
-          id="manualCount"
-          type="number"
-          min="1"
-          step="1"
-          placeholder="人数"
-        >
-
-        <button onclick="submitManualCount()">
-          この人数を追加
-        </button>
-      </div>
-
+      <p class="small">伝票1枚＝1組として自動カウントします。手動入力はありません。</p>
+      <div id="todayCustomerCount" class="big-number">0</div>
+      <p style="text-align:center;">本日の伝票数（注文組数）</p>
+      <button onclick="location.href='order-entry.html'">🧾 伝票を作成</button>
       <p id="countMessage"></p>
     </div>
 
@@ -430,7 +380,7 @@
 
       <p class="small">
         表番の目視による補助情報です。
-        来客数とは別に記録します。
+        伝票数とは別の補助情報として記録します。
       </p>
 
       <div class="mini-grid">
@@ -468,7 +418,7 @@
 
 
     <div class="card">
-      <h2>時間帯別 来客数</h2>
+      <h2>時間帯別 伝票数（注文組数）</h2>
 
       <button onclick="loadHourlyCounts()">
         集計を更新
@@ -815,7 +765,7 @@
       } =
         await supabaseClient
           .from(
-            "front_customer_events"
+            "order_slips"
           )
           .insert({
             staff_user_id:
@@ -958,7 +908,7 @@
       } =
         await supabaseClient
           .from(
-            "front_customer_events"
+            "order_slips"
           )
           .select("count_delta")
           .gte(
@@ -1083,7 +1033,7 @@
       } =
         await supabaseClient
           .from(
-            "front_customer_events"
+            "order_slips"
           )
           .select(
             "count_delta,recorded_at"
@@ -1187,7 +1137,7 @@
       } =
         await supabaseClient
           .from(
-            "front_customer_events"
+            "order_slips"
           )
           .select("count_delta")
           .gte(
