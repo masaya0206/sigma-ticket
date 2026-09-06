@@ -655,32 +655,14 @@
 
 
     async function isCurrentFront() {
+      const user = await getCurrentUser();
+      if (!user) return false;
 
-      const user =
-        await getCurrentUser();
-
-      if (!user) {
-        return false;
-      }
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from("staff_attendance")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("role", "front")
-          .eq(
-            "attendance_state",
-            "working"
-          )
-          .is("clock_out", null)
-          .limit(1)
-          .maybeSingle();
+      const { data, error } =
+        await supabaseClient.rpc("is_current_front");
 
       if (error) {
+        console.log(error);
         return false;
       }
 
@@ -725,9 +707,7 @@
         ).textContent =
           "スタッフ情報が見つかりません。";
 
-        await supabaseClient.auth
-          .signOut();
-
+        location.href = "home.html";
         return;
       }
 
@@ -738,9 +718,7 @@
         ).textContent =
           "このスタッフアカウントは停止中です。";
 
-        await supabaseClient.auth
-          .signOut();
-
+        location.href = "home.html";
         return;
       }
 
@@ -749,14 +727,8 @@
 
       if (!allowed) {
 
-        document.getElementById(
-          "loginMessage"
-        ).textContent =
-          "現在、表番として勤務中ではありません。";
-
-        await supabaseClient.auth
-          .signOut();
-
+        alert("表番勤務中または管理者のみ利用できます。");
+        location.href = "home.html";
         return;
       }
 
@@ -1398,6 +1370,8 @@
 
       if (session) {
         await showFrontArea();
+      } else {
+        location.href = "home.html";
       }
     }
 
