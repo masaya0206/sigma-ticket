@@ -1,0 +1,35 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>勤怠QR表示</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
+header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}
+main{max-width:720px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
+button,input,select,textarea{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
+input,select,textarea{border:1px solid #ddd5d1;background:#fff}
+button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
+.primary{background:#b5121b;color:#fff}
+.danger{background:#7f1d1d;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.small{font-size:12px;color:#6e6e73;line-height:1.55}
+.big{font-size:30px;font-weight:900}
+.row{padding:11px 0;border-top:1px solid #eee}
+.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:#b5121b;font-size:12px;font-weight:800}
+.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+#qr{display:flex;justify-content:center;padding:18px;background:#fff}#qr img,#qr canvas{max-width:82vw!important;height:auto!important}</style></head>
+<body><header><h1>📷 動的勤怠QR</h1></header><main><div class="card"><div id="msg">確認中...</div><div id="qr"></div><div class="big" id="count"></div><p class="small">QRは約30秒ごとに更新されます。スタッフは「スタッフ・勤怠」から読み取ります。</p></div><button onclick="location.href='home.html'">ホームへ戻る</button></main>
+<script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");let exp=0,current='';
+async function refresh(){
+ const {data,error}=await sb.rpc('create_attendance_qr_token');
+ if(error){msg.innerHTML='<span class="err">'+error.message+'</span>';return}
+ current=data.token;exp=new Date(data.expires_at).getTime();
+ const url=location.origin+location.pathname.replace('attendance-qr.html','staff.html')+'?attendance_token='+current;
+ qr.innerHTML='';new QRCode(qr,{text:url,width:300,height:300,correctLevel:QRCode.CorrectLevel.M});
+ msg.innerHTML='<span class="ok">最新QR</span>';
+}
+setInterval(async()=>{const left=Math.max(0,Math.ceil((exp-Date.now())/1000));count.textContent='残り '+left+' 秒';if(left<=8)await refresh()},1000);
+(async()=>{const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return}await refresh()})();
+</script></body></html>
