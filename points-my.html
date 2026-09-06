@@ -1,7 +1,28 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>自分のポイント</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700}</style></head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>自分のポイント</h1><p class="muted">前売りptと当日ptは別部門で計算されます。総合ptは表示しません。</p>
-<div class="grid"><div class="metric"><div class="muted">前売りポイント</div><div class="big" id="prept">--</div></div><div class="metric"><div class="muted">残券</div><div class="big" id="res">--</div><div id="resmoney" class="muted"></div></div></div>
-<div class="card"><h2>当日ポイント</h2><div class="grid"><div><div class="muted">暫定</div><div class="big" id="dayprov">--</div></div><div><div class="muted">確定</div><div class="big" id="dayfinal">--</div></div></div><div id="breakdown" class="muted"></div></div>
-<div class="card"><h2>前売り状況</h2><div id="predetail"></div><button class="secondary" onclick="location.href='presale.html'">ノルマ詳細を見る</button></div>
-<script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-async function sum(final){const{data,error}=await db.rpc('my_point_summary',{p_final:final});if(error)throw error;return (data||[]).reduce((a,x)=>a+Number(x.points||0),0)}
-async function load(){const{data:{user}}=await db.auth.getUser();if(!user){location.href='home.html';return}const[p,prov,fin]=await Promise.all([db.rpc('my_presale_status'),sum(false),sum(true)]);if(p.error)throw p.error;const x=p.data;prept.textContent=Number(x.presale_points||0).toFixed(1)+' pt';res.textContent=(x.residual_remaining||0)+' 枚';resmoney.textContent=(x.residual_remaining||0)?Number(x.residual_value||0).toLocaleString()+'円相当':'残券なし ✓';dayprov.textContent=prov.toFixed(2)+' pt';dayfinal.textContent=fin.toFixed(2)+' pt';predetail.innerHTML=`ノルマ: <b>${x.confirmed_quota??'未確定'}${x.confirmed_quota?'枚':''}</b><br>祭前販売: <b>${x.presale_sold}枚</b><br>超過販売: <b>${x.overflow_sold}枚</b>`}load().catch(e=>breakdown.textContent='エラー: '+e.message);</script></main></body></html>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>マイポイント</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
+header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}
+main{max-width:720px;margin:auto;padding:18px}https://github.com/masaya0206/sigma-ticket/edit/main/points-my.html
+.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
+button,input,select,textarea{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
+input,select,textarea{border:1px solid #ddd5d1;background:#fff}
+button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
+.primary{background:#b5121b;color:#fff}
+.danger{background:#7f1d1d;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.small{font-size:12px;color:#6e6e73;line-height:1.55}
+.big{font-size:30px;font-weight:900}
+.row{padding:11px 0;border-top:1px solid #eee}
+.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:#b5121b;font-size:12px;font-weight:800}
+.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+.scorebox{background:#fff8f8;border-radius:15px;padding:14px}</style></head><body>
+<header><h1>⭐ マイポイント</h1></header><main>
+<div class="card"><h2>前売り</h2><div class="big" id="pre">-</div><div id="res" class="small"></div></div>
+<div class="card"><h2>当日（別部門）</h2><div id="mode" class="pill">暫定</div><div class="grid" style="margin-top:12px"><div class="scorebox">テント内<div class="big" id="inside">0</div></div><div class="scorebox">テント外<div class="big" id="outside">0</div></div><div class="scorebox">買い出し<div class="big" id="shopping">0</div></div><div class="scorebox">準備・片付け<div class="big" id="special">0</div></div></div><p class="small">前売りptと当日ptは別部門です。誤解を避けるため総合ptは表示しません。</p></div>
+<div class="card"><h2>内訳</h2><div id="details"></div></div><button onclick="location.href='staff.html'">スタッフ画面へ戻る</button></main><script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+async function run(){const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return}const pr=await sb.rpc('my_presale_status');if(!pr.error){pre.textContent=Number(pr.data?.presale_points||0).toFixed(1)+' pt';res.textContent='残券 '+(pr.data?.residual_remaining||0)+'枚 / '+Number(pr.data?.residual_value||0).toLocaleString()+'円相当'}let r=await sb.rpc('my_point_summary',{p_final:true});let final=true;if(r.error||!r.data?.length){r=await sb.rpc('my_point_summary',{p_final:false});final=false}mode.textContent=final?'確定':'暫定';const sum={inside:0,outside:0,shopping:0,special:0};for(const x of (r.data||[]))sum[x.point_side]=(sum[x.point_side]||0)+Number(x.points||0);inside.textContent=sum.inside.toFixed(1)+' pt';outside.textContent=sum.outside.toFixed(1)+' pt';shopping.textContent=sum.shopping.toFixed(1)+' pt';special.textContent=sum.special.toFixed(1)+' pt';details.innerHTML=(r.data||[]).length?(r.data||[]).map(x=>`<div class="row"><b>${x.point_type}</b><span style="float:right">${Number(x.points).toFixed(2)} pt</span><br><span class="small">${x.point_side}</span></div>`).join(''):'ポイントはまだありません。'}
+run();
+</script></body></html>
