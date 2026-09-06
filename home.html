@@ -582,6 +582,14 @@
             </div>
           </div>
 
+
+          <div class="schedule-row" style="margin-top:18px;">
+            <div class="mini-stat"><div class="mini-label">前売りpt</div><div id="homePresalePt" class="mini-value">-</div></div>
+            <div class="mini-stat"><div class="mini-label">当日pt</div><div id="homeDayPt" class="mini-value">-</div></div>
+            <div class="mini-stat"><div class="mini-label">残券</div><div id="homeResidual" class="mini-value">-</div></div>
+          </div>
+          <div id="homeResidualValue" class="section-hint" style="margin-top:8px;"></div>
+
           <div class="schedule-row">
 
             <div class="mini-stat">
@@ -716,19 +724,7 @@
                 全体状況・勤怠修正
               </span>
             </button>
-
-            <button
-              class="menu-card"
-              onclick="location.href='points-my.html'"
-            >
-              <span class="menu-icon">★</span>
-              <span class="menu-name">マイポイント</span>
-              <span class="menu-desc">
-                暫定・最終ポイントを確認
-              </span>
-            </button>
-
-            <button
+<button
               id="shoppingButton"
               class="menu-card"
               onclick="location.href='shopping.html'"
@@ -1148,7 +1144,10 @@
       const [
         assignmentResult,
         attendanceResult,
-        adminResult
+        adminResult,
+        presaleResult,
+        finalPointResult,
+        provisionalPointResult
       ] =
         await Promise.all([
 
@@ -1208,14 +1207,13 @@
 
           supabaseClient
             .from("admins")
-            .select(
-              "user_id"
-            )
-            .eq(
-              "user_id",
-              user.id
-            )
-            .maybeSingle()
+            .select("user_id")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+
+          supabaseClient.rpc("my_presale_status"),
+          supabaseClient.rpc("my_point_summary", { p_final: true }),
+          supabaseClient.rpc("my_point_summary", { p_final: false })
         ]);
 
       const assignment =
@@ -1226,6 +1224,26 @@
 
       const isAdmin =
         !!adminResult.data;
+
+      const presaleData = presaleResult.data || {};
+      document.getElementById("homePresalePt").textContent =
+        Number(presaleData.presale_points || 0).toFixed(1) + " pt";
+      document.getElementById("homeResidual").textContent =
+        Number(presaleData.residual_remaining || 0) + " 枚";
+      document.getElementById("homeResidualValue").textContent =
+        Number(presaleData.residual_remaining || 0) > 0
+          ? "残券相当額 " + Number(presaleData.residual_value || 0).toLocaleString() + "円"
+          : "残券なし";
+
+      const pointRows = finalPointResult.data?.length
+        ? finalPointResult.data
+        : (provisionalPointResult.data || []);
+      const dayPoints = pointRows.reduce(
+        (sum,row)=>sum+Number(row.points||0),0
+      );
+      document.getElementById("homeDayPt").textContent =
+        dayPoints.toFixed(1) + " pt " +
+        (finalPointResult.data?.length ? "確定" : "暫定");
 
       portalIsAdmin = isAdmin;
 
