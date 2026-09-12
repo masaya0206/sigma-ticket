@@ -1,0 +1,16 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#b5121b"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-180.png"><title>勤怠・シフト</title>
+<style>
+:root{--red:#b5121b;--dark:#8f0e15;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:620px;margin:auto;min-height:100vh;padding:18px 16px 40px}
+.top{display:flex;align-items:center;gap:12px;margin:6px 0 22px}.back{width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--red);font-size:20px;font-weight:900;box-shadow:0 4px 15px #4a191912}
+h1{margin:0;font-size:25px}.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.card{width:100%;margin:10px 0;padding:18px;border:1px solid var(--line);border-radius:20px;background:#fff;text-align:left;box-shadow:0 5px 16px #2b16160b}
+.card:active{transform:scale(.987)}.icon{display:grid;place-items:center;width:43px;height:43px;border-radius:14px;background:var(--soft);color:var(--red);font-weight:900;font-size:20px}
+.name{display:block;margin-top:11px;font-size:18px;font-weight:900}.desc{display:block;margin-top:5px;color:var(--muted);font-size:13px;line-height:1.5}
+</style></head><body><main>
+<div class="top"><button class="back" onclick="location.href='home.html'">←</button><div><h1>勤怠・シフト</h1><div class="sub">勤務と希望シフト</div></div></div>
+<button class="card" onclick="location.href='staff.html'"><span class="icon">時</span><span class="name">勤怠</span><span class="desc">現在の勤務状態・出退勤の確認</span></button>
+<button class="card" onclick="location.href='shift.html'"><span class="icon">予</span><span class="name">希望シフト</span><span class="desc">参加できる日・時間を提出・確認</span></button>
+</main></body></html>
