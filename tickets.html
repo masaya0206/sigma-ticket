@@ -9,8 +9,74 @@ h1{margin:0;font-size:25px}.sub{color:var(--muted);font-size:13px;margin-top:4px
 .card{width:100%;margin:10px 0;padding:18px;border:1px solid var(--line);border-radius:20px;background:#fff;text-align:left;box-shadow:0 5px 16px #2b16160b}
 .card:active{transform:scale(.987)}.icon{display:grid;place-items:center;width:43px;height:43px;border-radius:14px;background:var(--soft);color:var(--red);font-weight:900;font-size:20px}
 .name{display:block;margin-top:11px;font-size:18px;font-weight:900}.desc{display:block;margin-top:5px;color:var(--muted);font-size:13px;line-height:1.5}
-</style></head><body><main>
-<div class="top"><button class="back" onclick="location.href='home.html'">←</button><div><h1>前売り券・当日券</h1><div class="sub">販売と自分の状況</div></div></div>
+</style>
+<style id="globalBottomNavStyle">
+  body{padding-bottom:82px!important}
+  .global-bottom-nav{
+    position:fixed;
+    left:50%;
+    bottom:0;
+    transform:translateX(-50%);
+    width:min(100%,620px);
+    height:72px;
+    padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    z-index:9998;
+    background:rgba(255,255,255,.96);
+    border-top:1px solid #eadfdb;
+    box-shadow:0 -5px 22px rgba(55,20,20,.08);
+    backdrop-filter:blur(12px);
+  }
+  .global-bottom-nav.admin-nav{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .global-bottom-nav button{
+    width:100%!important;
+    min-width:0;
+    margin:0!important;
+    padding:7px 4px!important;
+    border:0!important;
+    border-radius:12px!important;
+    background:transparent!important;
+    color:#6e6e73!important;
+    font:inherit;
+    font-size:11px!important;
+    font-weight:700!important;
+    line-height:1.15;
+    box-shadow:none!important;
+  }
+  .global-bottom-nav button .gicon{
+    display:block;
+    margin-bottom:4px;
+    font-size:20px;
+    line-height:1;
+  }
+  .global-bottom-nav button.active{
+    color:#b5121b!important;
+    background:#fff1f2!important;
+  }
+</style>
+
+
+<style id="v80BottomNav">
+body{padding-bottom:82px!important}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
+width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);
+border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08);backdrop-filter:blur(12px)}
+.global-bottom-nav.admin-nav{grid-template-columns:repeat(4,1fr)}
+.global-bottom-nav button{width:100%!important;margin:0!important;padding:7px 4px!important;border:0!important;
+border-radius:12px!important;background:transparent!important;color:#6e6e73!important;font:inherit;font-size:11px!important;
+font-weight:700!important;line-height:1.15;box-shadow:none!important}
+.global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px;line-height:1}
+.global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
+</style>
+
+</head><body><main>
+<div class="top"><button class="back" onclick="history.length>1?history.back():location.href='home.html'">←</button><div><h1>前売り券・当日券</h1><div class="sub">販売と自分の状況</div></div></div>
 <button class="card" onclick="location.href='seller.html'"><span class="icon">券</span><span class="name">チケット発行</span><span class="desc">前売り券・当日券・ノルマ残券の販売</span></button>
 <button class="card" onclick="location.href='presale.html'"><span class="icon">数</span><span class="name">前売りノルマ・販売状況</span><span class="desc">希望ノルマ、前売りpt、残券を確認</span></button>
-</main></body></html>
+</main><nav class="global-bottom-nav"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="active" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
+</body></html>

@@ -319,6 +319,56 @@
     }
   </style>
 
+
+<style id="globalBottomNavStyle">
+  body{padding-bottom:82px!important}
+  .global-bottom-nav{
+    position:fixed;
+    left:50%;
+    bottom:0;
+    transform:translateX(-50%);
+    width:min(100%,620px);
+    height:72px;
+    padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    z-index:9998;
+    background:rgba(255,255,255,.96);
+    border-top:1px solid #eadfdb;
+    box-shadow:0 -5px 22px rgba(55,20,20,.08);
+    backdrop-filter:blur(12px);
+  }
+  .global-bottom-nav.admin-nav{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .global-bottom-nav button{
+    width:100%!important;
+    min-width:0;
+    margin:0!important;
+    padding:7px 4px!important;
+    border:0!important;
+    border-radius:12px!important;
+    background:transparent!important;
+    color:#6e6e73!important;
+    font:inherit;
+    font-size:11px!important;
+    font-weight:700!important;
+    line-height:1.15;
+    box-shadow:none!important;
+  }
+  .global-bottom-nav button .gicon{
+    display:block;
+    margin-bottom:4px;
+    font-size:20px;
+    line-height:1;
+  }
+  .global-bottom-nav button.active{
+    color:#b5121b!important;
+    background:#fff1f2!important;
+  }
+</style>
+
 </head>
 
 <body>
@@ -381,8 +431,8 @@
 
   <div id="sellerArea">
 
-    <button onclick="location.href='home.html'">
-      🏠 ポータルに戻る
+    <button onclick="location.href='tickets.html'">
+      ← 前売り券・当日券
     </button>
 
     <button onclick="location.href='seller-team.html'">
@@ -1491,5 +1541,6 @@
     }
   </script>
 
+<nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="active" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body>
 </html>

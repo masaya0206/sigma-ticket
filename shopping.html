@@ -1,4 +1,54 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>買い出し</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700}</style></head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>買い出し</h1><p class="muted">ポイント対象になるのは、裏番または管理者が複数要請をまとめて正式承認した「買い出しミッション」だけです。</p>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>買い出し</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700}</style>
+<style id="globalBottomNavStyle">
+  body{padding-bottom:82px!important}
+  .global-bottom-nav{
+    position:fixed;
+    left:50%;
+    bottom:0;
+    transform:translateX(-50%);
+    width:min(100%,620px);
+    height:72px;
+    padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    z-index:9998;
+    background:rgba(255,255,255,.96);
+    border-top:1px solid #eadfdb;
+    box-shadow:0 -5px 22px rgba(55,20,20,.08);
+    backdrop-filter:blur(12px);
+  }
+  .global-bottom-nav.admin-nav{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .global-bottom-nav button{
+    width:100%!important;
+    min-width:0;
+    margin:0!important;
+    padding:7px 4px!important;
+    border:0!important;
+    border-radius:12px!important;
+    background:transparent!important;
+    color:#6e6e73!important;
+    font:inherit;
+    font-size:11px!important;
+    font-weight:700!important;
+    line-height:1.15;
+    box-shadow:none!important;
+  }
+  .global-bottom-nav button .gicon{
+    display:block;
+    margin-bottom:4px;
+    font-size:20px;
+    line-height:1;
+  }
+  .global-bottom-nav button.active{
+    color:#b5121b!important;
+    background:#fff1f2!important;
+  }
+</style>
+
+</head><body><main><button class="secondary" onclick="history.length>1?history.back():location.href='home.html'">← 前の画面</button><h1>買い出し</h1><p class="muted">ポイント対象になるのは、店長または管理者が複数要請をまとめて正式承認した「買い出しミッション」だけです。</p>
 <div class="card"><h2>① 買い出し要請を出す</h2><input id="note" placeholder="例：油2本、米10kg"><button onclick="requestShop()">要請を追加</button><p id="rmsg"></p></div>
 <div class="card" id="approveCard"><h2>② 未処理要請をまとめて承認</h2><div id="requests">読み込み中...</div><button onclick="approveMission()">選択した要請を1ミッションとして承認</button><p id="amsg"></p></div>
 <div class="card"><h2>③ 正式ミッション</h2><div id="missions"></div></div>
@@ -14,4 +64,5 @@ async function claim(id){const{error}=await db.rpc('claim_shopping_mission',{p_m
 async function invite(id){const u=document.getElementById('helper-'+id).value;if(!u)return;const{error}=await db.rpc('invite_shopping_helper',{p_mission:id,p_user:u});if(error)alert(error.message);load()}
 async function respond(id,a){const{error}=await db.rpc('respond_shopping_helper',{p_mission:id,p_accept:a});if(error)alert(error.message);load()}
 async function start(id){if(!confirm('この正式ミッションで出発しますか？'))return;const{error}=await db.rpc('start_shopping_mission',{p_mission:id});if(error)alert(error.message);load()}
-async function complete(id){const{error}=await db.rpc('complete_shopping_mission',{p_mission:id});if(error)alert(error.message);load()}load();</script></main></body></html>
+async function complete(id){const{error}=await db.rpc('complete_shopping_mission',{p_mission:id});if(error)alert(error.message);load()}load();</script></main><nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
+</body></html>
