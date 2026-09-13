@@ -80,7 +80,7 @@ button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 </main><script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 let scanner=null,busy=false;
-const roleName=r=>({seller:"売り子",front:"店長",back:"店長",cook:"調理",support:"サポート",register:"レジ",shopping_driver:"買い出し運転手",shopping_helper:"買い出し手伝い"}[r]||r||"—");
+const roleName=r=>{if(["front","back","tent"].includes(r))r="manager";return ({seller:"売り子",manager:"店長",cook:"調理",support:"サポート",register:"レジ",shopping_driver:"買い出し運転手",shopping_helper:"買い出し手伝い"}[r]||r||"—")};
 async function auth(){const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return null}return user}
 async function load(){
  const u=await auth();if(!u)return;

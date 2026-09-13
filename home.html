@@ -746,32 +746,18 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 
 
     function roleText(role) {
+      // 旧 front/back/tent は過去データ互換として manager に正規化。
+      if (["front","back","tent"].includes(role)) role = "manager";
 
-      if (role === "seller") {
-        return "売り子";
-      }
-
-      if (role === "tent") {
-        return "テント内";
-      }
-
-      if (role === "manager") {
-        return "店長";
-      }
-
-      if (role === "front") {
-        return "店長";
-      }
-
-      if (role === "back") {
-        return "店長";
-      }
-
-      if (role === "register") return "レジ";
-      if (role === "shopping_driver" || role === "shopping_helper") return "買い出し";
-      if (role === "cook") return "調理";
-      if (role === "support") return "サポート";
-      return "なし";
+      return ({
+        seller: "売り子",
+        manager: "店長",
+        register: "レジ",
+        shopping_driver: "買い出し運転手",
+        shopping_helper: "買い出し手伝い",
+        cook: "調理",
+        support: "サポート"
+      })[role] || "なし";
     }
 
 
