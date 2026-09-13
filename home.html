@@ -483,6 +483,21 @@
     @media(max-width:390px){.core-grid{gap:9px}.core-card{padding:15px}}
 
   </style>
+
+<style id="v80BottomNav">
+body{padding-bottom:82px!important}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
+width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);
+border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08);backdrop-filter:blur(12px)}
+.global-bottom-nav.admin-nav{grid-template-columns:repeat(4,1fr)}
+.global-bottom-nav button{width:100%!important;margin:0!important;padding:7px 4px!important;border:0!important;
+border-radius:12px!important;background:transparent!important;color:#6e6e73!important;font:inherit;font-size:11px!important;
+font-weight:700!important;line-height:1.15;box-shadow:none!important}
+.global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px;line-height:1}
+.global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
+</style>
+
 </head>
 
 <body>
@@ -707,7 +722,7 @@
 
         <div class="notice">
           通常は「勤怠・シフト」「前売り券・当日券」の2つだけ表示します。
-          出勤中は必要な役割機能だけ自動で追加されます。
+          出勤中は「店長・レジ・買い出し」のうち必要な機能だけ自動で追加されます。
           売り子・調理・サポートには専用メニューを追加しません。
         </div>
 
@@ -740,12 +755,16 @@
         return "テント内";
       }
 
+      if (role === "manager") {
+        return "店長";
+      }
+
       if (role === "front") {
-        return "表番";
+        return "店長";
       }
 
       if (role === "back") {
-        return "裏番";
+        return "店長";
       }
 
       if (role === "register") return "レジ";
@@ -1225,20 +1244,18 @@
 
       const cards=[];
 
-      if(currentRole==="front"){
-        cards.push(roleMenuCard("表番","伝票・レジ編成・役職変更など","front.html"));
+      if(currentRole==="manager"){
+        cards.push(roleMenuCard("店長","注文・人員・レジ・買い出しを管理","manager.html"));
       }
-      if(currentRole==="back"){
-        cards.push(roleMenuCard("裏番","全体状況・買い出し・人員管理など","back.html"));
-      }
+
       if(currentRole==="register"){
-        cards.push(roleMenuCard("レジ","QR受付・会計処理","index.html"));
+        cards.push(roleMenuCard("レジ","現金会計・QR交換","index.html"));
       }
+
       if(currentRole==="shopping_driver"||currentRole==="shopping_helper"){
         cards.push(roleMenuCard("買い出し","買い出しミッション・帰還処理","shopping.html"));
       }
 
-      // 出発前の買い出し招待・運転手募集でも買い出しメニューを表示
       try{
         const {data:board,error}=await supabaseClient.rpc("shopping_board");
         if(!error&&board){
@@ -1252,7 +1269,6 @@
             const canClaim=team&&m.status==="approved";
             return driver||helper||canClaim;
           });
-
           if(relevant && !cards.some(x=>x.includes(">買い出し<"))){
             cards.push(roleMenuCard("買い出し","招待・運転手選択・ミッション確認","shopping.html"));
           }
@@ -1265,7 +1281,7 @@
       }
     }
 
-    async function logout() {
+          async function logout() {
 
       await supabaseClient.auth
         .signOut();
@@ -1338,5 +1354,6 @@ position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
 background:#1f1f1f;color:white;padding:13px 18px;border-radius:14px;
 font-weight:700;max-width:88%;text-align:center;display:none;z-index:9999;
 box-shadow:0 8px 28px rgba(0,0,0,.25);"></div>
+<nav class="global-bottom-nav"><button class="active" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body>
 </html>
