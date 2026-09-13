@@ -44,15 +44,46 @@ const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_pu
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 (async()=>{
   const {data,error}=await sb.rpc("public_partner_benefits");
-  if(error){benefits.innerHTML=`<div class="card danger">エラー：${esc(error.message)}</div>`;return;}
-  benefits.innerHTML=(data||[]).map(x=>`
-    <div class="card">
-      <h2>${esc(x.partner_name)}</h2>
-      <div style="font-size:21px;font-weight:900">${esc(x.benefit_title)}</div>
-      <div class="small" style="margin-top:8px">${esc(x.description||"")}</div>
-      <div style="margin-top:10px"><span class="pill">${esc(x.valid_label)}</span></div>
-      ${x.instagram_url?`<a class="btn instagram" href="${esc(x.instagram_url)}" target="_blank" rel="noopener">${esc(x.partner_name)} Instagram</a>`:""}
-    </div>`).join("") || '<div class="card">現在利用できる提携特典はありません。</div>';
+  if(error){
+    benefits.innerHTML=`<div class="card danger">エラー：${esc(error.message)}</div>`;
+    return;
+  }
+
+  const grouped={};
+
+  for(const row of (data||[])){
+    const key=row.partner_name||"";
+    if(!grouped[key]){
+      grouped[key]={
+        partner_name:row.partner_name,
+        instagram_url:row.instagram_url,
+        benefits:[]
+      };
+    }
+    grouped[key].benefits.push(row);
+  }
+
+  const groups=Object.values(grouped);
+
+  benefits.innerHTML=groups.length
+    ? groups.map(group=>`
+      <div class="card">
+        <h2>${esc(group.partner_name)}</h2>
+
+        ${group.benefits.map((x,i)=>`
+          <div style="${i>0?'border-top:1px solid #eee;padding-top:14px;margin-top:14px;':''}">
+            <div style="font-size:21px;font-weight:900">${esc(x.benefit_title)}</div>
+            <div class="small" style="margin-top:8px">${esc(x.description||"")}</div>
+            <div style="margin-top:10px"><span class="pill">${esc(x.valid_label)}</span></div>
+          </div>
+        `).join("")}
+
+        ${group.instagram_url
+          ? `<a class="btn instagram" href="${esc(group.instagram_url)}" target="_blank" rel="noopener">${esc(group.partner_name)} Instagram</a>`
+          : ""}
+      </div>
+    `).join("")
+    : '<div class="card">現在利用できる提携特典はありません。</div>';
 })();
 
 </script>

@@ -85,16 +85,57 @@ async function init(){
   partnerTitle.textContent=ctx.partner.name+" 特典QRリーダー";
   partnerSub.textContent="Match Point前売り券の提携特典を処理します。";
 
+  renderBenefitCard();
+  await loadHistory();
+}
+
+
+function renderBenefitCard(){
+  const list=ctx?.benefits||[];
+
   benefitCard.innerHTML=`
     <h2>${esc(ctx.partner.name)}</h2>
+
+    ${list.length>1?`
+      <label style="display:block;font-weight:900;margin:10px 0 6px">利用する特典</label>
+      <select id="benefitSelect" onchange="changeBenefit(this.value)">
+        ${list.map(b=>`
+          <option value="${b.id}" ${currentBenefit?.id===b.id?"selected":""}>
+            ${esc(b.title)}
+          </option>
+        `).join("")}
+      </select>
+    `:""}
+
     ${currentBenefit?`
-      <div style="font-size:20px;font-weight:900">${esc(currentBenefit.title)}</div>
-      <div class="small" style="margin-top:6px">${esc(currentBenefit.description||"")}</div>
-      <div style="margin-top:8px"><span class="pill">${esc(currentBenefit.valid_label)}</span> <span class="pill">1枚につき${currentBenefit.max_uses_per_ticket}回</span></div>
+      <div style="margin-top:14px;font-size:20px;font-weight:900">
+        ${esc(currentBenefit.title)}
+      </div>
+      <div class="small" style="margin-top:6px">
+        ${esc(currentBenefit.description||"")}
+      </div>
+      <div style="margin-top:8px">
+        <span class="pill">${esc(currentBenefit.valid_label)}</span>
+        <span class="pill">1枚につき${currentBenefit.max_uses_per_ticket}回</span>
+      </div>
     `:"<div>現在利用できる特典がありません。</div>"}
-    ${ctx.partner.instagram_url?`<a class="btn instagram" href="${esc(ctx.partner.instagram_url)}" target="_blank" rel="noopener">組織部 Instagram</a>`:""}
+
+    ${ctx.partner.instagram_url?`
+      <a class="btn instagram"
+         href="${esc(ctx.partner.instagram_url)}"
+         target="_blank"
+         rel="noopener">
+        ${esc(ctx.partner.name)} Instagram
+      </a>
+    `:""}
   `;
-  await loadHistory();
+}
+
+function changeBenefit(id){
+  currentBenefit=(ctx.benefits||[]).find(b=>b.id===id)||null;
+  currentTicket=null;
+  result.innerHTML="";
+  renderBenefitCard();
 }
 
 async function startScanner(){
