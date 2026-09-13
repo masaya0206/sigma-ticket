@@ -71,7 +71,17 @@ function render(){
         <b>特典</b>
         ${(p.benefits||[]).map(b=>`
           <div class="row">
-            <div><b>${esc(b.title)}</b><div class="small">${esc(b.valid_label)} ／ 利用 ${b.redemption_count||0}件</div></div>
+            <div>
+              <b>${esc(b.title)}</b>
+              <div class="small">${esc(b.valid_label)} ／ 利用 ${b.redemption_count||0}件</div>
+            </div>
+            <button
+              style="width:auto;margin:0"
+              class="secondary"
+              onclick="deleteBenefit('${b.id}','${esc(b.title)}')"
+            >
+              削除
+            </button>
           </div>`).join("") || '<div class="small">特典なし</div>'}
       </div>
 
@@ -110,6 +120,25 @@ function render(){
       </div>
     </div>
   `).join(""):'<div class="card">提携先がありません。</div>';
+}
+
+
+async function deleteBenefit(id,title){
+  if(!confirm(`「${title}」を削除しますか？\nこの特典は購入者画面と提携先QRリーダーから消えます。`)){
+    return;
+  }
+
+  const {error}=await sb.rpc(
+    "admin_delete_partner_benefit",
+    {p_benefit_id:id}
+  );
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  await load();
 }
 
 async function savePartner(){
