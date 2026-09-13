@@ -59,6 +59,6 @@ async function loadHistory(){
     }).join('')}
   `;
 }
-async function init(){const {data:{user}}=await sb.auth.getUser();if(!user){gate.innerHTML='ログインが必要です。';return}const {data,error}=await sb.rpc('can_manage_menu');if(error||!data){gate.innerHTML='⛔ 価格変更権限がありません。<br><span class="small">管理者、または実際に勤務中の表番・裏番のみ利用できます。</span>';return}gate.innerHTML='✅ 価格変更権限あり';main.style.display='block';await load();await loadHistory();sb.channel('menu-admin-live').on('postgres_changes',{event:'UPDATE',schema:'public',table:'menu_state',filter:'id=eq.1'},p=>render(p.new)).subscribe()}
+async function init(){const {data:{user}}=await sb.auth.getUser();if(!user){gate.innerHTML='ログインが必要です。';return}const {data,error}=await sb.rpc('can_manage_menu');if(error||!data){gate.innerHTML='⛔ 価格変更権限がありません。<br><span class="small">管理者、または実際に勤務中の店長のみ利用できます。</span>';return}gate.innerHTML='✅ 価格変更権限あり';main.style.display='block';await load();await loadHistory();sb.channel('menu-admin-live').on('postgres_changes',{event:'UPDATE',schema:'public',table:'menu_state',filter:'id=eq.1'},p=>render(p.new)).subscribe()}
 init();
 </script><script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));</script></body></html>
