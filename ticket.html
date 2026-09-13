@@ -67,24 +67,85 @@ function esc(v){
 
 async function partnerHtml(){
   const {data,error}=await sb.rpc("public_partner_benefits");
-  if(error||!data?.length)return "";
-  return data.map(x=>`
+  if(error || !data || data.length===0) return "";
+
+  const groups=new Map();
+
+  for(const row of data){
+    const key=String(row.partner_name||"").trim();
+
+    if(!groups.has(key)){
+      groups.set(key,{
+        partner_name:row.partner_name,
+        instagram_url:row.instagram_url,
+        benefits:[]
+      });
+    }
+
+    groups.get(key).benefits.push({
+      title:row.benefit_title,
+      description:row.description,
+      valid_label:row.valid_label
+    });
+  }
+
+  return Array.from(groups.values()).map(group=>`
     <div class="card partner">
-      <div class="partner-head">🎁 提携特典</div>
-      <div class="partner-name">${esc(x.partner_name)}</div>
-      <div class="partner-title">${esc(x.benefit_title)}</div>
-      <div class="small">${esc(x.description||"")}</div>
-      <div style="margin-top:12px"><span class="tag">${esc(x.valid_label||"")}</span></div>
-      ${x.instagram_url?`
-        <a class="btn instagram" href="${esc(x.instagram_url)}" target="_blank" rel="noopener">
-          ${esc(x.partner_name)} のInstagramを見る
-        </a>`:""}
+
+      <div class="partner-head">
+        🎁 提携特典
+      </div>
+
+      <div class="partner-name">
+        ${esc(group.partner_name)}
+      </div>
+
+      <div style="margin-top:12px">
+        ${group.benefits.map((b,index)=>`
+          <div
+            style="
+              ${index>0
+                ? "border-top:1px solid #efcfd2;padding-top:16px;margin-top:16px;"
+                : ""}
+            "
+          >
+            <div class="partner-title">
+              ${esc(b.title)}
+            </div>
+
+            ${b.description
+              ? `<div class="small">${esc(b.description)}</div>`
+              : ""}
+
+            <div style="margin-top:10px">
+              <span class="tag">
+                ${esc(b.valid_label||"")}
+              </span>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+
+      ${group.instagram_url
+        ? `
+          <a
+            class="btn instagram"
+            href="${esc(group.instagram_url)}"
+            target="_blank"
+            rel="noopener"
+          >
+            ${esc(group.partner_name)} のInstagramを見る
+          </a>
+        `
+        : ""}
+
       <div class="small" style="margin-top:12px">
         この前売り券のQRコードを提携先スタッフに提示してください。
       </div>
-    </div>`).join("");
-}
 
+    </div>
+  `).join("");
+}
 
 async function copyTicketUrl(encodedCode){
   const url="https://masaya0206.github.io/sigma-ticket/ticket.html?code="+encodedCode;
