@@ -18,7 +18,22 @@ button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 .pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:#b5121b;font-size:12px;font-weight:800}
 .ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
 @media(max-width:520px){.grid{grid-template-columns:1fr}}
-#qr{display:flex;justify-content:center;padding:18px;background:#fff}#qr img,#qr canvas{max-width:82vw!important;height:auto!important}</style></head>
+#qr{display:flex;justify-content:center;padding:18px;background:#fff}#qr img,#qr canvas{max-width:82vw!important;height:auto!important}</style>
+<style id="v80BottomNav">
+body{padding-bottom:82px!important}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
+width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);
+border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08);backdrop-filter:blur(12px)}
+.global-bottom-nav.admin-nav{grid-template-columns:repeat(4,1fr)}
+.global-bottom-nav button{width:100%!important;margin:0!important;padding:7px 4px!important;border:0!important;
+border-radius:12px!important;background:transparent!important;color:#6e6e73!important;font:inherit;font-size:11px!important;
+font-weight:700!important;line-height:1.15;box-shadow:none!important}
+.global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px;line-height:1}
+.global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
+</style>
+
+</head>
 <body><header><h1>📷 動的勤怠QR</h1></header><main><div class="card"><div id="msg">確認中...</div><div id="qr"></div><div class="big" id="count"></div><p class="small">QRは約30秒ごとに更新されます。スタッフは「スタッフ・勤怠」から読み取ります。</p></div><button onclick="location.href='home.html'">ホームへ戻る</button></main>
 <script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");let exp=0,current='';
@@ -32,4 +47,5 @@ async function refresh(){
 }
 setInterval(async()=>{const left=Math.max(0,Math.ceil((exp-Date.now())/1000));count.textContent='残り '+left+' 秒';if(left<=8)await refresh()},1000);
 (async()=>{const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return}await refresh()})();
-</script></body></html>
+</script><nav class="global-bottom-nav"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
+</body></html>
