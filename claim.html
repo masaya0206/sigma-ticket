@@ -75,184 +75,51 @@
       color: #666;
       line-height: 1.5;
     }
-  
-    .festival-label { font-weight: 900; letter-spacing: .04em; }
-    .price-live { margin: 16px 0; padding: 14px; border-radius: 14px; background: #fff7f7; border: 1px solid #f0c9cc; }
-    .price-live strong { font-size: 18px; }
-    .sold { color: #b5121b; font-weight: 900; }
-  </style>
 
-  <meta name="theme-color" content="#111111">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="シグマ祭">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icon-180.png">
-
-
-  <style id="sigma-red-theme">
-    :root {
-      --sigma-red: #b5121b;
-      --sigma-red-dark: #8f0e15;
-      --sigma-red-soft: #fff1f2;
-      --sigma-gold: #d9a526;
-      --sigma-bg: #f7f4f2;
-      --sigma-surface: #ffffff;
-      --sigma-ink: #1c1c1e;
-      --sigma-muted: #6e6e73;
-      --sigma-line: #ece7e4;
-      --sigma-green: #15803d;
-      --sigma-shadow: 0 8px 24px rgba(74, 25, 25, 0.08);
+    .partner-benefit {
+      margin-top: 22px;
+      padding: 18px;
+      border-radius: 14px;
+      background: #fff3f4;
+      border: 2px solid #f2c6ca;
+      text-align: left;
     }
 
-    html {
-      background: var(--sigma-bg);
+    .partner-benefit h3 {
+      margin: 0 0 10px;
+      color: #b5121b;
+      font-size: 20px;
     }
 
-    body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Hiragino Sans",
-        "Yu Gothic",
-        sans-serif !important;
-      color: var(--sigma-ink) !important;
-      background: var(--sigma-bg) !important;
-      max-width: 620px !important;
-      margin: 0 auto !important;
-      padding: 20px !important;
+    .partner-benefit .benefit-title {
+      font-size: 19px;
+      font-weight: bold;
+      margin: 8px 0;
     }
 
-    body > h1:first-of-type {
-      margin: -20px -20px 22px !important;
-      padding:
-        max(36px, env(safe-area-inset-top))
-        22px
-        34px !important;
-      color: #fff !important;
-      background:
-        radial-gradient(circle at 86% 18%, rgba(255,255,255,.12), transparent 28%),
-        linear-gradient(145deg, var(--sigma-red), var(--sigma-red-dark)) !important;
-      border-radius: 0 0 28px 28px !important;
-      font-size: 30px !important;
-      letter-spacing: .02em !important;
-      text-align: left !important;
+    .partner-benefit .tag {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #ffe5e8;
+      color: #b5121b;
+      font-size: 12px;
+      font-weight: bold;
     }
 
-    input,
-    select,
-    textarea {
-      color: var(--sigma-ink) !important;
-      background: #fff !important;
-      border: 1px solid #ddd5d1 !important;
-      border-radius: 14px !important;
-      box-shadow: none !important;
-    }
-
-    input:focus,
-    select:focus,
-    textarea:focus {
-      outline: none !important;
-      border-color: var(--sigma-red) !important;
-      box-shadow: 0 0 0 3px rgba(181,18,27,.10) !important;
-    }
-
-    button {
-      border-radius: 14px !important;
-      font-weight: 750 !important;
-      color: var(--sigma-red) !important;
-      background: var(--sigma-red-soft) !important;
-      box-shadow: none !important;
-    }
-
-    button:active {
-      transform: scale(.985);
-    }
-
-    button:disabled {
-      opacity: .45 !important;
-    }
-
-    #loginArea,
-    #sellerArea,
-    #staffArea,
-    #adminArea,
-    #backArea,
-    #frontArea,
-    #ticketArea,
-    #ticketResult,
-    #claimArea,
-    #mySummaryArea,
-    #summaryArea,
-    #logArea,
-    #newPasswordArea,
-    .card,
-    .subcard {
-      border-radius: 20px !important;
-    }
-
-    #loginArea,
-    #ticketArea,
-    #ticketResult,
-    #claimArea,
-    #mySummaryArea,
-    #summaryArea,
-    #logArea,
-    #newPasswordArea,
-    .card {
-      background: var(--sigma-surface) !important;
-      border: 1px solid rgba(181,18,27,.06) !important;
-      box-shadow: var(--sigma-shadow) !important;
-    }
-
-    .subcard {
-      background: #fff !important;
-      border-color: var(--sigma-line) !important;
-    }
-
-    .success {
-      background: #ecfdf3 !important;
-      color: #14532d !important;
-    }
-
-    .danger {
-      background: #fff0f0 !important;
-      color: #7f1d1d !important;
-    }
-
-    .warning {
-      background: #fff8e8 !important;
-      color: #6b4a00 !important;
-    }
-
-    a {
-      color: var(--sigma-red) !important;
-    }
-
-    strong {
-      color: inherit;
-    }
-
-    hr {
-      border-color: var(--sigma-line) !important;
-    }
-
-    .ticket-code {
-      color: var(--sigma-red) !important;
-    }
-
-    @media (max-width: 520px) {
-      body {
-        padding: 16px !important;
-      }
-
-      body > h1:first-of-type {
-        margin-left: -16px !important;
-        margin-right: -16px !important;
-      }
+    .instagram-link {
+      display: block;
+      margin-top: 14px;
+      padding: 12px;
+      text-align: center;
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: bold;
+      background: linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);
     }
   </style>
-
 </head>
 
 <body>
@@ -264,9 +131,7 @@
     class="card"
   >
 
-    <p class="festival-label">第十六回紫熊祭</p>
-    <p><strong>企画者名：Match Point</strong></p>
-    <h2>450円前売り券を受け取る</h2>
+    <h2>チケットを受け取る</h2>
 
     <p>
       下のボタンを押すと、
@@ -309,72 +174,176 @@
       params.get("token");
 
 
-    function statusLabel(value) {
-      if (value === "sold_out") return "売り切れ";
-      if (value === "low") return "残りわずか";
-      return "販売中";
-    }
-
-    function currentPairPrice(menu) {
-      if (menu?.sesame_pair_enabled && menu?.sesame_pair_price != null) {
-        return menu.sesame_pair_price;
-      }
-      return (menu?.sesame_single_price ?? 300) * 2;
-    }
-
-    function cashbackText(price) {
-      const amount = Math.max(450 - Number(price || 0), 0);
-      return amount > 0 ? ` → 前売り券利用時 <strong>${amount}円返金</strong>` : "";
-    }
-
-    function renderMenuState(menu) {
-      const box = document.getElementById("liveMenuState");
-      if (!box || !menu) return;
-      const pair = currentPairPrice(menu);
-      box.innerHTML = `
-        <strong>現在の当日価格</strong><br>
-        炒飯1個：${menu.fried_rice_price}円
-        <span class="${menu.fried_rice_status === 'sold_out' ? 'sold' : ''}">（${statusLabel(menu.fried_rice_status)}）</span>
-        ${cashbackText(menu.fried_rice_price)}<br>
-        胡麻団子1個：${menu.sesame_single_price}円<br>
-        胡麻団子2個：${pair}円
-        <span class="${menu.sesame_status === 'sold_out' ? 'sold' : ''}">（${statusLabel(menu.sesame_status)}）</span>
-        ${cashbackText(pair)}
-        ${menu.notice ? `<hr><strong>お知らせ</strong><br>${menu.notice}` : ""}
-      `;
-    }
-
-    async function loadMenuState() {
-      const { data } = await supabaseClient.from("menu_state").select("*").eq("id",1).maybeSingle();
-      if (data) renderMenuState(data);
-    }
-
-    function subscribeMenuState() {
-      supabaseClient.channel("claim-menu-live")
-        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "menu_state", filter: "id=eq.1" },
-          (payload) => renderMenuState(payload.new))
-        .subscribe();
-    }
-
     function showTicket(ticket) {
-      const claimArea = document.getElementById("claimArea");
-      claimArea.className = "card success";
+
+      const claimArea =
+        document.getElementById(
+          "claimArea"
+        );
+
+      claimArea.className =
+        "card success";
+
       claimArea.innerHTML = `
-        <p class="festival-label">第十六回紫熊祭</p>
-        <p><strong>企画者名：Match Point</strong></p>
-        <h2>🎫 450円前売り券</h2>
-        <p><strong>交換内容</strong><br>炒飯1個 または 胡麻団子2個</p>
-        <p><strong>購入者</strong><br>${ticket.buyer_name ?? "未登録"}</p>
-        <p><strong>発行者</strong><br>${ticket.seller_name}</p>
-        <p><strong>チケットID</strong><br><span class="ticket-code">${ticket.ticket_code}</span></p>
+        <h2>✅ 受け取り完了</h2>
+
+        <p>
+          <strong>商品</strong><br>
+          ${ticket.product_name}
+        </p>
+
+        <p>
+          <strong>販売者</strong><br>
+          ${ticket.seller_name}
+        </p>
+
+        <p>
+          <strong>購入者</strong><br>
+          ${ticket.buyer_name ?? "未登録"}
+        </p>
+
+        <p>
+          <strong>チケットID</strong><br>
+          <span class="ticket-code">
+            ${ticket.ticket_code}
+          </span>
+        </p>
+
         <div id="qrcode"></div>
-        <p><strong>当日はこのQRをレジスタッフに提示してください。</strong></p>
-        <p class="small">このQRは固定です。スクリーンショット保存して大丈夫です。コピーされてもチケット自体は1枚で、どれか1つが使用されるとすべて使用済みになります。</p>
-        <div id="liveMenuState" class="price-live">現在価格を確認しています...</div>
+
+        <p>
+          当日はこのQRコードを
+          店舗スタッフに提示してください。
+        </p>
+
+        <p class="small">
+          スクリーンショットを保存しておくと安心です。
+        </p>
+
+        <div id="partnerBenefits">
+          <div class="small">提携特典を読み込み中...</div>
+        </div>
       `;
-      new QRCode(document.getElementById("qrcode"), { text: ticket.ticket_code, width:220, height:220 });
-      loadMenuState();
-      subscribeMenuState();
+
+      loadPartnerBenefits();
+
+
+      new QRCode(
+        document.getElementById(
+          "qrcode"
+        ),
+        {
+          text:
+            ticket.ticket_code,
+          width:
+            220,
+          height:
+            220
+        }
+      );
+    }
+
+
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+
+    async function loadPartnerBenefits() {
+
+      const area =
+        document.getElementById(
+          "partnerBenefits"
+        );
+
+      if (!area) {
+        return;
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient.rpc(
+          "public_partner_benefits"
+        );
+
+      if (error) {
+
+        area.innerHTML = `
+          <div class="small">
+            提携特典を読み込めませんでした。
+          </div>
+        `;
+
+        return;
+      }
+
+      if (
+        !data ||
+        data.length === 0
+      ) {
+
+        area.innerHTML = "";
+
+        return;
+      }
+
+      area.innerHTML =
+        data.map((item) => `
+          <div class="partner-benefit">
+
+            <h3>
+              🎁 提携特典
+            </h3>
+
+            <p>
+              <strong>
+                ${escapeHtml(item.partner_name)}
+              </strong>
+            </p>
+
+            <div class="benefit-title">
+              ${escapeHtml(item.benefit_title)}
+            </div>
+
+            <p class="small">
+              ${escapeHtml(item.description ?? "")}
+            </p>
+
+            <span class="tag">
+              ${escapeHtml(item.valid_label ?? "")}
+            </span>
+
+            ${
+              item.instagram_url
+                ? `
+                  <a
+                    class="instagram-link"
+                    href="${escapeHtml(item.instagram_url)}"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    ${escapeHtml(item.partner_name)}
+                    のInstagramを見る
+                  </a>
+                `
+                : ""
+            }
+
+            <p class="small">
+              この前売り券のQRコードを
+              提携先スタッフに提示してください。
+            </p>
+
+          </div>
+        `).join("");
     }
 
 
@@ -574,19 +543,6 @@
 
     initialize();
 
-  </script>
-
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("./service-worker.js", { scope: "./" })
-          .catch((error) => {
-            console.log("Service Worker registration failed:", error);
-          });
-      });
-    }
   </script>
 
 </body>
