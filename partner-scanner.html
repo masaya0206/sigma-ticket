@@ -61,6 +61,17 @@ const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_pu
 
 let ctx=null, currentBenefit=null, scanner=null, currentTicket=null;
 
+function normalizeTicketCode(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+  try{
+    const u=new URL(raw);
+    const code=u.searchParams.get("code");
+    if(code)return code.trim();
+  }catch(e){}
+  return raw;
+}
+
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 async function init(){
@@ -97,7 +108,7 @@ async function startScanner(){
       {fps:10,qrbox:{width:250,height:250}},
       async decoded=>{
         await stopScanner();
-        await checkTicket(decoded.trim());
+        await checkTicket(normalizeTicketCode(decoded));
       },
       ()=>{}
     );

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>シグマ祭 前売り券</title>
+<title>Match Point 前売り券</title>
 <meta name="theme-color" content="#b5121b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -56,7 +56,7 @@ const sb=supabase.createClient(
   "https://gsniytemgrbtgfywhqlu.supabase.co",
   "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
 );
-const token=new URLSearchParams(location.search).get("token");
+const code=new URLSearchParams(location.search).get("code");
 
 function esc(v){
   return String(v??"")
@@ -140,47 +140,28 @@ async function renderTicket(t){
   });
 }
 
-async function receiveTicket(){
-  main.innerHTML='<div class="card status"><h2>受け取り中...</h2></div>';
-  const {data,error}=await sb.rpc("claim_ticket",{p_token:token});
-  if(error){showError(error.message);return;}
-  const t=Array.isArray(data)?data[0]:data;
-  if(!t){showError("チケットが見つかりません。");return;}
-  if(t.status==="invalid"){showError("このチケットは無効です。");return;}
-  await renderTicket(t);
-}
-
 function showError(message){
   main.innerHTML=`<div class="card status"><h2>確認できませんでした</h2><p>${esc(message)}</p></div>`;
 }
 
 async function init(){
-  if(!token){showError("受け取り情報がありません。");return;}
+  if(!code){showError("券情報がありません。");return;}
 
-  const {data,error}=await sb.rpc("peek_ticket_by_claim",{p_token:token});
+  const {data,error}=await sb.rpc(
+    "public_ticket_by_code",
+    {p_ticket_code:code}
+  );
+
   if(error){showError(error.message);return;}
+
   const t=Array.isArray(data)?data[0]:data;
-  if(!t){showError("このURLのチケットが見つかりません。");return;}
 
-  if(t.status==="pending"){
-    const partner=await partnerHtml();
-    main.innerHTML=`
-      <div class="card status">
-        <h2>チケットを受け取る</h2>
-        <p class="note">下のボタンを押すと前売り券の受け取りが完了します。</p>
-        <button onclick="receiveTicket()">前売り券を受け取る</button>
-      </div>
-      ${partner}
-    `;
+  if(!t){
+    showError("この券は現在表示できません。");
     return;
   }
 
-  if(t.status==="active" || t.status==="used"){
-    await renderTicket(t);
-    return;
-  }
-
-  showError("このチケットは現在利用できません。");
+  await renderTicket(t);
 }
 init();
 </script>

@@ -399,7 +399,21 @@
         SUPABASE_KEY
       );
 
-    let scanner = null;
+    
+  function normalizeTicketCode(value){
+    const raw=String(value||"").trim();
+    if(!raw) return "";
+
+    try{
+      const u=new URL(raw);
+      const code=u.searchParams.get("code");
+      if(code) return code.trim();
+    }catch(e){}
+
+    return raw;
+  }
+
+let scanner = null;
     let scannerBusy = false;
 
 
