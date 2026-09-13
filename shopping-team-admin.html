@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>買い出しメンバー管理</title>
+<title>運転手チーム管理</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta name="theme-color" content="#b5121b">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -24,11 +24,11 @@ button.on{background:#b5121b;color:#fff}
 </style>
 </head>
 <body>
-<header><h1>買い出しメンバー管理</h1></header>
+<header><h1>運転手チーム管理</h1></header>
 <main>
   <div class="card">
-    <p style="margin-top:0">車を出せる人・買い出し要員候補を登録します。</p>
-    <p class="sub">ここで登録された人は、正式な買い出しミッションで「今回運転する」を選べます。</p>
+    <p style="margin-top:0">車を出せる人を「運転手チーム」として事前登録します。</p>
+    <p class="sub">運転手チーム内で毎回1人だけ「今回運転する」を選びます。誰が運転しても、チーム報酬部分は登録メンバー全員で等分されます。</p>
   </div>
 
   <div class="card">
@@ -56,7 +56,7 @@ async function load(){
     <div class="row">
       <div>
         <div class="name">${x.staff_name}</div>
-        <div class="sub">${x.is_member?"買い出しメンバー登録済み":"未登録"}</div>
+        <div class="sub">${x.is_member?"運転手チーム登録済み":"未登録"}</div>
       </div>
       <button
         class="${x.is_member?"on":""}"

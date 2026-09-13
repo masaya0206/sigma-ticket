@@ -1057,7 +1057,8 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 
           supabaseClient.rpc("my_presale_status"),
           supabaseClient.rpc("my_point_summary", { p_final: true }),
-          supabaseClient.rpc("my_point_summary", { p_final: false })
+          supabaseClient.rpc("my_point_summary", { p_final: false }),
+          supabaseClient.rpc("my_shopping_point_summary")
         ]);
 
       const assignment =
@@ -1082,9 +1083,14 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
       const pointRows = finalPointResult.data?.length
         ? finalPointResult.data
         : (provisionalPointResult.data || []);
-      const dayPoints = pointRows.reduce(
+      const baseDayPoints = pointRows.reduce(
         (sum,row)=>sum+Number(row.points||0),0
       );
+      const sp=shoppingPointResult?.data||{};
+      const shoppingPoints=Number(
+        sp.has_final ? sp.final_points : sp.provisional_points||0
+      );
+      const dayPoints=baseDayPoints+shoppingPoints;
       document.getElementById("homeDayPt").textContent =
         dayPoints.toFixed(1) + " pt " +
         (finalPointResult.data?.length ? "確定" : "暫定");

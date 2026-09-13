@@ -48,21 +48,107 @@
   }
 </style>
 
-</head><body><main><button class="secondary" onclick="history.length>1?history.back():location.href='home.html'">← 前の画面</button><h1>買い出し</h1><p class="muted">ポイント対象になるのは、店長または管理者が複数要請をまとめて正式承認した「買い出しミッション」だけです。</p>
-<div class="card"><h2>① 買い出し要請を出す</h2><input id="note" placeholder="例：油2本、米10kg"><button onclick="requestShop()">要請を追加</button><p id="rmsg"></p></div>
+</head><body><main><button class="secondary" onclick="history.length>1?history.back():location.href='home.html'">← 前の画面</button><h1>買い出し</h1><p class="muted">運転手チームは管理者が事前登録する固定チームです。1ミッションで実際に行く運転手は1人だけです。</p><p class="muted">ポイント対象になるのは、店長または管理者が複数要請をまとめて正式承認した「買い出しミッション」だけです。</p>
+<div class="card" id="requestCard"><h2>① 買い出し要請を出す</h2><input id="note" placeholder="例：油2本、米10kg"><button onclick="requestShop()">要請を追加</button><p id="rmsg"></p></div>
 <div class="card" id="approveCard"><h2>② 未処理要請をまとめて承認</h2><div id="requests">読み込み中...</div><button onclick="approveMission()">選択した要請を1ミッションとして承認</button><p id="amsg"></p></div>
 <div class="card"><h2>③ 正式ミッション</h2><div id="missions"></div></div>
 <div class="card"><h2>自分への手伝い招待</h2><div id="invites">なし</div></div>
+<div class="card">
+  <h2>買い出しポイント</h2>
+  <div id="shoppingPointStatus">読み込み中...</div>
+  <div id="adminPointTools" style="display:none">
+    <label>運転手係数</label>
+    <input id="driverCoefficient" type="number" step="0.1" min="0.1">
+    <button class="secondary" onclick="saveDriverCoefficient()">係数を保存</button>
+    <button onclick="finalizeShoppingPoints()">最終営業終了：30分単位で再計算</button>
+    <p id="pointAdminMsg" class="muted"></p>
+  </div>
+</div>
 <script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); let me=null,board=null;
 async function requestShop(){const{data,error}=await db.rpc('create_shopping_request',{p_note:note.value.trim()});rmsg.textContent=error?'エラー: '+error.message:'✅ 要請しました';if(!error){note.value='';load()}}
-async function load(){const{data:{user}}=await db.auth.getUser();if(!user){location.href='home.html';return}me=user.id;const{data,error}=await db.rpc('shopping_board');if(error){requests.textContent='エラー: '+error.message;return}board=data;requests.innerHTML=(data.requests||[]).length?(data.requests||[]).map(r=>`<label class="row" style="display:block"><input style="width:auto" type="checkbox" class="req" value="${r.id}"> ${r.note||'内容未入力'} <span class="muted">${new Date(r.requested_at).toLocaleString('ja-JP')}</span></label>`).join(''):'未処理要請はありません。';renderMissions();renderInvites()}
+async function load(){const{data:{user}}=await db.auth.getUser();if(!user){location.href='home.html';return}me=user.id;const{data,error}=await db.rpc('shopping_board');if(error){requests.textContent='エラー: '+error.message;return}board=data;await loadPointBoard();requests.innerHTML=(data.requests||[]).length?(data.requests||[]).map(r=>`<label class="row" style="display:block"><input style="width:auto" type="checkbox" class="req" value="${r.id}"> ${r.note||'内容未入力'} <span class="muted">${new Date(r.requested_at).toLocaleString('ja-JP')}</span></label>`).join(''):'未処理要請はありません。';renderMissions();renderInvites()}
 async function approveMission(){const ids=[...document.querySelectorAll('.req:checked')].map(x=>x.value);if(!ids.length){amsg.textContent='要請を選択してください';return}const{data,error}=await db.rpc('create_shopping_mission',{p_requests:ids});amsg.textContent=error?'エラー: '+error.message:'✅ 正式ミッションを承認しました';if(!error)load()}
 function missionText(m){return (m.requests||[]).map(x=>x.note||'内容未入力').join(' / ')}
 function renderMissions(){missions.innerHTML=(board.missions||[]).length?(board.missions||[]).map(m=>{let actions='';if(m.status==='approved')actions=`<button onclick="claim('${m.id}')">今回運転する</button>`;if(m.status==='driver_selected'&&m.driver_user_id===me)actions=`<select id="helper-${m.id}"><option value="">手伝いを選択</option>${(board.staff||[]).filter(s=>s.user_id!==me).map(s=>`<option value="${s.user_id}">${s.name}</option>`).join('')}</select><button class="secondary" onclick="invite('${m.id}')">手伝いを招待</button><button onclick="start('${m.id}')">出発</button>`;if(m.status==='departed'&&m.driver_user_id===me)actions=`<button class="danger" onclick="complete('${m.id}')">帰還・完了</button>`;return `<div class="row"><b>${missionText(m)}</b><br><span class="pill">${m.status}</span><br>${actions}</div>`}).join(''):'正式ミッションはありません。'}
 function renderInvites(){let all=[];(board.missions||[]).forEach(m=>(m.helpers||[]).forEach(h=>{if(h.user_id===me&&h.status==='pending')all.push(m)}));invites.innerHTML=all.length?all.map(m=>`<div class="row"><b>${missionText(m)}</b><button onclick="respond('${m.id}',true)">参加する</button><button class="secondary" onclick="respond('${m.id}',false)">断る</button></div>`).join(''):'なし'}
+
+function acceptedHelpers(m){
+  return (m.helpers||[]).filter(h=>h.status==="accepted").map(h=>h.user_id);
+}
+
+async function loadPointBoard(){
+  const {data,error}=await db.rpc("shopping_point_board");
+  if(error){
+    shoppingPointStatus.textContent="ポイント情報エラー: "+error.message;
+    return;
+  }
+
+  const p=data?.my_points||{};
+  const useFinal=!!p.has_final;
+  const pt=Number(useFinal?p.final_points:p.provisional_points||0);
+
+  shoppingPointStatus.innerHTML=
+    `<div class="big">${pt.toFixed(2)} pt</div>`+
+    `<div class="muted">${useFinal?"確定（30分単位）":"暫定（1時間単位）"} ／ 対象 ${Number(p.mission_count||0)}件</div>`;
+
+  requestCard.style.display=(data?.is_admin||data?.is_manager)?"block":"none";
+
+  if(data?.is_admin){
+    adminPointTools.style.display="block";
+    driverCoefficient.value=Number(data?.settings?.driver_coefficient||1.5);
+  }
+}
+
+async function saveDriverCoefficient(){
+  const {error}=await db.rpc(
+    "admin_set_shopping_driver_coefficient",
+    {p_value:Number(driverCoefficient.value)}
+  );
+  pointAdminMsg.textContent=error?"エラー: "+error.message:"✅ 保存しました";
+  if(!error)loadPointBoard();
+}
+
+async function finalizeShoppingPoints(){
+  if(!confirm("完了済み買い出しを30分単位で再計算して確定しますか？"))return;
+  const {data,error}=await db.rpc("admin_finalize_shopping_points");
+  pointAdminMsg.textContent=error
+    ?"エラー: "+error.message
+    :"✅ "+Number(data?.finalized_missions||0)+"件を確定しました";
+  if(!error)loadPointBoard();
+}
+
 async function claim(id){const{error}=await db.rpc('claim_shopping_mission',{p_mission:id});if(error)alert(error.message);load()}
 async function invite(id){const u=document.getElementById('helper-'+id).value;if(!u)return;const{error}=await db.rpc('invite_shopping_helper',{p_mission:id,p_user:u});if(error)alert(error.message);load()}
 async function respond(id,a){const{error}=await db.rpc('respond_shopping_helper',{p_mission:id,p_accept:a});if(error)alert(error.message);load()}
-async function start(id){if(!confirm('この正式ミッションで出発しますか？'))return;const{error}=await db.rpc('start_shopping_mission',{p_mission:id});if(error)alert(error.message);load()}
-async function complete(id){const{error}=await db.rpc('complete_shopping_mission',{p_mission:id});if(error)alert(error.message);load()}load();</script></main><nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
+async function start(id){
+  if(!confirm('この正式ミッションで出発しますか？'))return;
+  const m=(board.missions||[]).find(x=>x.id===id);
+  const helpers=acceptedHelpers(m||{});
+
+  const {error}=await db.rpc('start_shopping_mission',{p_mission:id});
+  if(error){alert(error.message);return;}
+
+  const {error:pe}=await db.rpc(
+    'shopping_points_start_mission',
+    {p_mission:id,p_driver:me,p_helpers:helpers}
+  );
+
+  if(pe)alert('出発は記録されましたが、ポイント開始記録エラー: '+pe.message);
+  load();
+}
+async function complete(id){
+  const {error}=await db.rpc('complete_shopping_mission',{p_mission:id});
+  if(error){alert(error.message);return;}
+
+  const {data,error:pe}=await db.rpc(
+    'shopping_points_complete_mission',
+    {p_mission:id}
+  );
+
+  if(pe) alert('帰還は記録されましたが、暫定ポイント計算エラー: '+pe.message);
+  else alert('帰還しました。暫定H: '+Number(data?.h||0).toFixed(2)+' pt');
+
+  load();
+}
+load();</script></main><nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body></html>

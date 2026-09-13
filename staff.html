@@ -84,9 +84,10 @@ const roleName=r=>({seller:"売り子",front:"店長",back:"店長",cook:"調理
 async function auth(){const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return null}return user}
 async function load(){
  const u=await auth();if(!u)return;
- const [ws,pre,prov,fin]=await Promise.all([
+ const [ws,pre,prov,fin,shop]=await Promise.all([
    sb.rpc('my_work_status'), sb.rpc('my_presale_status'),
-   sb.rpc('my_point_summary',{p_final:false}), sb.rpc('my_point_summary',{p_final:true})
+   sb.rpc('my_point_summary',{p_final:false}), sb.rpc('my_point_summary',{p_final:true}),
+   sb.rpc('my_shopping_point_summary')
  ]);
  if(ws.error) status.innerHTML='<span class="err">'+ws.error.message+'</span>';
  else {
@@ -100,7 +101,9 @@ async function load(){
  }
  const rows=fin.data?.length?fin.data:(prov.data||[]);
  let day=0;for(const r of rows) day+=Number(r.points||0);
- dayPt.textContent=day.toFixed(1)+' pt'+(fin.data?.length?'（確定）':'（暫定）');
+ const sp=shop.data||{};
+ day+=Number(sp.has_final?sp.final_points:sp.provisional_points||0);
+ dayPt.textContent=day.toFixed(1)+' pt'+(fin.data?.length&&sp.has_final?'（確定）':'（暫定）');
 }
 async function startScan(){
  if(scanner)return;
