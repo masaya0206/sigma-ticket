@@ -61,7 +61,9 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
   </section>
 
   <section class="card">
-    <button onclick="toggleHistory()">提供済み履歴を見る / 閉じる</button>
+    <h2 style="margin-top:0">提供済み履歴</h2>
+    <p class="small">間違って提供済みにした注文は、ここから「受け渡し待ち」へ戻せます。</p>
+    <button onclick="toggleHistory()" id="historyToggleBtn">履歴を表示</button>
     <div id="historyArea" style="display:none;margin-top:12px;"></div>
   </section>
 </main>
@@ -195,7 +197,9 @@ async function loadHistory(){
 async function toggleHistory(){
   historyOpen=!historyOpen;
   const area=document.getElementById("historyArea");
+  const btn=document.getElementById("historyToggleBtn");
   area.style.display=historyOpen?"block":"none";
+  if(btn) btn.textContent=historyOpen?"履歴を閉じる":"履歴を表示";
   if(historyOpen) await loadHistory();
 }
 
