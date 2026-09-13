@@ -402,15 +402,27 @@
     
   function normalizeTicketCode(value){
     const raw=String(value||"").trim();
-    if(!raw) return "";
+
+    if(!raw){
+      return "";
+    }
 
     try{
       const u=new URL(raw);
-      const code=u.searchParams.get("code");
-      if(code) return code.trim();
-    }catch(e){}
 
-    return raw;
+      const code=
+        u.searchParams.get("code");
+
+      if(code){
+        return code.trim();
+      }
+
+      // If a URL is scanned but it does not contain ?code=,
+      // do not send the whole URL to the DB as a ticket code.
+      return raw;
+    }catch(e){
+      return raw;
+    }
   }
 
 let scanner = null;
@@ -555,7 +567,7 @@ let scanner = null;
               );
 
               await checkTicket(
-                decodedText
+                normalizeTicketCode(decodedText)
               );
 
             } finally {
@@ -650,6 +662,11 @@ let scanner = null;
     async function checkTicket(
       ticketCode
     ) {
+
+      ticketCode =
+        normalizeTicketCode(
+          ticketCode
+        );
 
       const resultBox =
         document.getElementById(
