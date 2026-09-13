@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>受け渡しサポート</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<style>
+:root{--red:#b5121b;--blue:#2563eb;--green:#16a34a;--ink:#1c1c1e;--muted:#6e6e73;--bg:#f7f4f2;--line:#ece7e4}
+*{box-sizing:border-box}
+body{margin:0;padding-bottom:82px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:28px 18px 24px;color:#fff;background:linear-gradient(145deg,#b5121b,#8f0e15);border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px} header p{margin:6px 0 0;color:#ffdfe1;font-size:13px}
+main{max-width:720px;margin:auto;padding:16px}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat,.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 6px 20px rgba(55,20,20,.05)}
+.stat span{display:block;color:var(--muted);font-size:12px}.stat strong{display:block;margin-top:4px;font-size:25px}
+.card{margin:12px 0}.ready{border:2px solid #b7e7c2}.new{border-left:5px solid #b5121b}.cooking{border-left:5px solid #d98b00}
+.pickup{font-size:32px;font-weight:900;margin-bottom:8px}.pickup.red{color:var(--red)}.pickup.blue{color:var(--blue)}.pickup.green{color:var(--green)}
+.items{font-size:20px;font-weight:900}.meta{margin-top:6px;color:var(--muted);font-size:12px}
+button{width:100%;padding:13px;border:0;border-radius:13px;background:#b5121b;color:#fff;font:inherit;font-weight:900}
+.status{font-weight:900}.status.ready{color:#15803d}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb}
+.global-bottom-nav button{margin:0;padding:7px 4px;background:transparent;color:#6e6e73;font-size:11px}.global-bottom-nav .gicon{display:block;font-size:20px;margin-bottom:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>受け渡しサポート</h1>
+  <p>現在の注文を確認して、受け渡し待ちの商品をお客さんへ渡します。</p>
+</header>
+
+<main>
+  <div class="summary">
+    <div class="stat"><span>受け渡し待ち</span><strong id="readyCount">0</strong></div>
+    <div class="stat"><span>その他進行中</span><strong id="otherCount">0</strong></div>
+  </div>
+
+  <h2>注文状況</h2>
+  <div id="orders"><div class="card">読み込み中...</div></div>
+</main>
+
+<nav class="global-bottom-nav">
+  <button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button>
+  <button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button>
+  <button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button>
+</nav>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+
+function colorName(c){
+  return c==="red"?"赤レジ":c==="blue"?"青レジ":c==="green"?"緑レジ":"レジ不明";
+}
+function statusName(s){
+  return s==="ready"?"受け渡し待ち":s==="new"?"新規":s==="cooking"?"調理中":s;
+}
+function time(v){
+  return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+}
+
+async function markServed(id){
+  if(!confirm("この商品を提供済みにしますか？")) return;
+  const {error}=await sb.rpc("support_mark_order_served",{p_order_id:id});
+  if(error){ alert(error.message); return; }
+  await loadOrders();
+}
+
+async function loadOrders(){
+  const {data,error}=await sb.rpc("support_order_board");
+  if(error){
+    orders.innerHTML=`<div class="card">エラー：${error.message}</div>`;
+    return;
+  }
+
+  const rows=data||[];
+  readyCount.textContent=rows.filter(x=>x.order_status==="ready").length;
+  otherCount.textContent=rows.filter(x=>x.order_status!=="ready").length;
+
+  if(!rows.length){
+    orders.innerHTML='<div class="card">現在進行中の注文はありません。</div>';
+    return;
+  }
+
+  orders.innerHTML=rows.map(x=>{
+    const items=[
+      Number(x.fried_rice_qty||0)>0?`炒飯 ${x.fried_rice_qty}`:"",
+      Number(x.sesame_qty||0)>0?`胡麻団子 ${x.sesame_qty}`:""
+    ].filter(Boolean).join("・");
+
+    return `<div class="card ${x.order_status}">
+      <div class="pickup ${x.register_color||""}">
+        受取 ${x.pickup_number||"—"}
+      </div>
+      <div class="items">${items}</div>
+      <div class="meta">${colorName(x.register_color)} ／ ${time(x.ordered_at)}</div>
+      <div class="meta"><span class="status ${x.order_status}">${statusName(x.order_status)}</span></div>
+      ${x.order_status==="ready"
+        ? `<button style="margin-top:12px" onclick="markServed(${x.id})">お渡し完了</button>`
+        : ""}
+    </div>`;
+  }).join("");
+}
+
+(async()=>{
+  await loadOrders();
+
+  sb.channel("v82-support-orders")
+    .on("postgres_changes",{event:"*",schema:"public",table:"service_orders"},()=>loadOrders())
+    .subscribe();
+
+  setInterval(loadOrders,5000);
+})();
+</script>
+</body>
+</html>

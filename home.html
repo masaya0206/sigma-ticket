@@ -722,8 +722,8 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 
         <div class="notice">
           通常は「勤怠・シフト」「前売り券・当日券」の2つだけ表示します。
-          出勤中は「店長・レジ・買い出し」のうち必要な機能だけ自動で追加されます。
-          売り子・調理・サポートには専用メニューを追加しません。
+          出勤中は「店長・レジ・サポート・買い出し」のうち必要な機能だけ自動で追加されます。
+          売り子・調理には専用メニューを追加しません。
         </div>
 
       </div>
@@ -1250,6 +1250,10 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 
       if(currentRole==="register"){
         cards.push(roleMenuCard("レジ","現金会計・QR交換","index.html"));
+      }
+
+      if(currentRole==="support"){
+        cards.push(roleMenuCard("サポート","注文状況・受け渡し確認","support.html"));
       }
 
       if(currentRole==="shopping_driver"||currentRole==="shopping_helper"){

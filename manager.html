@@ -23,7 +23,7 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
 .order-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.order-items{font-size:20px;font-weight:900}
 .meta{margin-top:6px;color:var(--muted);font-size:12px}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.actions button{width:auto;flex:1;min-width:82px;padding:9px}
 .color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;background:#999}
-.color-dot.red{background:#dc2626}.color-dot.blue{background:#2563eb}.color-dot.green{background:#16a34a}
+.color-dot.red{background:#dc2626}.color-dot.blue{background:#2563eb}.color-dot.green{background:#16a34a}.pickup-number{font-size:30px;font-weight:900;margin-bottom:8px}.pickup-number.red{color:#dc2626}.pickup-number.blue{color:#2563eb}.pickup-number.green{color:#16a34a}
 .small{font-size:12px;color:var(--muted)}
 .global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}
 .global-bottom-nav button{margin:0;padding:7px 4px;background:transparent;color:#6e6e73;font-size:11px}.global-bottom-nav .gicon{display:block;font-size:20px;margin-bottom:4px}
@@ -114,7 +114,7 @@ async function loadOrders(){
     ].filter(Boolean).join("・");
 
     return `<div class="card order ${x.order_status}">
-      <div style="font-size:30px;font-weight:900;color:#b5121b;margin-bottom:8px;">
+      <div class="pickup-number ${x.register_color || ""}">
         受取 ${x.pickup_number || "—"}
       </div>
       <div class="order-top">

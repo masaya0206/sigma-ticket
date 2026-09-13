@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>買い出しメンバー管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<style>
+:root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--bg:#f7f4f2;--line:#ece7e4}
+*{box-sizing:border-box}
+body{margin:0;padding-bottom:30px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:28px 18px 24px;color:#fff;background:linear-gradient(145deg,#b5121b,#8f0e15);border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}
+main{max-width:680px;margin:auto;padding:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;margin:12px 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #eee}.row:last-child{border-bottom:0}
+.name{font-weight:900}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+button{border:0;border-radius:12px;padding:10px 13px;background:var(--soft);color:var(--red);font:inherit;font-weight:900;white-space:nowrap}
+button.on{background:#b5121b;color:#fff}
+.back{width:100%;margin-top:8px}
+</style>
+</head>
+<body>
+<header><h1>買い出しメンバー管理</h1></header>
+<main>
+  <div class="card">
+    <p style="margin-top:0">車を出せる人・買い出し要員候補を登録します。</p>
+    <p class="sub">ここで登録された人は、正式な買い出しミッションで「今回運転する」を選べます。</p>
+  </div>
+
+  <div class="card">
+    <div id="list">読み込み中...</div>
+  </div>
+
+  <button class="back" onclick="location.href='admin-menu.html'">← 管理者メニューへ戻る</button>
+</main>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+
+async function load(){
+  const {data,error}=await sb.rpc("admin_shopping_team_status");
+
+  if(error){
+    list.textContent="エラー："+error.message;
+    return;
+  }
+
+  list.innerHTML=(data||[]).map(x=>`
+    <div class="row">
+      <div>
+        <div class="name">${x.staff_name}</div>
+        <div class="sub">${x.is_member?"買い出しメンバー登録済み":"未登録"}</div>
+      </div>
+      <button
+        class="${x.is_member?"on":""}"
+        onclick="setMember('${x.user_id}',${!x.is_member})"
+      >
+        ${x.is_member?"解除":"追加"}
+      </button>
+    </div>
+  `).join("") || "スタッフがいません。";
+}
+
+async function setMember(userId,active){
+  const {error}=await sb.rpc(
+    "admin_set_shopping_team_member",
+    {
+      p_user:userId,
+      p_active:active
+    }
+  );
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  await load();
+}
+
+load();
+</script>
+</body>
+</html>
