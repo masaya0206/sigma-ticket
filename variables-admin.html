@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="theme-color" content="#b5121b">
 <title>変数設定</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
+
+</script>
 <style>
 :root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2;--ok:#18794e}
 *{box-sizing:border-box}
@@ -31,7 +34,31 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
 .global-bottom-nav button{width:100%;margin:0;padding:7px 4px;border:0;border-radius:12px;background:transparent;color:#6e6e73;font:inherit;font-size:11px;font-weight:700;line-height:1.15}
 .global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px}.global-bottom-nav button.active{color:var(--red);background:var(--soft)}
 @media(max-width:420px){.field{grid-template-columns:1fr 112px}}
-</style>
+
+    .setting-help{
+      margin-top:10px;
+      font-size:13px;
+      line-height:1.55;
+      color:#6e6e73;
+    }
+    .setting-help p{margin:3px 0}
+    .help-change{color:#444}
+    .help-example{
+      color:#b5121b;
+      font-weight:700;
+    }
+    .help-target{
+      display:inline-block;
+      margin-top:6px;
+      padding:3px 8px;
+      border-radius:999px;
+      background:#fff1f1;
+      color:#b5121b;
+      font-size:12px;
+      font-weight:700;
+    }
+
+  </style>
 </head>
 <body>
 <main>
@@ -49,6 +76,11 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
       <div>
         <div class="label">ノルマ加速係数</div>
         <div class="help">6枚を基準に、ノルマを1枚増やすごとの倍率上昇量</div>
+        <div class="setting-help">
+          <p class="help-change">上げると、高いノルマを選んだ人ほど前売りptが大きく伸びます。</p>
+          <p class="help-example" id="quotaExample"></p>
+          <span class="help-target">前売りptに反映</span>
+        </div>
       </div>
       <input id="quota" type="number" min="0" step="0.01">
     </div>
@@ -58,15 +90,39 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
     <h2>当日内</h2>
     <div class="small">客数 ÷ その注文時点の店内人数 × 役割係数で計算します。</div>
     <div class="field">
-      <div><div class="label">店長係数</div><div class="help">店長担当中の客組に適用</div></div>
+      <div>
+        <div class="label">店長係数</div>
+        <div class="help">店長担当中の客組に適用</div>
+        <div class="setting-help">
+          <p class="help-change">上げると、店長担当中の当日内ptが増えます。</p>
+          <p class="help-example" id="managerExample"></p>
+          <span class="help-target">当日内ptに反映</span>
+        </div>
+      </div>
       <input id="manager" type="number" min="0" step="0.05">
     </div>
     <div class="field">
-      <div><div class="label">調理係数</div><div class="help">調理担当中の客組に適用</div></div>
+      <div>
+        <div class="label">調理係数</div>
+        <div class="help">調理担当中の客組に適用</div>
+        <div class="setting-help">
+          <p class="help-change">上げると、調理担当中の当日内ptが増えます。</p>
+          <p class="help-example" id="cookExample"></p>
+          <span class="help-target">当日内ptに反映</span>
+        </div>
+      </div>
       <input id="cook" type="number" min="0" step="0.05">
     </div>
     <div class="field">
-      <div><div class="label">サポート係数</div><div class="help">サポート担当中の客組に適用</div></div>
+      <div>
+        <div class="label">サポート係数</div>
+        <div class="help">サポート担当中の客組に適用</div>
+        <div class="setting-help">
+          <p class="help-change">上げると、サポート担当中の当日内ptが増えます。</p>
+          <p class="help-example" id="supportExample"></p>
+          <span class="help-target">当日内ptに反映</span>
+        </div>
+      </div>
       <input id="support" type="number" min="0" step="0.05">
     </div>
   </div>
@@ -77,6 +133,11 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
       <div>
         <div class="label">運転手係数 K</div>
         <div class="help">運転手チーム全体の追加報酬 H×K に使用</div>
+        <div class="setting-help">
+          <p class="help-change">上げると、運転手チーム全体への追加ptが増えます。</p>
+          <p class="help-example" id="driverExample"></p>
+          <span class="help-target">買い出しptに反映</span>
+        </div>
       </div>
       <input id="driver" type="number" min="0.01" step="0.1">
     </div>
@@ -89,6 +150,11 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
       <div>
         <div class="label">準備日 最大上乗せ率</div>
         <div class="help" id="prepDateText">準備日の勤怠補正</div>
+        <div class="setting-help">
+          <p class="help-change">上げると、準備日に長く参加した人の最終配分がより大きくなります。</p>
+          <p class="help-example" id="prepExample"></p>
+          <span class="help-target">全4部門の最終配分に反映</span>
+        </div>
       </div>
       <div class="unit"><input id="prep" type="number" min="0" step="0.1"><span>%</span></div>
     </div>
@@ -96,6 +162,11 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
       <div>
         <div class="label">片付け日 最大上乗せ率</div>
         <div class="help" id="cleanupDateText">片付け日の勤怠補正</div>
+        <div class="setting-help">
+          <p class="help-change">上げると、片付け日に長く参加した人の最終配分がより大きくなります。</p>
+          <p class="help-example" id="cleanupExample"></p>
+          <span class="help-target">全4部門の最終配分に反映</span>
+        </div>
       </div>
       <div class="unit"><input id="cleanup" type="number" min="0" step="0.1"><span>%</span></div>
     </div>
@@ -167,6 +238,7 @@ async function load(){
 
   if(data.prep_date) el("prepDateText").textContent=`準備日 ${jpDate(data.prep_date)} の最大補正`;
   if(data.cleanup_date) el("cleanupDateText").textContent=`片付け日 ${jpDate(data.cleanup_date)} の最大補正`;
+  updateVariableExamples();
 }
 
 async function saveAll(){
@@ -205,6 +277,48 @@ async function saveAll(){
   el("msg").textContent="✅ 変数を保存しました";
   await load();
 }
+
+
+function updateVariableExamples(){
+  const q=n("quota");
+  const m=n("manager");
+  const c=n("cook");
+  const s=n("support");
+  const k=n("driver");
+  const p=n("prep");
+  const cl=n("cleanup");
+
+  const qp=(count)=>count*(1+q*(count-6));
+
+  if(Number.isFinite(q)){
+    el("quotaExample").textContent=
+      `例：${q.toFixed(2)}なら 6枚=${qp(6).toFixed(1)}pt / 7枚=${qp(7).toFixed(1)}pt / 8枚=${qp(8).toFixed(1)}pt`;
+  }
+  if(Number.isFinite(m)){
+    el("managerExample").textContent=`例：基礎10ptなら ${m.toFixed(2)} → ${(10*m).toFixed(1)}pt`;
+  }
+  if(Number.isFinite(c)){
+    el("cookExample").textContent=`例：基礎10ptなら ${c.toFixed(2)} → ${(10*c).toFixed(1)}pt`;
+  }
+  if(Number.isFinite(s)){
+    el("supportExample").textContent=`例：基礎10ptなら ${s.toFixed(2)} → ${(10*s).toFixed(1)}pt`;
+  }
+  if(Number.isFinite(k)){
+    el("driverExample").textContent=`例：H=8ptなら K=${k.toFixed(2)} → チーム追加 ${(8*k).toFixed(1)}pt`;
+  }
+  if(Number.isFinite(p)){
+    el("prepExample").textContent=
+      `例：${p.toFixed(1)}%なら 最長参加者は×${(1+p/100).toFixed(3)}、半分参加なら約×${(1+p/200).toFixed(3)}`;
+  }
+  if(Number.isFinite(cl)){
+    el("cleanupExample").textContent=
+      `例：${cl.toFixed(1)}%なら 最長参加者は×${(1+cl/100).toFixed(3)}、半分参加なら約×${(1+cl/200).toFixed(3)}`;
+  }
+}
+
+["quota","manager","cook","support","driver","prep","cleanup"].forEach(id=>{
+  el(id).addEventListener("input",updateVariableExamples);
+});
 
 load();
 </script>
