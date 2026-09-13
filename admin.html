@@ -397,15 +397,8 @@
         👥 スタッフ・シフト管理
       </button>
 
-      <button onclick="toggleMainPanel('pointManagementArea')">
-        ⭐ ポイント設定
-      </button>
-
-      <button onclick="location.href='points-simulator.html'">
-        🧮 ポイントシミュレーション
-      </button>
       <button onclick="location.href='points-admin.html'">
-        ⭐ ポイント本番管理
+        ⭐ ポイント管理
       </button>
 
       <button onclick="toggleMainPanel('ticketManagementArea')">
@@ -526,48 +519,6 @@
         <div id="assignmentList">
           未読み込み
         </div>
-      </div>
-    </div>
-
-
-    <div id="pointManagementArea" class="card panel">
-      <h2>ポイント設定</h2>
-
-      <p class="small">
-        現在のポイントルール表を管理します。
-        最終的な自動ポイント計算式は後でSupabase側とまとめて整備します。
-      </p>
-
-      <input
-        id="pointStart"
-        type="datetime-local"
-      >
-
-      <input
-        id="pointEnd"
-        type="datetime-local"
-      >
-
-      <input
-        id="pointValue"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="1枚あたりpt 例：0.25"
-      >
-
-      <button onclick="savePointRule()">
-        ポイント設定を保存
-      </button>
-
-      <p id="pointMessage"></p>
-
-      <button onclick="loadPointRules()">
-        ポイント設定一覧を更新
-      </button>
-
-      <div id="pointRuleList">
-        未読み込み
       </div>
     </div>
 
@@ -1004,7 +955,6 @@
       const panelIds = [
         "sellerManagementArea",
         "staffManagementArea",
-        "pointManagementArea",
         "ticketManagementArea",
         "operationsArea"
       ];
@@ -1052,15 +1002,7 @@
           loadStaffMembers();
           loadAssignments();
         }
-
-        if (
-          panelId ===
-          "pointManagementArea"
-        ) {
-          loadPointRules();
-        }
-
-        if (
+if (
           panelId ===
           "ticketManagementArea"
         ) {
@@ -1733,230 +1675,6 @@
       }
 
       await loadAssignments();
-    }
-
-
-    async function savePointRule() {
-
-      const startValue =
-        document.getElementById(
-          "pointStart"
-        ).value;
-
-      const endValue =
-        document.getElementById(
-          "pointEnd"
-        ).value;
-
-      const pointValue =
-        document.getElementById(
-          "pointValue"
-        ).value;
-
-      const message =
-        document.getElementById(
-          "pointMessage"
-        );
-
-      if (
-        !startValue ||
-        !endValue ||
-        pointValue === ""
-      ) {
-
-        message.textContent =
-          "開始日時・終了日時・ポイントを入力してください。";
-
-        return;
-      }
-
-      const start =
-        new Date(startValue);
-
-      const end =
-        new Date(endValue);
-
-      const pointPerTicket =
-        Number(pointValue);
-
-      if (end <= start) {
-
-        message.textContent =
-          "終了日時は開始日時より後にしてください。";
-
-        return;
-      }
-
-      if (
-        !Number.isFinite(
-          pointPerTicket
-        ) ||
-        pointPerTicket < 0
-      ) {
-
-        message.textContent =
-          "ポイントは0以上にしてください。";
-
-        return;
-      }
-
-      const {
-        error
-      } =
-        await supabaseClient
-          .from("point_rules")
-          .insert({
-            start_at:
-              start.toISOString(),
-            end_at:
-              end.toISOString(),
-            point_per_ticket:
-              pointPerTicket
-          });
-
-      if (error) {
-
-        message.textContent =
-          "保存エラー：" +
-          error.message;
-
-        return;
-      }
-
-      message.textContent =
-        "✅ ポイント設定を保存しました。";
-
-      document.getElementById(
-        "pointStart"
-      ).value = "";
-
-      document.getElementById(
-        "pointEnd"
-      ).value = "";
-
-      document.getElementById(
-        "pointValue"
-      ).value = "";
-
-      await loadPointRules();
-    }
-
-
-    async function loadPointRules() {
-
-      const area =
-        document.getElementById(
-          "pointRuleList"
-        );
-
-      area.textContent =
-        "読み込み中...";
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from("point_rules")
-          .select(
-            "id,start_at,end_at,point_per_ticket"
-          )
-          .order(
-            "start_at",
-            { ascending: true }
-          );
-
-      if (error) {
-
-        area.textContent =
-          "取得エラー：" +
-          error.message;
-
-        return;
-      }
-
-      if (
-        !data ||
-        data.length === 0
-      ) {
-
-        area.textContent =
-          "ポイント設定はまだありません。";
-
-        return;
-      }
-
-      area.innerHTML =
-        data.map(
-          rule => `
-            <div class="subcard">
-              <strong>
-                ${localDateTime(
-                  rule.start_at
-                )}
-              </strong>
-
-              <br>
-
-              〜
-              ${localDateTime(
-                rule.end_at
-              )}
-
-              <br><br>
-
-              1枚あたり
-              <strong>
-                ${rule.point_per_ticket} pt
-              </strong>
-
-              <button
-                onclick="
-                  deletePointRule(
-                    '${rule.id}'
-                  )
-                "
-              >
-                この設定を削除
-              </button>
-            </div>
-          `
-        ).join("");
-    }
-
-
-    async function deletePointRule(
-      id
-    ) {
-
-      const confirmed =
-        confirm(
-          "このポイント設定を削除しますか？"
-        );
-
-      if (!confirmed) {
-        return;
-      }
-
-      const {
-        error
-      } =
-        await supabaseClient
-          .from("point_rules")
-          .delete()
-          .eq("id", id);
-
-      if (error) {
-
-        alert(
-          "削除エラー：" +
-          error.message
-        );
-
-        return;
-      }
-
-      await loadPointRules();
     }
 
 
