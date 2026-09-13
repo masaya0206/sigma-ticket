@@ -27,6 +27,37 @@ button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red)
   <p>4部門の原資と個人配分を最終確定します。</p>
 </header>
 <main>
+
+  <div class="card">
+    <h2>準備日・片付け日 補正</h2>
+    <div class="small">
+      各日の最長勤怠者を100%として、他のスタッフは勤怠時間に比例して相対補正します。
+      この補正は4部門すべての「配分用pt」に適用し、部門原資そのものは変えません。
+    </div>
+
+    <label>準備日</label>
+    <input id="prepDate" type="date">
+
+    <label>準備日 最大上乗せ率（%）</label>
+    <input id="prepUplift" type="number" min="0" step="0.1" placeholder="例：5">
+
+    <label>片付け日</label>
+    <input id="cleanupDate" type="date">
+
+    <label>片付け日 最大上乗せ率（%）</label>
+    <input id="cleanupUplift" type="number" min="0" step="0.1" placeholder="例：5">
+
+    <button onclick="saveAttendanceAdjustment()">補正設定を保存</button>
+    <div id="adjustmentMsg" class="small" style="margin-top:10px"></div>
+
+    <div class="tablewrap" style="margin-top:14px">
+      <div class="row head">
+        <div>スタッフ</div><div>準備</div><div>片付け</div><div>係数</div><div></div><div></div>
+      </div>
+      <div id="adjustmentPeople"></div>
+    </div>
+  </div>
+
   <div class="card">
     <h2>最終条件</h2>
     <label>総インセンティブ額（円）</label>
@@ -55,7 +86,7 @@ button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red)
     <h2>個人別プレビュー</h2>
     <div class="tablewrap">
       <div class="row head">
-        <div>スタッフ</div><div>前売り</div><div>食材保存</div><div>当日内</div><div>当日外</div><div>合計</div>
+        <div>スタッフ / 補正</div><div>前売り</div><div>食材保存</div><div>当日内</div><div>当日外</div><div>合計</div>
       </div>
       <div id="people"></div>
     </div>
@@ -101,6 +132,60 @@ function args(){
   };
 }
 
+
+async function loadAttendanceAdjustment(){
+  const [s,p]=await Promise.all([
+    sb.rpc("admin_get_attendance_adjustment_settings"),
+    sb.rpc("admin_attendance_adjustment_preview")
+  ]);
+
+  if(s.error){
+    adjustmentMsg.textContent="設定エラー："+s.error.message;
+    return;
+  }
+
+  prepDate.value=s.data.prep_date;
+  cleanupDate.value=s.data.cleanup_date;
+  prepUplift.value=(Number(s.data.prep_max_uplift||0)*100).toFixed(1);
+  cleanupUplift.value=(Number(s.data.cleanup_max_uplift||0)*100).toFixed(1);
+
+  if(p.error){
+    adjustmentPeople.innerHTML=`<div class="small">勤怠エラー：${esc(p.error.message)}</div>`;
+    return;
+  }
+
+  adjustmentPeople.innerHTML=(p.data||[]).map(r=>`
+    <div class="row">
+      <div><b>${esc(r.staff_name)}</b></div>
+      <div>${Number(r.prep_hours||0).toFixed(2)}h</div>
+      <div>${Number(r.cleanup_hours||0).toFixed(2)}h</div>
+      <div><b>×${Number(r.coefficient||1).toFixed(3)}</b></div>
+      <div></div><div></div>
+    </div>
+  `).join("");
+}
+
+async function saveAttendanceAdjustment(){
+  const {error}=await sb.rpc(
+    "admin_set_attendance_adjustment_settings",
+    {
+      p_prep_date:prepDate.value,
+      p_cleanup_date:cleanupDate.value,
+      p_prep_max_uplift:Number(prepUplift.value||0)/100,
+      p_cleanup_max_uplift:Number(cleanupUplift.value||0)/100
+    }
+  );
+
+  adjustmentMsg.textContent=error
+    ?"エラー："+error.message
+    :"✅ 補正設定を保存しました";
+
+  if(!error){
+    await loadAttendanceAdjustment();
+    if(lastArgs) await previewAll();
+  }
+}
+
 async function previewAll(){
   msg.textContent="計算中...";
   const a=args();
@@ -129,7 +214,7 @@ async function previewAll(){
 
   people.innerHTML=(p.data||[]).map(r=>`
     <div class="row">
-      <div><b>${esc(r.staff_name)}</b></div>
+      <div><b>${esc(r.staff_name)}</b><div class="small">×${Number(r.attendance_coefficient||1).toFixed(3)}</div></div>
       <div>${yen(r.presale_yen)}</div>
       <div>${yen(r.food_yen)}</div>
       <div>${yen(r.inside_yen)}</div>
@@ -153,6 +238,7 @@ async function finalize(){
 
   finalMsg.textContent="✅ 最終確定しました（Run #"+data+"）";
   await loadLatest();
+loadAttendanceAdjustment();
 }
 
 async function loadLatest(){
@@ -173,7 +259,7 @@ async function loadLatest(){
     <div class="tablewrap" style="margin-top:12px">
       ${(data.people||[]).map(x=>`
         <div class="row">
-          <div><b>${esc(x.staff_name)}</b></div>
+          <div><b>${esc(x.staff_name)}</b><div class="small">×${Number(x.attendance_coefficient||1).toFixed(3)}</div></div>
           <div>${yen(x.presale_yen)}</div>
           <div>${yen(x.food_yen)}</div>
           <div>${yen(x.inside_yen)}</div>
