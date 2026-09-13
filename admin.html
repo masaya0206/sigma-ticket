@@ -247,8 +247,6 @@
     #sellerArea,
     #staffArea,
     #adminArea,
-    #backArea,
-    #frontArea,
     #ticketArea,
     #ticketResult,
     #claimArea,
@@ -489,9 +487,10 @@
         <select id="assignmentRole">
           <option value="">役割を選択</option>
           <option value="seller">売り子</option>
-          <option value="tent">テント内</option>
-          <option value="front">表番</option>
-          <option value="back">裏番</option>
+          <option value="manager">店長</option>
+          <option value="register">レジ</option>
+          <option value="cook">調理</option>
+          <option value="support">サポート</option>
         </select>
 
         <input
@@ -627,12 +626,12 @@
         👤 スタッフ画面
       </button>
 
-      <button onclick="location.href='front.html'">
-        📊 表番画面
+      <button onclick="location.href='manager.html'">
+        🧭 店長画面
       </button>
 
-      <button onclick="location.href='back.html'">
-        🧭 裏番画面
+      <button onclick="location.href='support.html'">
+        📦 サポート画面
       </button>
 
       <button onclick="location.href='index.html'">
@@ -665,10 +664,15 @@
     function roleText(role) {
 
       if (role === "seller") return "売り子";
-      if (role === "tent") return "テント内";
-      if (role === "front") return "表番";
-      if (role === "back") return "裏番";
+      if (role === "manager") return "店長";
       if (role === "register") return "レジ";
+      if (role === "cook") return "調理";
+      if (role === "support") return "サポート";
+
+      // 過去データ表示専用。新規シフトでは選択できません。
+      if (role === "tent") return "旧テント内";
+      if (role === "front") return "旧表番";
+      if (role === "back") return "旧裏番";
 
       return "未確定";
     }
