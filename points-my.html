@@ -3,7 +3,7 @@
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
 header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
 header h1{margin:0;font-size:27px}
-main{max-width:720px;margin:auto;padding:18px}https://github.com/masaya0206/sigma-ticket/edit/main/points-my.html
+main{max-width:720px;margin:auto;padding:18px}
 .card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
 button,input,select,textarea{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
 input,select,textarea{border:1px solid #ddd5d1;background:#fff}
@@ -23,6 +23,47 @@ button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 <div class="card"><h2>当日ポイント</h2><div id="mode" class="pill">暫定</div><div class="grid" style="margin-top:12px"><div class="scorebox">当日内<div class="big" id="inside">0</div></div><div class="scorebox">当日外<div class="big" id="outside">0</div></div></div><p class="small">買い出しptは当日外ptに含めます。準備日・片付け日は独立ptではなく、最終配分時の横断補正係数として扱います。</p></div>
 <div class="card"><h2>内訳</h2><div id="details"></div></div><button onclick="location.href='staff.html'">スタッフ画面へ戻る</button></main><script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
-async function run(){const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return}const pr=await sb.rpc('my_presale_status');if(!pr.error){pre.textContent=Number(pr.data?.presale_points||0).toFixed(1)+' pt';res.textContent='残券 '+(pr.data?.residual_remaining||0)+'枚 / '+Number(pr.data?.residual_value||0).toLocaleString()+'円相当'}let r=await sb.rpc('my_point_summary',{p_final:true});let final=true;if(r.error||!r.data?.length){r=await sb.rpc('my_point_summary',{p_final:false});final=false}mode.textContent=final?'確定':'暫定';const sum={inside:0,outside:0,shopping:0,special:0};for(const x of (r.data||[]))sum[x.point_side]=(sum[x.point_side]||0)+Number(x.points||0);inside.textContent=sum.inside.toFixed(1)+' pt';outside.textContent=(sum.outside+sum.shopping).toFixed(1)+' pt';details.innerHTML=(r.data||[]).length?(r.data||[]).filter(x=>x.point_side!=='special').map(x=>{const side=x.point_side==='inside'?'当日内':(x.point_side==='outside'||x.point_side==='shopping'?'当日外':x.point_side);return `<div class="row"><b>${x.point_type}</b><span style="float:right">${Number(x.points).toFixed(2)} pt</span><br><span class="small">${side}</span></div>`}).join(''):'ポイントはまだありません。'}
+async function run(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='home.html';return}
+
+  const pr=await sb.rpc('my_presale_status');
+  if(!pr.error){
+    pre.textContent=Number(pr.data?.presale_points||0).toFixed(1)+' pt';
+    res.textContent='残券 '+(pr.data?.residual_remaining||0)+'枚 / '+Number(pr.data?.residual_value||0).toLocaleString()+'円相当';
+  }
+
+  let r=await sb.rpc('my_point_summary',{p_final:true});
+  let final=true;
+  if(r.error||!r.data?.length){
+    r=await sb.rpc('my_point_summary',{p_final:false});
+    final=false;
+  }
+
+  const sh=await sb.rpc('my_shopping_point_total',{p_final:final});
+  const shoppingPt=sh.error?0:Number(sh.data||0);
+
+  mode.textContent=final?'確定':'暫定';
+
+  const sum={inside:0,outside:0};
+  for(const x of (r.data||[])){
+    if(x.point_side==='inside')sum.inside+=Number(x.points||0);
+    if(x.point_side==='outside')sum.outside+=Number(x.points||0);
+  }
+
+  inside.textContent=sum.inside.toFixed(1)+' pt';
+  outside.textContent=(sum.outside+shoppingPt).toFixed(1)+' pt';
+
+  const rows=(r.data||[]).filter(x=>x.point_side==='inside'||x.point_side==='outside').map(x=>{
+    const side=x.point_side==='inside'?'当日内':'当日外';
+    return `<div class="row"><b>${x.point_type}</b><span style="float:right">${Number(x.points).toFixed(2)} pt</span><br><span class="small">${side}</span></div>`;
+  });
+
+  if(shoppingPt!==0){
+    rows.push(`<div class="row"><b>買い出し</b><span style="float:right">${shoppingPt.toFixed(2)} pt</span><br><span class="small">当日外</span></div>`);
+  }
+
+  details.innerHTML=rows.length?rows.join(''):'ポイントはまだありません。';
+}
 run();
 </script></body></html>

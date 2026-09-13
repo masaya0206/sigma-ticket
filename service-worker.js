@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-pwa-cleanup-batch-1";
+const CACHE_NAME = "sigma-ticket-pwa-db-cleanup-batch1";
 const APP_SHELL = [
   "./",
   "./home.html",

@@ -2,63 +2,48 @@
 <div class="card"><h2>販売設定</h2><div class="grid"><div><label>前売り券価格</label><input id="pp" type="number"></div><div><label>当日券価格</label><input id="dp" type="number"></div></div><label><input id="pe" type="checkbox" style="width:auto"> 前売り券を販売中</label><br><label><input id="de" type="checkbox" style="width:auto"> 当日券を販売中</label><br><label>ノルマ選択期限</label><input id="deadline" type="datetime-local"><label>前売り終了予定</label><input id="endat" type="datetime-local"><button onclick="saveSettings()">設定を保存</button><p id="setmsg"></p></div>
 
 
-<div class="card">
-  <h2>前売りポイント 加速係数</h2>
-  <p class="muted">
-    6枚を基準1.0倍として、ノルマが1枚増えるごとに倍率へ加える値です。
-    例：0.20なら 6枚×1.0、7枚×1.2、8枚×1.4…
-  </p>
-  <label>加速係数</label>
-  <input id="acceleration" type="number" min="0" step="0.01" value="0.20">
-  <button onclick="saveAcceleration()">加速係数を保存</button>
-  <p id="accelMsg"></p>
-  <div id="accelPreview"></div>
 </div>
 
 <div class="card"><h2>ノルマ確定</h2><p class="muted">未選択者は6枚として確定します。確定した瞬間から返金不可・徴収額固定です。</p><button class="danger" onclick="confirmAll()">全スタッフのノルマを確定</button><p id="cmsg"></p></div>
 <div class="card"><h2>前売り終了・残券確定</h2><p class="muted">祭前販売を締め、その瞬間の残券数と売れ残り率を固定します。同時に前売り停止・当日券販売開始になります。</p><button class="danger" onclick="closePre()">前売りを締めて残券を確定</button><p id="clmsg"></p></div>
-<div class="card"><h2>インセンティブ配分</h2><label>総インセンティブ原資</label><input id="pool" type="number"><label>祭全体の最終売上</label><input id="totalsales" type="number"><button onclick="saveSettings()">金額を保存して再計算</button><div id="inc"></div></div>
+<div class="card"><h2>ポイント変数</h2><p class="muted">ノルマ加速係数は「変数設定」に一本化しました。</p><button onclick="location.href='variables-admin.html'">変数設定を開く</button></div>
+<div class="card"><h2>最終インセンティブ</h2><p class="muted">前売り・食材保存・当日内・当日外の最終配分は専用画面で計算します。</p><button onclick="location.href='incentive-admin.html'">最終インセンティブ計算を開く</button></div>
 <div class="card"><h2>スタッフ一覧</h2><button class="secondary" onclick="loadStaff()">更新</button><div style="overflow:auto"><table><thead><tr><th>名前</th><th>希望</th><th>確定</th><th>販売</th><th>pt</th><th>残券</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const loc=v=>v?new Date(new Date(v).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';const iso=v=>v?new Date(v).toISOString():null;
 async function ensureAdmin(){const{data:{user}}=await db.auth.getUser();if(!user)throw Error('ログインしてください');const{data}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data)throw Error('管理者のみ利用できます')}
-async function loadSettings(){await ensureAdmin();const{data,error}=await db.from('ticket_sales_settings').select('*').eq('id',1).single();if(error)throw error;pp.value=data.presale_price;dp.value=data.day_price;pe.checked=data.presale_enabled;de.checked=data.day_enabled;deadline.value=loc(data.quota_selection_deadline);endat.value=loc(data.presale_end_at);pool.value=data.total_incentive_pool;totalsales.value=data.final_total_sales_amount;acceleration.value=Number(data.quota_acceleration??0.2).toFixed(2);renderAccelerationPreview();await previewInc();}
-async function saveSettings(){setmsg.textContent='保存中...';const{error}=await db.rpc('update_ticket_sales_settings',{p_presale_price:+pp.value,p_day_price:+dp.value,p_presale_enabled:pe.checked,p_day_enabled:de.checked,p_deadline:iso(deadline.value),p_presale_end:iso(endat.value),p_incentive:+pool.value||0,p_total_sales:+totalsales.value||0});setmsg.textContent=error?'エラー: '+error.message:'✅ 保存しました';if(!error)previewInc()}
-
-
-
-
-function renderAccelerationPreview(){
-  const a=Number(acceleration.value);
-  if(!Number.isFinite(a)||a<0){
-    accelPreview.innerHTML='';
-    return;
-  }
-  const rows=[];
-  for(let n=6;n<=12;n++){
-    const mult=1+a*(n-6);
-    const pt=n*mult;
-    rows.push(`<div class="row"><b>${n}枚</b> × ${mult.toFixed(2)} = <b>${pt.toFixed(1)}pt</b></div>`);
-  }
-  accelPreview.innerHTML=rows.join('');
+let keepIncentive=0,keepTotalSales=0;
+async function loadSettings(){
+  await ensureAdmin();
+  const{data,error}=await db.from('ticket_sales_settings').select('*').eq('id',1).single();
+  if(error)throw error;
+  pp.value=data.presale_price;
+  dp.value=data.day_price;
+  pe.checked=data.presale_enabled;
+  de.checked=data.day_enabled;
+  deadline.value=loc(data.quota_selection_deadline);
+  endat.value=loc(data.presale_end_at);
+  keepIncentive=Number(data.total_incentive_pool||0);
+  keepTotalSales=Number(data.final_total_sales_amount||0);
 }
-
-async function saveAcceleration(){
-  accelMsg.textContent='保存中...';
-  const a=Number(acceleration.value);
-  if(!Number.isFinite(a)||a<0){
-    accelMsg.textContent='0以上の数値を入力してください。';
-    return;
-  }
-  const{error}=await db.rpc('update_presale_quota_acceleration',{
-    p_acceleration:a
+async function saveSettings(){
+  setmsg.textContent='保存中...';
+  const{error}=await db.rpc('update_ticket_sales_settings',{
+    p_presale_price:+pp.value,
+    p_day_price:+dp.value,
+    p_presale_enabled:pe.checked,
+    p_day_enabled:de.checked,
+    p_deadline:iso(deadline.value),
+    p_presale_end:iso(endat.value),
+    p_incentive:keepIncentive,
+    p_total_sales:keepTotalSales
   });
-  accelMsg.textContent=error?'エラー: '+error.message:'✅ 保存しました';
-  if(!error)renderAccelerationPreview();
+  setmsg.textContent=error?'エラー: '+error.message:'✅ 保存しました';
 }
+
+
 
 async function confirmAll(){if(!confirm('全員のノルマを確定します。確定後は返金不可です。よろしいですか？'))return;const{data,error}=await db.rpc('confirm_all_presale_quotas');cmsg.textContent=error?'エラー: '+error.message:`✅ ${data.confirmed}人を確定しました`;loadStaff()}
 async function closePre(){if(!confirm('前売りを終了し、残券数を固定しますか？'))return;const{data,error}=await db.rpc('close_presale_period');clmsg.textContent=error?'エラー: '+error.message:`✅ 残券 ${data.residual}枚 / 売れ残り率 ${(data.risk_rate*100).toFixed(1)}%`;loadSettings();loadStaff()}
-async function previewInc(){const{data,error}=await db.rpc('presale_incentive_preview');if(error){inc.innerHTML='<p class="muted">前売り締め後、売上を入力すると表示されます。</p>';return}inc.innerHTML=`<p>前売り売上比率: <b>${(Number(data.presale_sales_ratio)*100).toFixed(1)}%</b><br>リスク補正: <b>×${Number(data.risk_multiplier).toFixed(3)}</b><br>推奨 前売り原資: <b>${Number(data.recommended_presale_pool).toLocaleString()}円</b><br>推奨 当日原資: <b>${Number(data.recommended_day_pool).toLocaleString()}円</b></p><p class="muted">前売り売上比率 × (1 + 売れ残り率÷2)</p>`}
 async function loadStaff(){const{data,error}=await db.rpc('admin_presale_staff_status');if(error){rows.innerHTML='<tr><td>'+error.message+'</td></tr>';return}rows.innerHTML=data.map(x=>`<tr><td>${x.staff_name}</td><td>${x.requested_quota}</td><td>${x.confirmed_quota??'-'}</td><td>${x.presale_sold}</td><td>${Number(x.presale_points||0).toFixed(1)}</td><td>${x.residual_remaining}</td></tr>`).join('')}
 (async()=>{try{await loadSettings();await loadStaff()}catch(e){document.body.innerHTML='<main><div class="card">'+e.message+'</div></main>'}})();</script></main></body></html>
