@@ -41,6 +41,11 @@ button{width:100%;padding:13px;border:0;border-radius:13px;background:#b5121b;co
 
   <h2>注文状況</h2>
   <div id="orders"><div class="card">読み込み中...</div></div>
+
+  <div class="card">
+    <button onclick="toggleHistory()">提供済み履歴を見る / 閉じる</button>
+    <div id="historyArea" style="display:none;margin-top:12px;"></div>
+  </div>
 </main>
 
 <nav class="global-bottom-nav">
@@ -72,8 +77,66 @@ async function markServed(id){
   await loadOrders();
 }
 
+
+let historyOpen=false;
+
+async function restoreOrder(id){
+  if(!confirm("この注文を受け渡し待ちへ戻しますか？")) return;
+  const {error}=await sb.rpc("support_restore_order",{p_order_id:id});
+  if(error){alert(error.message);return;}
+  await loadOrders();
+  if(historyOpen) await loadHistory();
+}
+
+async function loadHistory(){
+  const area=document.getElementById("historyArea");
+  area.innerHTML="読み込み中...";
+
+  const {data,error}=await sb.rpc(
+    "support_order_board_v2",
+    {p_include_served:true}
+  );
+
+  if(error){
+    area.innerHTML=`<div class="card">エラー：${error.message}</div>`;
+    return;
+  }
+
+  const rows=(data||[]).filter(x=>x.order_status==="served");
+
+  if(!rows.length){
+    area.innerHTML='<div class="card">提供済み履歴はありません。</div>';
+    return;
+  }
+
+  area.innerHTML=rows.slice(0,100).map(x=>{
+    const items=[
+      Number(x.fried_rice_qty||0)>0?`炒飯 ${x.fried_rice_qty}`:"",
+      Number(x.sesame_qty||0)>0?`胡麻団子 ${x.sesame_qty}`:""
+    ].filter(Boolean).join("・");
+
+    return `<div class="card">
+      <div class="pickup ${x.register_color||""}">
+        受取 ${x.pickup_number||"—"}
+      </div>
+      <div class="items">${items}</div>
+      <div class="meta">${colorName(x.register_color)} ／ 提供済み ${x.served_at?time(x.served_at):""}</div>
+      <button style="margin-top:12px" onclick="restoreOrder(${x.id})">
+        受け渡し待ちへ戻す
+      </button>
+    </div>`;
+  }).join("");
+}
+
+async function toggleHistory(){
+  historyOpen=!historyOpen;
+  const area=document.getElementById("historyArea");
+  area.style.display=historyOpen?"block":"none";
+  if(historyOpen) await loadHistory();
+}
+
 async function loadOrders(){
-  const {data,error}=await sb.rpc("support_order_board");
+  const {data,error}=await sb.rpc("support_order_board_v2",{p_include_served:false});
   if(error){
     orders.innerHTML=`<div class="card">エラー：${error.message}</div>`;
     return;
@@ -112,7 +175,7 @@ async function loadOrders(){
   await loadOrders();
 
   sb.channel("v82-support-orders")
-    .on("postgres_changes",{event:"*",schema:"public",table:"service_orders"},()=>loadOrders())
+    .on("postgres_changes",{event:"*",schema:"public",table:"service_orders"},async()=>{await loadOrders();if(historyOpen)await loadHistory();})
     .subscribe();
 
   setInterval(loadOrders,5000);
