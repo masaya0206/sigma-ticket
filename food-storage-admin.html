@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>食材保存ポイント管理</title>
+<meta name="theme-color" content="#b5121b">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}
+header{padding:28px 18px 24px;background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}header p{margin:7px 0 0;color:#ffe0e2;font-size:13px}
+main{max-width:700px;margin:auto;padding:16px 16px 36px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.05)}
+label{display:block;font-weight:900;margin:12px 0 6px}input,select,textarea{width:100%;padding:13px;border:1px solid #d8ceca;border-radius:12px;font:inherit;background:#fff}
+button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red);color:#fff;font:inherit;font-weight:900;margin-top:10px}
+.secondary{background:#fff1f2;color:var(--red)}.small{font-size:12px;color:var(--muted);line-height:1.6}.big{font-size:28px;font-weight:950;color:var(--red)}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #eee}.row:last-child{border-bottom:0}
+.row button{width:auto;margin:0;padding:9px 12px}.formula{padding:12px;border-radius:12px;background:#fff7f7;font-weight:800;line-height:1.8}
+</style>
+</head>
+<body>
+<header>
+  <h1>食材保存ポイント管理</h1>
+  <p>管理者だけが食材保存実績を登録します。</p>
+</header>
+<main>
+  <div class="card">
+    <div class="small">前売り最低ノルマ6枚から算出</div>
+    <div>食材1単位の基礎pt</div>
+    <div class="big" id="basePoint">—</div>
+    <div class="formula">
+      食材保存pt ＝ 管理単位数 × 基礎pt × 重さ係数
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>食材保存を登録</h2>
+    <label>担当スタッフ</label>
+    <select id="staffSelect"></select>
+
+    <label>食材名</label>
+    <input id="itemName" placeholder="例：米10kg袋">
+
+    <label>管理単位数</label>
+    <input id="unitCount" type="number" step="0.1" min="0.1" value="1">
+
+    <label>重さ係数</label>
+    <input id="weightCoeff" type="number" step="0.1" min="0.1" value="1">
+
+    <label>メモ（任意）</label>
+    <textarea id="note" placeholder="例：冷蔵庫A"></textarea>
+
+    <div class="small" id="preview" style="margin-top:10px"></div>
+    <button onclick="addEntry()">登録</button>
+    <div id="msg" class="small" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>登録済み</h2>
+    <div>食材保存総pt：<b id="totalPoints">—</b></div>
+    <div id="entries" style="margin-top:10px">読み込み中...</div>
+  </div>
+
+  <button class="secondary" onclick="location.href='admin-menu.html'">← 管理者メニューへ戻る</button>
+</main>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+let ctx=null;
+
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function updatePreview(){
+  if(!ctx)return;
+  const u=Number(unitCount.value||0);
+  const w=Number(weightCoeff.value||0);
+  const b=Number(ctx.base_point||0);
+  preview.textContent=`今回の保存pt：${(u*w*b).toFixed(2)} pt`;
+}
+unitCount.addEventListener("input",updatePreview);
+weightCoeff.addEventListener("input",updatePreview);
+
+async function load(){
+  const {data,error}=await sb.rpc("admin_food_storage_context");
+  if(error){msg.textContent="エラー："+error.message;return;}
+  ctx=data;
+
+  basePoint.textContent=Number(data.base_point||0).toFixed(2)+" pt";
+  totalPoints.textContent=Number(data.total_points||0).toFixed(2)+" pt";
+
+  staffSelect.innerHTML=(data.staff||[]).map(s=>
+    `<option value="${s.user_id}">${esc(s.staff_name)}</option>`
+  ).join("");
+
+  entries.innerHTML=(data.entries||[]).length
+    ? (data.entries||[]).map(e=>`
+      <div class="row">
+        <div>
+          <b>${esc(e.staff_name)} / ${esc(e.item_name)}</b>
+          <div class="small">
+            ${Number(e.unit_count)}単位 × 重さ係数${Number(e.weight_coefficient)}
+            ＝ ${Number(e.points).toFixed(2)}pt
+          </div>
+          ${e.note?`<div class="small">${esc(e.note)}</div>`:""}
+        </div>
+        <button class="secondary" onclick="removeEntry(${e.id})">削除</button>
+      </div>
+    `).join("")
+    : '<div class="small">まだ登録はありません。</div>';
+
+  updatePreview();
+}
+
+async function addEntry(){
+  const {error}=await sb.rpc("admin_add_food_storage_entry",{
+    p_user_id:staffSelect.value,
+    p_item_name:itemName.value.trim(),
+    p_unit_count:Number(unitCount.value),
+    p_weight_coefficient:Number(weightCoeff.value),
+    p_note:note.value.trim()||null
+  });
+
+  if(error){msg.textContent="エラー："+error.message;return;}
+
+  msg.textContent="✅ 登録しました";
+  itemName.value="";
+  unitCount.value="1";
+  weightCoeff.value="1";
+  note.value="";
+  await load();
+}
+
+async function removeEntry(id){
+  if(!confirm("この食材保存登録を削除しますか？"))return;
+  const {error}=await sb.rpc("admin_delete_food_storage_entry",{p_id:id});
+  if(error){alert(error.message);return;}
+  await load();
+}
+load();
+</script>
+</body>
+</html>

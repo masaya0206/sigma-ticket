@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>最終インセンティブ計算</title>
+<meta name="theme-color" content="#b5121b">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}
+header{padding:28px 18px 24px;background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}header p{margin:7px 0 0;color:#ffe0e2;font-size:13px}
+main{max-width:850px;margin:auto;padding:16px 16px 40px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.05)}
+label{display:block;font-weight:900;margin:12px 0 6px}input{width:100%;padding:13px;border:1px solid #d8ceca;border-radius:12px;font:inherit}
+button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red);color:#fff;font:inherit;font-weight:900;margin-top:10px}
+.secondary{background:#fff1f2;color:var(--red)}.danger{background:#7f1118}.small{font-size:12px;color:var(--muted);line-height:1.6}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.metric{padding:13px;border-radius:14px;background:#faf7f5}.metric span{display:block;font-size:11px;color:var(--muted)}.metric b{display:block;font-size:20px;margin-top:4px}
+.row{display:grid;grid-template-columns:1.6fr repeat(5,1fr);gap:8px;padding:10px 0;border-bottom:1px solid #eee;align-items:center;font-size:12px}.row.head{font-weight:900;color:#555}.money{font-weight:900}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.tablewrap{overflow-x:auto}.row{min-width:760px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>最終インセンティブ計算</h1>
+  <p>4部門の原資と個人配分を最終確定します。</p>
+</header>
+<main>
+  <div class="card">
+    <h2>最終条件</h2>
+    <label>総インセンティブ額（円）</label>
+    <input id="totalIncentive" type="number" min="1" step="1" placeholder="例：100000">
+
+    <label>3日間の全売上（円）</label>
+    <input id="totalSales" type="number" min="1" step="1" placeholder="例：700000">
+    <div class="small">前売り売上はDBから自動集計します。全売上だけ公式会計額を入力してください。</div>
+
+    <label>当日3日間 集計開始</label>
+    <input id="periodFrom" type="datetime-local" value="2026-11-01T00:00">
+
+    <label>当日3日間 集計終了</label>
+    <input id="periodTo" type="datetime-local" value="2026-11-04T00:00">
+
+    <button onclick="previewAll()">計算をプレビュー</button>
+    <div id="msg" class="small" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" id="summaryCard" style="display:none">
+    <h2>4部門の原資</h2>
+    <div class="grid" id="summary"></div>
+  </div>
+
+  <div class="card" id="peopleCard" style="display:none">
+    <h2>個人別プレビュー</h2>
+    <div class="tablewrap">
+      <div class="row head">
+        <div>スタッフ</div><div>前売り</div><div>食材保存</div><div>当日内</div><div>当日外</div><div>合計</div>
+      </div>
+      <div id="people"></div>
+    </div>
+  </div>
+
+  <div class="card" id="finalCard" style="display:none">
+    <h2>最終確定</h2>
+    <div class="small">
+      確定すると、その時点の売上・ポイント・原資・個人配分をスナップショット保存します。
+      先に当日ptと買い出しptの最終計算を終えてください。
+    </div>
+    <button class="danger" onclick="finalize()">この内容で最終確定</button>
+    <div id="finalMsg" class="small" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>最新の確定結果</h2>
+    <div id="latest">読み込み中...</div>
+  </div>
+
+  <button class="secondary" onclick="location.href='admin-menu.html'">← 管理者メニューへ戻る</button>
+</main>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+let lastArgs=null;
+
+function yen(v){return Math.round(Number(v||0)).toLocaleString("ja-JP")+"円";}
+function pt(v){return Number(v||0).toFixed(2)+"pt";}
+function hrs(v){return Number(v||0).toFixed(1)+"人時";}
+function pct(v){return (Number(v||0)*100).toFixed(1)+"%";}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function args(){
+  return {
+    p_total_incentive_yen:Number(totalIncentive.value),
+    p_total_sales_yen:Number(totalSales.value),
+    p_from:new Date(periodFrom.value).toISOString(),
+    p_to:new Date(periodTo.value).toISOString()
+  };
+}
+
+async function previewAll(){
+  msg.textContent="計算中...";
+  const a=args();
+
+  const [s,p]=await Promise.all([
+    sb.rpc("admin_incentive_preview",a),
+    sb.rpc("admin_incentive_preview_people",a)
+  ]);
+
+  if(s.error){msg.textContent="エラー："+s.error.message;return;}
+  if(p.error){msg.textContent="エラー："+p.error.message;return;}
+
+  lastArgs=a;
+  const x=s.data;
+
+  summary.innerHTML=`
+    <div class="metric"><span>総インセンティブ</span><b>${yen(x.total_incentive_yen)}</b></div>
+    <div class="metric"><span>前売り売上 / 全売上</span><b>${yen(x.presale_sales_yen)} / ${pct(x.presale_sales_ratio)}</b></div>
+    <div class="metric"><span>① 前売り券 原資</span><b>${yen(x.presale_pool_yen)}</b><span>${pt(x.presale_total_points)} / 1pt=${yen(x.presale_point_yen)}</span></div>
+    <div class="metric"><span>④ 食材保存 原資</span><b>${yen(x.food_pool_yen)}</b><span>${pt(x.food_total_points)} × 前売り1pt単価</span></div>
+    <div class="metric"><span>当日残原資</span><b>${yen(x.remaining_day_pool_yen)}</b></div>
+    <div class="metric"><span>② 当日内 原資</span><b>${yen(x.inside_pool_yen)}</b><span>${hrs(x.inside_person_hours)} / ${pt(x.inside_total_points)}</span></div>
+    <div class="metric"><span>③ 当日外 原資</span><b>${yen(x.outside_pool_yen)}</b><span>${hrs(x.outside_person_hours)} / ${pt(x.outside_total_points)}</span></div>
+    <div class="metric"><span>当日 人時合計</span><b>${hrs(Number(x.inside_person_hours)+Number(x.outside_person_hours))}</b></div>
+  `;
+
+  people.innerHTML=(p.data||[]).map(r=>`
+    <div class="row">
+      <div><b>${esc(r.staff_name)}</b></div>
+      <div>${yen(r.presale_yen)}</div>
+      <div>${yen(r.food_yen)}</div>
+      <div>${yen(r.inside_yen)}</div>
+      <div>${yen(r.outside_yen)}</div>
+      <div class="money">${yen(r.total_yen)}</div>
+    </div>
+  `).join("");
+
+  summaryCard.style.display="block";
+  peopleCard.style.display="block";
+  finalCard.style.display="block";
+  msg.textContent="✅ プレビュー完了";
+}
+
+async function finalize(){
+  if(!lastArgs){alert("先にプレビューしてください。");return;}
+  if(!confirm("この内容を最終インセンティブとして確定しますか？"))return;
+
+  const {data,error}=await sb.rpc("admin_finalize_incentives",lastArgs);
+  if(error){finalMsg.textContent="エラー："+error.message;return;}
+
+  finalMsg.textContent="✅ 最終確定しました（Run #"+data+"）";
+  await loadLatest();
+}
+
+async function loadLatest(){
+  const {data,error}=await sb.rpc("admin_latest_incentive_run");
+  if(error){latest.textContent="エラー："+error.message;return;}
+  if(!data?.run){latest.innerHTML='<div class="small">まだ最終確定はありません。</div>';return;}
+
+  const r=data.run;
+  latest.innerHTML=`
+    <div class="small">確定日時：${new Date(r.finalized_at).toLocaleString("ja-JP")}</div>
+    <div class="grid" style="margin-top:10px">
+      <div class="metric"><span>総額</span><b>${yen(r.total_incentive_yen)}</b></div>
+      <div class="metric"><span>前売り</span><b>${yen(r.presale_pool_yen)}</b></div>
+      <div class="metric"><span>食材保存</span><b>${yen(r.food_pool_yen)}</b></div>
+      <div class="metric"><span>当日内</span><b>${yen(r.inside_pool_yen)}</b></div>
+      <div class="metric"><span>当日外</span><b>${yen(r.outside_pool_yen)}</b></div>
+    </div>
+    <div class="tablewrap" style="margin-top:12px">
+      ${(data.people||[]).map(x=>`
+        <div class="row">
+          <div><b>${esc(x.staff_name)}</b></div>
+          <div>${yen(x.presale_yen)}</div>
+          <div>${yen(x.food_yen)}</div>
+          <div>${yen(x.inside_yen)}</div>
+          <div>${yen(x.outside_yen)}</div>
+          <div class="money">${yen(x.total_yen)}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+loadLatest();
+</script>
+</body>
+</html>

@@ -1,7 +1,9 @@
-const CACHE_NAME = "sigma-ticket-pwa-v872";
+const CACHE_NAME = "sigma-ticket-pwa-v88";
 const APP_SHELL = [
  "./",
  "./home.html",
+  "./incentive-admin.html",
+  "./food-storage-admin.html",
   "./ticket.html",
   "./benefits.html",
   "./partner-scanner.html",
