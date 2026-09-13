@@ -1263,10 +1263,6 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
         cards.push(roleMenuCard("サポート","注文状況・受け渡し確認","support.html"));
       }
 
-      if(currentRole==="shopping_driver"||currentRole==="shopping_helper"){
-        cards.push(roleMenuCard("買い出し","買い出しミッション・帰還処理","shopping.html"));
-      }
-
       try{
         const {data:board,error}=await supabaseClient.rpc("shopping_board");
         if(!error&&board){
@@ -1274,10 +1270,15 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
           const relevant=(board.missions||[]).some(m=>{
             const driver=m.driver_user_id===userId &&
               ["driver_selected","departed"].includes(m.status);
-            const helper=(m.helpers||[]).some(h=>
+            const missionActive=
+              ["approved","driver_selected","departed"].includes(m.status);
+
+            const helper=missionActive && (m.helpers||[]).some(h=>
               h.user_id===userId && ["pending","accepted"].includes(h.status)
             );
+
             const canClaim=team&&m.status==="approved";
+
             return driver||helper||canClaim;
           });
           if(relevant && !cards.some(x=>x.includes(">買い出し<"))){
