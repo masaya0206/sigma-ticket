@@ -67,7 +67,16 @@
       font-size: 13px;
       color: #666;
     }
-  </style>
+  
+  .cash-order{margin:14px 0;padding:16px;border:1px solid #eadfdb;border-radius:18px;background:#fff}
+  .cash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cash-item{padding:12px;border-radius:14px;background:#fff7f7;text-align:center}
+  .qty-row{display:grid;grid-template-columns:42px 1fr 42px;gap:8px;align-items:center;margin-top:9px}
+  .qty-row button{margin:0;padding:10px 4px}
+  .qty-value{font-size:24px;font-weight:900}
+  .cash-total{margin-top:12px;font-size:18px;font-weight:900;text-align:center}
+
+</style>
 
   <meta name="theme-color" content="#111111">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -240,6 +249,56 @@
     }
   </style>
 
+
+<style id="globalBottomNavStyle">
+  body{padding-bottom:82px!important}
+  .global-bottom-nav{
+    position:fixed;
+    left:50%;
+    bottom:0;
+    transform:translateX(-50%);
+    width:min(100%,620px);
+    height:72px;
+    padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    z-index:9998;
+    background:rgba(255,255,255,.96);
+    border-top:1px solid #eadfdb;
+    box-shadow:0 -5px 22px rgba(55,20,20,.08);
+    backdrop-filter:blur(12px);
+  }
+  .global-bottom-nav.admin-nav{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .global-bottom-nav button{
+    width:100%!important;
+    min-width:0;
+    margin:0!important;
+    padding:7px 4px!important;
+    border:0!important;
+    border-radius:12px!important;
+    background:transparent!important;
+    color:#6e6e73!important;
+    font:inherit;
+    font-size:11px!important;
+    font-weight:700!important;
+    line-height:1.15;
+    box-shadow:none!important;
+  }
+  .global-bottom-nav button .gicon{
+    display:block;
+    margin-bottom:4px;
+    font-size:20px;
+    line-height:1;
+  }
+  .global-bottom-nav button.active{
+    color:#b5121b!important;
+    background:#fff1f2!important;
+  }
+</style>
+
 </head>
 
 <body>
@@ -259,7 +318,40 @@
     </button>
   </div>
 
-  <button
+  
+  <div class="cash-order">
+    <h2>現金会計</h2>
+    <div id="myRegisterLabel" class="small">レジ情報を確認中...</div>
+
+    <div class="cash-grid">
+      <div class="cash-item">
+        <strong>炒飯</strong>
+        <div id="ricePriceLabel" class="small">-円</div>
+        <div class="qty-row">
+          <button type="button" onclick="changeCashQty('rice',-1)">−</button>
+          <div id="cashRiceQty" class="qty-value">0</div>
+          <button type="button" onclick="changeCashQty('rice',1)">＋</button>
+        </div>
+      </div>
+
+      <div class="cash-item">
+        <strong>胡麻団子</strong>
+        <div id="sesamePriceLabel" class="small">-円/個</div>
+        <div class="qty-row">
+          <button type="button" onclick="changeCashQty('sesame',-1)">−</button>
+          <div id="cashSesameQty" class="qty-value">0</div>
+          <button type="button" onclick="changeCashQty('sesame',1)">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="cashTotal" class="cash-total">合計 0円</div>
+    <button id="cashOrderButton" onclick="recordCashOrder()">現金会計を確定</button>
+    <div id="cashOrderMessage" class="small"></div>
+  </div>
+
+  <h2 style="margin-top:24px">QR商品交換</h2>
+<button
     id="scanButton"
     onclick="startScanner()"
     style="display:none;"
@@ -355,6 +447,7 @@
 
       const allowed =
         await checkRegisterPermission();
+      await loadCashOrderSettings();
 
       if (!allowed) {
 
@@ -790,7 +883,7 @@
       resultBox.innerHTML =
         "使用処理中...";
 
-      const { data: rpcData, error } = await supabaseClient.rpc("use_ticket", {
+      const { data: rpcData, error } = await supabaseClient.rpc("use_ticket_and_record_order", {
         p_ticket_code: ticketCode,
         p_item: item
       });
@@ -922,6 +1015,119 @@
     }
 
 
+
+    let cashRice=0;
+    let cashSesame=0;
+    let registerMenu={
+      rice:500,
+      sesameSingle:300,
+      sesamePair:500,
+      pairEnabled:true
+    };
+
+    function changeCashQty(kind,delta){
+      if(kind==="rice") cashRice=Math.max(0,cashRice+delta);
+      if(kind==="sesame") cashSesame=Math.max(0,cashSesame+delta);
+      renderCashOrder();
+    }
+
+    function cashSesameAmount(qty){
+      if(!registerMenu.pairEnabled){
+        return qty*registerMenu.sesameSingle;
+      }
+      const pairs=Math.floor(qty/2);
+      const singles=qty%2;
+      return pairs*registerMenu.sesamePair + singles*registerMenu.sesameSingle;
+    }
+
+    function renderCashOrder(){
+      const r=document.getElementById("cashRiceQty");
+      const s=document.getElementById("cashSesameQty");
+      if(r) r.textContent=cashRice;
+      if(s) s.textContent=cashSesame;
+
+      const total=
+        cashRice*registerMenu.rice+
+        cashSesameAmount(cashSesame);
+
+      const t=document.getElementById("cashTotal");
+      if(t) t.textContent=`合計 ${total.toLocaleString()}円`;
+
+      const b=document.getElementById("cashOrderButton");
+      if(b) b.disabled=(cashRice+cashSesame===0);
+    }
+
+    async function loadCashOrderSettings(){
+      const {data:menu}=await supabaseClient
+        .from("menu_state")
+        .select("*")
+        .eq("id",1)
+        .maybeSingle();
+
+      if(menu){
+        registerMenu.rice=Number(menu.fried_rice_price||500);
+        registerMenu.sesameSingle=Number(menu.sesame_single_price||300);
+        registerMenu.sesamePair=Number(
+          menu.sesame_pair_enabled && menu.sesame_pair_price!=null
+            ? menu.sesame_pair_price
+            : (menu.sesame_single_price||300)*2
+        );
+        registerMenu.pairEnabled=!!menu.sesame_pair_enabled;
+
+        document.getElementById("ricePriceLabel").textContent=
+          `${registerMenu.rice}円`;
+        document.getElementById("sesamePriceLabel").textContent=
+          `${registerMenu.sesameSingle}円/個`;
+      }
+
+      const {data:team}=await supabaseClient.rpc("my_register_team");
+      const row=team?.[0];
+      document.getElementById("myRegisterLabel").textContent=
+        row ? `${row.team_name}で会計中` : "レジチーム未設定";
+
+      renderCashOrder();
+    }
+
+    async function recordCashOrder(){
+      const msg=document.getElementById("cashOrderMessage");
+      const btn=document.getElementById("cashOrderButton");
+
+      if(cashRice+cashSesame<=0){
+        msg.textContent="商品数を入力してください。";
+        return;
+      }
+
+      const total=
+        cashRice*registerMenu.rice+
+        cashSesameAmount(cashSesame);
+
+      btn.disabled=true;
+      msg.textContent="会計を記録しています...";
+
+      const {data,error}=await supabaseClient.rpc(
+        "record_cash_order",
+        {
+          p_rice:cashRice,
+          p_sesame:cashSesame,
+          p_cash_amount:total
+        }
+      );
+
+      if(error){
+        msg.textContent="エラー："+error.message;
+        renderCashOrder();
+        return;
+      }
+
+      msg.textContent=`✅ 注文 #${data} を送信しました`;
+      cashRice=0;
+      cashSesame=0;
+      renderCashOrder();
+
+      setTimeout(()=>{msg.textContent="";},2200);
+    }
+
+
     async function initialize() {
 
       const {
@@ -971,5 +1177,6 @@
     }
   </script>
 
+<nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body>
 </html>
