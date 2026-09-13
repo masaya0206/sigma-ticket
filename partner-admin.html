@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>提携先管理</title>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{--red:#b5121b;--red2:#8f0e15;--soft:#fff1f2;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--green:#15803d}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:28px 18px 24px;color:#fff;background:linear-gradient(145deg,var(--red),var(--red2));border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px} header p{margin:7px 0 0;color:#ffe0e2;font-size:13px;line-height:1.6}
+main{max-width:680px;margin:auto;padding:16px 16px 36px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.05)}
+h2{margin:0 0 12px;font-size:20px}
+label{display:block;font-weight:800;margin:12px 0 6px}
+input,select,textarea{width:100%;padding:13px 14px;border:1px solid #d8ceca;border-radius:13px;background:#fff;font:inherit}
+textarea{min-height:88px;resize:vertical}
+button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;border-radius:13px;background:var(--red);color:#fff;font:inherit;font-weight:900;text-decoration:none;cursor:pointer;margin-top:10px}
+.secondary{background:var(--soft);color:var(--red)}
+.success{background:#edf9ef;border-color:#b9e5c1} .danger{background:#fff0f0;border-color:#f0b8b8}
+.small{font-size:12px;color:var(--muted);line-height:1.6} .muted{color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eee} .row:last-child{border-bottom:0}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red);font-size:11px;font-weight:900}
+.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
+pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
+</style>
+</head>
+<body>
+
+<header><h1>提携先管理</h1><p>提携団体・特典・専用QRリーダースタッフを管理します。</p></header>
+<main>
+  <div class="card">
+    <h2>提携先を追加</h2>
+    <label>団体名</label><input id="partnerName" placeholder="例：○○サークル">
+    <label>Instagram URL</label><input id="partnerInstagram" placeholder="https://www.instagram.com/...">
+    <button onclick="savePartner()">提携先を登録</button>
+  </div>
+
+  <div id="partners"><div class="card">読み込み中...</div></div>
+  <button class="secondary" onclick="location.href='admin-menu.html'">← 管理者メニューへ戻る</button>
+</main>
+
+<script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+
+let overview=null;
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function load(){
+  const {data,error}=await sb.rpc("admin_partner_overview");
+  if(error){partners.innerHTML=`<div class="card danger">エラー：${esc(error.message)}</div>`;return;}
+  overview=data;
+  render();
+}
+
+function render(){
+  const ps=overview?.partners||[];
+  partners.innerHTML=ps.length?ps.map(p=>`
+    <div class="card">
+      <h2>${esc(p.name)}</h2>
+      ${p.instagram_url?`<a class="btn instagram" href="${esc(p.instagram_url)}" target="_blank" rel="noopener">Instagramを見る</a>`:""}
+
+      <div style="margin-top:16px">
+        <b>特典</b>
+        ${(p.benefits||[]).map(b=>`
+          <div class="row">
+            <div><b>${esc(b.title)}</b><div class="small">${esc(b.valid_label)} ／ 利用 ${b.redemption_count||0}件</div></div>
+          </div>`).join("") || '<div class="small">特典なし</div>'}
+      </div>
+
+      <details style="margin-top:14px">
+        <summary><b>特典を追加</b></summary>
+        <label>特典名</label><input id="bt-${p.id}" placeholder="例：トッピング無料">
+        <label>説明</label><textarea id="bd-${p.id}"></textarea>
+        <label>有効日表示</label><input id="bv-${p.id}" value="全日">
+        <button onclick="addBenefit('${p.id}')">特典を追加</button>
+      </details>
+
+      <details style="margin-top:14px">
+        <summary><b>提携先スタッフを招待</b></summary>
+        <label>名前</label><input id="in-${p.id}" placeholder="スタッフ名">
+        <label>メールアドレス</label><input id="ie-${p.id}" type="email">
+        <button onclick="makeInvite('${p.id}')">招待URLを発行</button>
+        <div id="iu-${p.id}"></div>
+      </details>
+
+      <div style="margin-top:16px">
+        <b>参加済みスタッフ</b>
+        ${(p.staff||[]).map(s=>`
+          <div class="row">
+            <div><b>${esc(s.display_name)}</b><div class="small">${esc(s.email)}</div></div>
+            <button style="width:auto;margin:0" class="${s.is_active?'secondary':''}" onclick="setStaff('${s.user_id}',${!s.is_active})">
+              ${s.is_active?'停止':'再開'}
+            </button>
+          </div>`).join("") || '<div class="small">まだいません</div>'}
+      </div>
+
+      <div style="margin-top:16px">
+        <b>未使用の招待</b>
+        ${(p.invites||[]).filter(i=>!i.revoked).map(i=>`
+          <div class="row"><div><b>${esc(i.display_name)}</b><div class="small">${esc(i.email)}</div></div></div>
+        `).join("") || '<div class="small">なし</div>'}
+      </div>
+    </div>
+  `).join(""):'<div class="card">提携先がありません。</div>';
+}
+
+async function savePartner(){
+  const name=partnerName.value.trim(), instagram=partnerInstagram.value.trim();
+  const {error}=await sb.rpc("admin_upsert_partner",{p_name:name,p_instagram_url:instagram||null});
+  if(error){alert(error.message);return;}
+  partnerName.value="";partnerInstagram.value="";
+  load();
+}
+
+async function addBenefit(pid){
+  const title=document.getElementById("bt-"+pid).value.trim();
+  const desc=document.getElementById("bd-"+pid).value.trim();
+  const valid=document.getElementById("bv-"+pid).value.trim()||"全日";
+  const {error}=await sb.rpc("admin_add_partner_benefit",{
+    p_partner_id:pid,p_title:title,p_description:desc,p_valid_label:valid,p_max_uses:1
+  });
+  if(error){alert(error.message);return;}
+  load();
+}
+
+async function makeInvite(pid){
+  const name=document.getElementById("in-"+pid).value.trim();
+  const email=document.getElementById("ie-"+pid).value.trim();
+  const {data,error}=await sb.rpc("admin_create_partner_invite",{
+    p_partner_id:pid,p_display_name:name,p_email:email
+  });
+  if(error){alert(error.message);return;}
+  const url="https://masaya0206.github.io/sigma-ticket/partner-register.html?token="+encodeURIComponent(data);
+  const box=document.getElementById("iu-"+pid);
+  box.innerHTML=`<div class="card success"><b>招待URL</b><pre>${esc(url)}</pre><button onclick="navigator.clipboard.writeText('${url}')">URLをコピー</button></div>`;
+  load();
+}
+
+async function setStaff(uid,active){
+  const {error}=await sb.rpc("admin_set_partner_staff_active",{p_user_id:uid,p_active:active});
+  if(error){alert(error.message);return;}
+  load();
+}
+
+load();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>提携先スタッフ登録</title>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{--red:#b5121b;--red2:#8f0e15;--soft:#fff1f2;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--green:#15803d}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:28px 18px 24px;color:#fff;background:linear-gradient(145deg,var(--red),var(--red2));border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px} header p{margin:7px 0 0;color:#ffe0e2;font-size:13px;line-height:1.6}
+main{max-width:680px;margin:auto;padding:16px 16px 36px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.05)}
+h2{margin:0 0 12px;font-size:20px}
+label{display:block;font-weight:800;margin:12px 0 6px}
+input,select,textarea{width:100%;padding:13px 14px;border:1px solid #d8ceca;border-radius:13px;background:#fff;font:inherit}
+textarea{min-height:88px;resize:vertical}
+button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;border-radius:13px;background:var(--red);color:#fff;font:inherit;font-weight:900;text-decoration:none;cursor:pointer;margin-top:10px}
+.secondary{background:var(--soft);color:var(--red)}
+.success{background:#edf9ef;border-color:#b9e5c1} .danger{background:#fff0f0;border-color:#f0b8b8}
+.small{font-size:12px;color:var(--muted);line-height:1.6} .muted{color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eee} .row:last-child{border-bottom:0}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red);font-size:11px;font-weight:900}
+.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
+pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
+</style>
+</head>
+<body>
+
+<header><h1>提携先スタッフ登録</h1><p>Match Point提携特典QRリーダー用アカウントを作成します。</p></header>
+<main>
+  <div class="card">
+    <label>メールアドレス</label><input id="email" type="email" autocomplete="email">
+    <label>パスワード</label><input id="password" type="password" minlength="6" autocomplete="new-password">
+    <button onclick="signup()">登録して参加する</button>
+    <div id="msg" class="small" style="margin-top:12px"></div>
+  </div>
+  <a class="btn secondary" href="partner-login.html">すでに登録済みの方</a>
+</main>
+
+<script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+
+const token=new URLSearchParams(location.search).get("token");
+if(token) localStorage.setItem("partner_pending_invite",token);
+
+async function signup(){
+  if(!token && !localStorage.getItem("partner_pending_invite")){
+    msg.textContent="招待URLから開いてください。";return;
+  }
+  const {data,error}=await sb.auth.signUp({email:email.value.trim(),password:password.value});
+  if(error){msg.textContent="エラー："+error.message;return;}
+  const t=token||localStorage.getItem("partner_pending_invite");
+  if(data.session){
+    const {data:r,error:e}=await sb.rpc("claim_partner_invite",{p_token:t});
+    if(e){msg.textContent="登録はできましたが、参加処理エラー："+e.message;return;}
+    localStorage.removeItem("partner_pending_invite");
+    location.href="partner-scanner.html";
+  }else{
+    msg.innerHTML="アカウントを作成しました。確認メールが届く設定の場合はメール認証後、<b>ログイン画面</b>からログインしてください。";
+  }
+}
+
+</script>
+</body>
+</html>
