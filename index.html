@@ -447,7 +447,6 @@
 
       const allowed =
         await checkRegisterPermission();
-      await loadCashOrderSettings();
 
       if (!allowed) {
 
@@ -1032,12 +1031,9 @@
     }
 
     function cashSesameAmount(qty){
-      if(!registerMenu.pairEnabled){
-        return qty*registerMenu.sesameSingle;
-      }
-      const pairs=Math.floor(qty/2);
-      const singles=qty%2;
-      return pairs*registerMenu.sesamePair + singles*registerMenu.sesameSingle;
+      // 現金販売は1個単価×個数。
+      // 2個セット価格はQR交換時の価値判定用として扱う。
+      return qty * registerMenu.sesameSingle;
     }
 
     function renderCashOrder(){
@@ -1128,6 +1124,51 @@
     }
 
 
+
+    let menuStateChannel = null;
+
+    async function refreshRegisterPrices(){
+      await loadCashOrderSettings();
+      await showRegisterPriceInfo();
+    }
+
+    function startMenuStateRealtime(){
+      if(menuStateChannel) return;
+
+      menuStateChannel =
+        supabaseClient
+          .channel("register-menu-state")
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "menu_state",
+              filter: "id=eq.1"
+            },
+            async () => {
+              await refreshRegisterPrices();
+            }
+          )
+          .subscribe();
+    }
+
+    // アプリへ戻った時も最新価格を取得
+    document.addEventListener(
+      "visibilitychange",
+      async () => {
+        if(document.visibilityState === "visible"){
+          await refreshRegisterPrices();
+        }
+      }
+    );
+
+    window.addEventListener(
+      "focus",
+      refreshRegisterPrices
+    );
+
+
     async function initialize() {
 
       const {
@@ -1142,6 +1183,9 @@
       }
 
       await checkRegisterPermission();
+      await loadCashOrderSettings();
+      await showRegisterPriceInfo();
+      startMenuStateRealtime();
     }
 
 
