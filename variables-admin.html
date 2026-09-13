@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#b5121b">
+<title>変数設定</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2;--ok:#18794e}
+*{box-sizing:border-box}
+body{margin:0;padding-bottom:88px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:620px;margin:auto;padding:18px 16px 42px}
+.top{display:flex;align-items:center;gap:12px;margin:6px 0 18px}
+.back{width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--red);font-size:20px;font-weight:900}
+h1{font-size:25px;margin:0}h2{font-size:18px;margin:0 0 12px}
+.sub,.small{color:var(--muted);font-size:13px;line-height:1.55}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin:12px 0}
+.field{display:grid;grid-template-columns:1fr 128px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.label{font-weight:800}.help{color:var(--muted);font-size:12px;margin-top:3px;line-height:1.4}
+input{width:100%;padding:12px;border:1px solid #d9d2cf;border-radius:12px;font:inherit;text-align:right;background:#fff}
+.unit{position:relative}.unit span{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.unit input{padding-right:34px}
+button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#fff;padding:15px;font-size:16px;font-weight:900;margin-top:14px}
+.note{background:var(--soft);border-radius:14px;padding:13px;margin-top:12px;font-size:13px;line-height:1.55}
+.fixed{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.fixed:last-child{border-bottom:0}.pill{background:#f2f2f7;border-radius:999px;padding:7px 10px;font-weight:800;font-size:13px}
+#msg{min-height:22px;margin-top:12px;font-weight:800}.ok{color:var(--ok)}.err{color:var(--red)}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08);backdrop-filter:blur(12px)}
+.global-bottom-nav button{width:100%;margin:0;padding:7px 4px;border:0;border-radius:12px;background:transparent;color:#6e6e73;font:inherit;font-size:11px;font-weight:700;line-height:1.15}
+.global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px}.global-bottom-nav button.active{color:var(--red);background:var(--soft)}
+@media(max-width:420px){.field{grid-template-columns:1fr 112px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <button class="back" onclick="location.href='admin-menu.html'">←</button>
+    <div>
+      <h1>変数設定</h1>
+      <div class="sub">ポイント制度で管理者が変更できる係数を一括管理</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>前売り券</h2>
+    <div class="field">
+      <div>
+        <div class="label">ノルマ加速係数</div>
+        <div class="help">6枚を基準に、ノルマを1枚増やすごとの倍率上昇量</div>
+      </div>
+      <input id="quota" type="number" min="0" step="0.01">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>当日内</h2>
+    <div class="small">客数 ÷ その注文時点の店内人数 × 役割係数で計算します。</div>
+    <div class="field">
+      <div><div class="label">店長係数</div><div class="help">店長担当中の客組に適用</div></div>
+      <input id="manager" type="number" min="0" step="0.05">
+    </div>
+    <div class="field">
+      <div><div class="label">調理係数</div><div class="help">調理担当中の客組に適用</div></div>
+      <input id="cook" type="number" min="0" step="0.05">
+    </div>
+    <div class="field">
+      <div><div class="label">サポート係数</div><div class="help">サポート担当中の客組に適用</div></div>
+      <input id="support" type="number" min="0" step="0.05">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>買い出し</h2>
+    <div class="field">
+      <div>
+        <div class="label">運転手係数 K</div>
+        <div class="help">運転手チーム全体の追加報酬 H×K に使用</div>
+      </div>
+      <input id="driver" type="number" min="0.01" step="0.1">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>準備日・片付け日</h2>
+    <div class="small">各日の最長勤怠者を100%として、他スタッフは勤怠時間に比例して相対補正します。</div>
+    <div class="field">
+      <div>
+        <div class="label">準備日 最大上乗せ率</div>
+        <div class="help" id="prepDateText">準備日の勤怠補正</div>
+      </div>
+      <div class="unit"><input id="prep" type="number" min="0" step="0.1"><span>%</span></div>
+    </div>
+    <div class="field">
+      <div>
+        <div class="label">片付け日 最大上乗せ率</div>
+        <div class="help" id="cleanupDateText">片付け日の勤怠補正</div>
+      </div>
+      <div class="unit"><input id="cleanup" type="number" min="0" step="0.1"><span>%</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>自動・固定項目</h2>
+    <div class="fixed">
+      <div><div class="label">売り子 基礎pt</div><div class="help">各日の最初の1時間</div></div>
+      <div class="pill">1枚 = 1pt</div>
+    </div>
+    <div class="fixed">
+      <div><div class="label">売り子 難易度</div><div class="help">営業中1時間、最終30分単位で客数から自動再計算</div></div>
+      <div class="pill">自動</div>
+    </div>
+    <div class="fixed">
+      <div><div class="label">食材保存 重量係数</div><div class="help">食材ごとに異なるため、食材保存ポイント登録時に設定</div></div>
+      <div class="pill">個別設定</div>
+    </div>
+    <div class="note">
+      難易度は管理者が数値を決めません。各日の客数実績から自動生成され、新しい時間帯のデータが増えるたび過去ptも再計算されます。
+    </div>
+  </div>
+
+  <button class="save" id="saveBtn" onclick="saveAll()">変数を保存</button>
+  <div id="msg"></div>
+</main>
+
+<nav class="global-bottom-nav">
+  <button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button>
+  <button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button>
+  <button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button>
+  <button class="active" onclick="location.href='admin-menu.html'"><span class="gicon">管</span>管理</button>
+</nav>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+
+const el=id=>document.getElementById(id);
+const n=(id)=>Number(el(id).value);
+
+function jpDate(s){
+  if(!s)return "";
+  const d=new Date(s+"T00:00:00+09:00");
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+async function load(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href="home.html";return;}
+
+  const {data,error}=await sb.rpc("admin_get_variable_settings");
+  if(error){
+    el("msg").className="err";
+    el("msg").textContent="エラー: "+error.message;
+    return;
+  }
+
+  el("quota").value=Number(data.quota_acceleration??0.2).toFixed(2);
+  el("manager").value=Number(data.manager_coefficient??1.15).toFixed(2);
+  el("cook").value=Number(data.cook_coefficient??1.10).toFixed(2);
+  el("support").value=Number(data.support_coefficient??1.00).toFixed(2);
+  el("driver").value=Number(data.driver_coefficient??1.50).toFixed(2);
+  el("prep").value=(Number(data.prep_max_uplift??0.05)*100).toFixed(1);
+  el("cleanup").value=(Number(data.cleanup_max_uplift??0.05)*100).toFixed(1);
+
+  if(data.prep_date) el("prepDateText").textContent=`準備日 ${jpDate(data.prep_date)} の最大補正`;
+  if(data.cleanup_date) el("cleanupDateText").textContent=`片付け日 ${jpDate(data.cleanup_date)} の最大補正`;
+}
+
+async function saveAll(){
+  const vals=[n("quota"),n("manager"),n("cook"),n("support"),n("driver"),n("prep"),n("cleanup")];
+  if(vals.some(v=>!Number.isFinite(v))){
+    el("msg").className="err";
+    el("msg").textContent="すべての数値を入力してください";
+    return;
+  }
+
+  const btn=el("saveBtn");
+  btn.disabled=true;
+  btn.textContent="保存中…";
+  el("msg").textContent="";
+
+  const {error}=await sb.rpc("admin_set_variable_settings",{
+    p_quota_acceleration:n("quota"),
+    p_manager_coefficient:n("manager"),
+    p_cook_coefficient:n("cook"),
+    p_support_coefficient:n("support"),
+    p_driver_coefficient:n("driver"),
+    p_prep_max_uplift:n("prep")/100,
+    p_cleanup_max_uplift:n("cleanup")/100
+  });
+
+  btn.disabled=false;
+  btn.textContent="変数を保存";
+
+  if(error){
+    el("msg").className="err";
+    el("msg").textContent="エラー: "+error.message;
+    return;
+  }
+
+  el("msg").className="ok";
+  el("msg").textContent="✅ 変数を保存しました";
+  await load();
+}
+
+load();
+</script>
+</body>
+</html>
