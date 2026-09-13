@@ -76,6 +76,11 @@
   .qty-value{font-size:24px;font-weight:900}
   .cash-total{margin-top:12px;font-size:18px;font-weight:900;text-align:center}
 
+
+  .pickup-box{margin:14px 0;padding:14px;border:2px solid #f0c5c8;border-radius:16px;background:#fffafa}
+  .pickup-box label{display:block;font-weight:900;margin-bottom:8px}
+  .pickup-box input{width:100%;margin:0;padding:14px 16px;border:1px solid #d8ceca;border-radius:13px;font-size:24px;font-weight:900;text-align:center;background:#fff}
+
 </style>
 
   <meta name="theme-color" content="#111111">
@@ -319,6 +324,13 @@
   </div>
 
   
+  
+  <div class="pickup-box">
+    <label for="pickupNumber">受け取り番号</label>
+    <input id="pickupNumber" type="text" inputmode="numeric" maxlength="12"
+           placeholder="例：123" autocomplete="off">
+    <div class="small">お客さんに伝える番号を入力してください。</div>
+  </div>
   <div class="cash-order">
     <h2>現金会計</h2>
     <div id="myRegisterLabel" class="small">レジ情報を確認中...</div>
@@ -851,6 +863,14 @@
       ticketCode,
       item
     ) {
+      const pickup=
+        document.getElementById("pickupNumber").value.trim();
+
+      if(!pickup){
+        alert("受け取り番号を入力してください。");
+        document.getElementById("pickupNumber").focus();
+        return;
+      }
 
       const resultBox =
         document.getElementById(
@@ -884,7 +904,8 @@
 
       const { data: rpcData, error } = await supabaseClient.rpc("use_ticket_and_record_order", {
         p_ticket_code: ticketCode,
-        p_item: item
+        p_item: item,
+        p_pickup_number: pickup
       });
       const data = rpcData?.[0] || null;
 
@@ -1088,6 +1109,13 @@
       const msg=document.getElementById("cashOrderMessage");
       const btn=document.getElementById("cashOrderButton");
 
+      const pickup=document.getElementById("pickupNumber").value.trim();
+      if(!pickup){
+        msg.textContent="受け取り番号を入力してください。";
+        document.getElementById("pickupNumber").focus();
+        return;
+      }
+
       if(cashRice+cashSesame<=0){
         msg.textContent="商品数を入力してください。";
         return;
@@ -1105,7 +1133,8 @@
         {
           p_rice:cashRice,
           p_sesame:cashSesame,
-          p_cash_amount:total
+          p_cash_amount:total,
+          p_pickup_number:pickup
         }
       );
 
@@ -1118,6 +1147,7 @@
       msg.textContent=`✅ 注文 #${data} を送信しました`;
       cashRice=0;
       cashSesame=0;
+      document.getElementById("pickupNumber").value="";
       renderCashOrder();
 
       setTimeout(()=>{msg.textContent="";},2200);

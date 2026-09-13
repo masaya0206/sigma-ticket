@@ -88,7 +88,7 @@ async function setStatus(id,status){
   await loadOrders();
 }
 async function loadOrders(){
-  const {data,error}=await sb.rpc("manager_order_board");
+  const {data,error}=await sb.rpc("manager_order_board_v2");
   if(error){
     orders.innerHTML=`<div class="card">エラー：${error.message}</div>`;
     return;
@@ -114,6 +114,9 @@ async function loadOrders(){
     ].filter(Boolean).join("・");
 
     return `<div class="card order ${x.order_status}">
+      <div style="font-size:30px;font-weight:900;color:#b5121b;margin-bottom:8px;">
+        受取 ${x.pickup_number || "—"}
+      </div>
       <div class="order-top">
         <div>
           <div class="order-items">${items}</div>
