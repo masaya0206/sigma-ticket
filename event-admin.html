@@ -21,7 +21,7 @@ button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 <header><h1>⚙️ 本番運用設定</h1></header><main>
 <div class="card"><h2>5日間の日時</h2><div id="days"></div><button class="primary" id="saveDays">日時を保存</button><div id="dayMsg"></div></div>
 <div class="card"><h2>希望シフト一覧</h2><button id="loadShifts">一覧を更新</button><div id="shifts"></div></div>
-<div class="card"><h2>本番前テストデータ初期化</h2><p class="small">スタッフ・管理者・価格・ポイント係数などの設定は残し、チケット、前売りノルマ実績、勤怠、役職、伝票、レジ、買い出し、ポイント等のテスト実績を消します。</p><input id="confirmText" placeholder="RESET と入力"><button class="danger" id="resetBtn">テスト実績を一括初期化</button><div id="resetMsg"></div></div>
+<div class="card"><h2>本番前テストデータ初期化</h2><p class="small">スタッフ・管理者・価格・変数設定などの設定は残し、運営テスト実績を初期化します。※新しく追加した買い出しpt・食材保存・最終インセンティブ等まで初期化対象に含まれているかは、Supabase整理時にreset_test_operational_dataを更新します。</p><input id="confirmText" placeholder="RESET と入力"><button class="danger" id="resetBtn">テスト実績を一括初期化</button><div id="resetMsg"></div></div>
 <button onclick="location.href='home.html'">ホームへ戻る</button></main>
 <script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");let dayRows=[];

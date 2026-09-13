@@ -620,10 +620,8 @@
       if (role === "cook") return "調理";
       if (role === "support") return "サポート";
 
-      // 過去データ表示専用。新規シフトでは選択できません。
-      if (role === "tent") return "旧テント内";
-      if (role === "front") return "旧表番";
-      if (role === "back") return "旧裏番";
+      // 過去データ互換。旧役割は現在の「店長」として表示。
+      if (["tent","front","back"].includes(role)) return "店長";
 
       return "未確定";
     }
