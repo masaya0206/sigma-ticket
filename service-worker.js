@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-pwa-force-clockout-v1";
+const CACHE_NAME = "sigma-ticket-pwa-admin-menu-fix-v1";
 const APP_SHELL = [
  "./",
  "./home.html",
