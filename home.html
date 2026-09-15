@@ -635,8 +635,8 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 
 
           <div class="schedule-row" style="margin-top:18px;">
-            <div class="mini-stat"><div class="mini-label">前売りpt</div><div id="homePresalePt" class="mini-value">-</div></div>
-            <div class="mini-stat"><div class="mini-label">当日pt</div><div id="homeDayPt" class="mini-value">-</div></div>
+            <div class="mini-stat"><div id="homePresalePt" class="mini-value">-</div></div>
+            <div class="mini-stat"><div id="homeDayPt" class="mini-value">-</div></div>
             <div class="mini-stat"><div class="mini-label">残券</div><div id="homeResidual" class="mini-value">-</div></div>
           </div>
           <div id="homeResidualValue" class="section-hint" style="margin-top:8px;"></div>
@@ -1086,7 +1086,7 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
       const shoppingPoints=Number(
         sp.has_final ? sp.final_points : sp.provisional_points||0
       );
-      const dayPoints=baseDayPoints+shoppingPoints;
+
       document.getElementById("homeDayPt").textContent =
         dayPoints.toFixed(1) + " pt " +
         (finalPointResult.data?.length ? "確定" : "暫定");

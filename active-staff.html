@@ -31,7 +31,7 @@ button:disabled{opacity:.5}
 .regbox{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:8px}
 select{width:100%;padding:10px;border:1px solid #ddd5d1;background:#fff}
 .small{font-size:12px;color:var(--muted);line-height:1.55}
-.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
+.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}.danger-soft{background:#fff1f2!important;color:#b5121b!important;border:1px solid #f1c8cc!important}
 .refresh{width:100%;padding:12px}
 .empty{text-align:center;color:var(--muted);padding:22px}
 .global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}
@@ -184,12 +184,13 @@ function render(){
         </div>
         <span class="rolepill">${roleLabel(x.role)}</span>
       </div>
-      ${locked?`<div class="small" style="margin-top:12px">買い出し中はミッション側で役割を管理します。</div>`:
+      ${locked?`<div class="small" style="margin-top:12px">買い出し中はミッション側で役割を管理します。強制退勤する場合は、先に買い出しミッションを終了してください。</div>`:
       `<div class="actions">${buttons}</div>
        <div class="regbox">
          <select id="reg-${x.user_id}">${teamOptions}</select>
          <button class="${x.role==="register"?"active":""}" onclick="changeRegister('${x.user_id}','${esc(x.staff_name)}')">レジ</button>
        </div>`}
+      <button class="danger-soft" style="margin-top:10px;width:100%" onclick="forceClockOut('${x.user_id}','${esc(x.staff_name)}','${x.role}')">強制退勤</button>
     </div>`;
   }).join("");
 }
@@ -213,6 +214,24 @@ async function changeRegister(uid,name){
   const {error}=await sb.rpc("assign_register_member",{p_user:uid,p_team:team});
   if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}
   msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${esc(tn)}」へ変更しました</span>`;
+  await loadAll(false);
+}
+
+
+async function forceClockOut(uid,name,role){
+  if(role==="shopping_driver"||role==="shopping_helper"){
+    alert("買い出し中は、先に買い出しミッションを終了してください。");
+    return;
+  }
+  const reason=prompt(`${name}さんを強制退勤します。\n理由を入力してください。`,"退勤処理忘れ");
+  if(reason===null) return;
+  if(!reason.trim()){alert("強制退勤の理由を入力してください。");return}
+  if(!confirm(`${name}さんを現在時刻で強制退勤します。\n\n現在役割とレジ所属も終了し、勤怠に修正履歴を残します。\n\n実行しますか？`)) return;
+
+  msg.textContent="強制退勤中...";
+  const {error}=await sb.rpc("force_clock_out_staff",{p_user:uid,p_note:reason.trim()});
+  if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}
+  msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを強制退勤しました</span>`;
   await loadAll(false);
 }
 
