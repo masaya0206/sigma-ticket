@@ -67,10 +67,10 @@ button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red)
     <input id="totalSales" type="number" min="1" step="1" placeholder="例：700000">
     <div class="small">前売り売上はDBから自動集計します。全売上だけ公式会計額を入力してください。</div>
 
-    <label>当日3日間 集計開始</label>
+    <label>祭当日3日間 集計開始</label>
     <input id="periodFrom" type="datetime-local" value="2026-11-01T00:00">
 
-    <label>当日3日間 集計終了</label>
+    <label>祭当日3日間 集計終了</label>
     <input id="periodTo" type="datetime-local" value="2026-11-04T00:00">
 
     <button onclick="previewAll()">計算をプレビュー</button>
@@ -78,7 +78,7 @@ button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red)
   </div>
 
   <div class="card" id="summaryCard" style="display:none">
-    <h2>4部門の原資</h2>
+    <h2>4部門の原資</h2><div class="small">テント内・外の原資比率は、実働人時ではなく成果補正後の「有効人時」で分けます。</div>
     <div class="grid" id="summary"></div>
   </div>
 
@@ -86,7 +86,7 @@ button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red)
     <h2>個人別プレビュー</h2>
     <div class="tablewrap">
       <div class="row head">
-        <div>スタッフ / 補正</div><div>前売り</div><div>食材保存</div><div>当日内</div><div>当日外</div><div>合計</div>
+        <div>スタッフ / 補正</div><div>前売り</div><div>食材保存</div><div>テント内</div><div>テント外</div><div>合計</div>
       </div>
       <div id="people"></div>
     </div>
@@ -207,9 +207,9 @@ async function previewAll(){
     <div class="metric"><span>① 前売り券 原資</span><b>${yen(x.presale_pool_yen)}</b><span>${pt(x.presale_total_points)} / 1pt=${yen(x.presale_point_yen)}</span></div>
     <div class="metric"><span>④ 食材保存 原資</span><b>${yen(x.food_pool_yen)}</b><span>${pt(x.food_total_points)} × 前売り1pt単価</span></div>
     <div class="metric"><span>当日残原資</span><b>${yen(x.remaining_day_pool_yen)}</b></div>
-    <div class="metric"><span>② 当日内 原資</span><b>${yen(x.inside_pool_yen)}</b><span>${hrs(x.inside_person_hours)} / ${pt(x.inside_total_points)}</span></div>
-    <div class="metric"><span>③ 当日外 原資</span><b>${yen(x.outside_pool_yen)}</b><span>${hrs(x.outside_person_hours)} / ${pt(x.outside_total_points)}</span></div>
-    <div class="metric"><span>当日 人時合計</span><b>${hrs(Number(x.inside_person_hours)+Number(x.outside_person_hours))}</b></div>
+    <div class="metric"><span>② テント内 原資</span><b>${yen(x.inside_pool_yen)}</b><span>有効 ${hrs(x.inside_effective_person_hours)} / 実働 ${hrs(x.inside_actual_person_hours)} / ${pt(x.inside_total_points)}</span></div>
+    <div class="metric"><span>③ テント外 原資</span><b>${yen(x.outside_pool_yen)}</b><span>有効 ${hrs(x.outside_effective_person_hours)} / 実働 ${hrs(x.outside_actual_person_hours)} / ${pt(x.outside_total_points)}</span></div>
+    <div class="metric"><span>有効人時 合計</span><b>${hrs(Number(x.inside_effective_person_hours)+Number(x.outside_effective_person_hours))}</b><span>K内=${Number(x.inside_effective_hours_k||0).toFixed(2)} / K外=${Number(x.outside_effective_hours_k||0).toFixed(2)}</span></div>
   `;
 
   people.innerHTML=(p.data||[]).map(r=>`
@@ -253,8 +253,8 @@ async function loadLatest(){
       <div class="metric"><span>総額</span><b>${yen(r.total_incentive_yen)}</b></div>
       <div class="metric"><span>前売り</span><b>${yen(r.presale_pool_yen)}</b></div>
       <div class="metric"><span>食材保存</span><b>${yen(r.food_pool_yen)}</b></div>
-      <div class="metric"><span>当日内</span><b>${yen(r.inside_pool_yen)}</b></div>
-      <div class="metric"><span>当日外</span><b>${yen(r.outside_pool_yen)}</b></div>
+      <div class="metric"><span>テント内</span><b>${yen(r.inside_pool_yen)}</b></div>
+      <div class="metric"><span>テント外</span><b>${yen(r.outside_pool_yen)}</b></div>
     </div>
     <div class="tablewrap" style="margin-top:12px">
       ${(data.people||[]).map(x=>`

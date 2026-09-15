@@ -58,7 +58,10 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
       font-weight:700;
     }
 
-  </style>
+  
+.sim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.sim-grid label{font-size:11px;color:var(--muted);font-weight:700}.sim-grid input{margin-top:5px}.sim-table{margin-top:12px;border-top:1px solid var(--line)}.sim-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}.sim-row.head{font-weight:900;color:#555}.sim-total{margin-top:10px;padding:11px;border-radius:12px;background:#faf7f5;font-weight:850}.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#faf7f5;border-radius:10px;padding:10px;margin-top:8px;font-size:12px;overflow:auto}
+@media(max-width:480px){.sim-grid{grid-template-columns:1fr}.sim-row{grid-template-columns:1.1fr 1fr 1fr}}
+</style>
 </head>
 <body>
 <main>
@@ -87,16 +90,16 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
   </div>
 
   <div class="card">
-    <h2>当日内</h2>
+    <h2>テント内</h2>
     <div class="small">客数 ÷ その注文時点の店内人数 × 役割係数で計算します。</div>
     <div class="field">
       <div>
         <div class="label">店長係数</div>
         <div class="help">店長担当中の客組に適用</div>
         <div class="setting-help">
-          <p class="help-change">上げると、店長担当中の当日内ptが増えます。</p>
+          <p class="help-change">上げると、店長担当中のテント内ptが増えます。</p>
           <p class="help-example" id="managerExample"></p>
-          <span class="help-target">当日内ptに反映</span>
+          <span class="help-target">テント内ptに反映</span>
         </div>
       </div>
       <input id="manager" type="number" min="0" step="0.05">
@@ -106,9 +109,9 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
         <div class="label">調理係数</div>
         <div class="help">調理担当中の客組に適用</div>
         <div class="setting-help">
-          <p class="help-change">上げると、調理担当中の当日内ptが増えます。</p>
+          <p class="help-change">上げると、調理担当中のテント内ptが増えます。</p>
           <p class="help-example" id="cookExample"></p>
-          <span class="help-target">当日内ptに反映</span>
+          <span class="help-target">テント内ptに反映</span>
         </div>
       </div>
       <input id="cook" type="number" min="0" step="0.05">
@@ -118,13 +121,50 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
         <div class="label">サポート係数</div>
         <div class="help">サポート担当中の客組に適用</div>
         <div class="setting-help">
-          <p class="help-change">上げると、サポート担当中の当日内ptが増えます。</p>
+          <p class="help-change">上げると、サポート担当中のテント内ptが増えます。</p>
           <p class="help-example" id="supportExample"></p>
-          <span class="help-target">当日内ptに反映</span>
+          <span class="help-target">テント内ptに反映</span>
         </div>
       </div>
       <input id="support" type="number" min="0" step="0.05">
     </div>
+  </div>
+
+  <div class="card">
+    <h2>有効人時補正</h2>
+    <div class="small">人数を置いただけで部門原資が増えないよう、成果に応じて実働人時を圧縮します。Kを大きくするほど厳しくなります。</div>
+    <div class="field">
+      <div><div class="label">テント外 補正定数 K</div><div class="help">日ごとの個人pt/hを、その日の最大pt/h + K で割ります。</div><div class="formula">有効時間 = 実働時間 × 本人pt/h ÷ (最大pt/h + K外)</div></div>
+      <input id="outsideK" type="number" min="0" step="0.1">
+    </div>
+    <div class="field">
+      <div><div class="label">テント内 補正定数 K</div><div class="help">1時間ごとの内pt/人時を、その日の最大内pt/人時 + K で割ります。</div><div class="formula">有効人時 = 実働人時 × 内pt/人時 ÷ (最大内pt/人時 + K内)</div></div>
+      <input id="insideK" type="number" min="0" step="0.1">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>テント外 有効人時シミュレーター</h2>
+    <div class="small">仮の最大pt/hから0まで等間隔に個人pt/hを並べ、Kでどれだけ時間が残るか確認します。</div>
+    <div class="sim-grid">
+      <label>仮の最大pt/h<input id="outSimMax" type="number" min="0" step="0.5" value="15"></label>
+      <label>1人の実働時間<input id="outSimHours" type="number" min="0" step="0.5" value="4"></label>
+      <label>表示人数<input id="outSimCount" type="number" min="2" max="20" step="1" value="6"></label>
+    </div>
+    <div class="sim-table"><div class="sim-row head"><div>個人pt/h</div><div>有効率</div><div>有効時間</div></div><div id="outSimRows"></div></div>
+    <div id="outSimTotal" class="sim-total"></div>
+  </div>
+
+  <div class="card">
+    <h2>テント内 有効人時シミュレーター</h2>
+    <div class="small">仮の最大内pt/人時から0まで等間隔に効率を下げ、有効人時の変化を確認します。</div>
+    <div class="sim-grid">
+      <label>仮の最大内pt/人時<input id="inSimMax" type="number" min="0" step="0.5" value="15"></label>
+      <label>1枠の実働人時<input id="inSimHours" type="number" min="0" step="0.5" value="5"></label>
+      <label>表示パターン数<input id="inSimCount" type="number" min="2" max="20" step="1" value="6"></label>
+    </div>
+    <div class="sim-table"><div class="sim-row head"><div>内pt/人時</div><div>有効率</div><div>有効人時</div></div><div id="inSimRows"></div></div>
+    <div id="inSimTotal" class="sim-total"></div>
   </div>
 
   <div class="card">
@@ -235,6 +275,8 @@ async function load(){
   el("driver").value=Number(data.driver_coefficient??1.50).toFixed(2);
   el("prep").value=(Number(data.prep_max_uplift??0.05)*100).toFixed(1);
   el("cleanup").value=(Number(data.cleanup_max_uplift??0.05)*100).toFixed(1);
+  el("outsideK").value=Number(data.outside_effective_hours_k??5).toFixed(2);
+  el("insideK").value=Number(data.inside_effective_hours_k??5).toFixed(2);
 
   if(data.prep_date) el("prepDateText").textContent=`準備日 ${jpDate(data.prep_date)} の最大補正`;
   if(data.cleanup_date) el("cleanupDateText").textContent=`片付け日 ${jpDate(data.cleanup_date)} の最大補正`;
@@ -242,7 +284,7 @@ async function load(){
 }
 
 async function saveAll(){
-  const vals=[n("quota"),n("manager"),n("cook"),n("support"),n("driver"),n("prep"),n("cleanup")];
+  const vals=[n("quota"),n("manager"),n("cook"),n("support"),n("driver"),n("prep"),n("cleanup"),n("outsideK"),n("insideK")];
   if(vals.some(v=>!Number.isFinite(v))){
     el("msg").className="err";
     el("msg").textContent="すべての数値を入力してください";
@@ -254,15 +296,22 @@ async function saveAll(){
   btn.textContent="保存中…";
   el("msg").textContent="";
 
-  const {error}=await sb.rpc("admin_set_variable_settings",{
-    p_quota_acceleration:n("quota"),
-    p_manager_coefficient:n("manager"),
-    p_cook_coefficient:n("cook"),
-    p_support_coefficient:n("support"),
-    p_driver_coefficient:n("driver"),
-    p_prep_max_uplift:n("prep")/100,
-    p_cleanup_max_uplift:n("cleanup")/100
-  });
+  const [baseSave,effectiveSave]=await Promise.all([
+    sb.rpc("admin_set_variable_settings",{
+      p_quota_acceleration:n("quota"),
+      p_manager_coefficient:n("manager"),
+      p_cook_coefficient:n("cook"),
+      p_support_coefficient:n("support"),
+      p_driver_coefficient:n("driver"),
+      p_prep_max_uplift:n("prep")/100,
+      p_cleanup_max_uplift:n("cleanup")/100
+    }),
+    sb.rpc("admin_set_effective_hour_settings",{
+      p_outside_k:n("outsideK"),
+      p_inside_k:n("insideK")
+    })
+  ]);
+  const error=baseSave.error||effectiveSave.error;
 
   btn.disabled=false;
   btn.textContent="変数を保存";
@@ -314,7 +363,29 @@ function updateVariableExamples(){
     el("cleanupExample").textContent=
       `例：${cl.toFixed(1)}%なら 最長参加者は×${(1+cl/100).toFixed(3)}、半分参加なら約×${(1+cl/200).toFixed(3)}`;
   }
+  renderEffectiveSimulators();
 }
+
+
+function renderSim(prefix,k){
+  const max=Number(el(prefix+"SimMax").value||0);
+  const hours=Number(el(prefix+"SimHours").value||0);
+  const count=Math.max(2,Math.min(20,Math.round(Number(el(prefix+"SimCount").value||6))));
+  const rows=[];let total=0;
+  for(let i=0;i<count;i++){
+    const v=max*(1-i/(count-1));
+    const rate=(max+k)>0?v/(max+k):0;
+    const effective=hours*rate; total+=effective;
+    rows.push(`<div class="sim-row"><div>${v.toFixed(2)}</div><div>${(rate*100).toFixed(1)}%</div><div>${effective.toFixed(2)}${prefix==='out'?'h':'人時'}</div></div>`);
+  }
+  el(prefix+"SimRows").innerHTML=rows.join("");
+  el(prefix+"SimTotal").textContent=`全${count}パターン合計：実働 ${(hours*count).toFixed(2)} → 有効 ${total.toFixed(2)}${prefix==='out'?'人時':'人時'}`;
+}
+function renderEffectiveSimulators(){
+  renderSim("out",Math.max(0,n("outsideK")||0));
+  renderSim("in",Math.max(0,n("insideK")||0));
+}
+["outsideK","insideK","outSimMax","outSimHours","outSimCount","inSimMax","inSimHours","inSimCount"].forEach(id=>el(id).addEventListener("input",renderEffectiveSimulators));
 
 ["quota","manager","cook","support","driver","prep","cleanup"].forEach(id=>{
   el(id).addEventListener("input",updateVariableExamples);

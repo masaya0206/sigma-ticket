@@ -1,260 +1,94 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>現在出勤中・役割変更 | シグマ祭</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>勤怠・役割管理 | シグマ祭</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<meta name="theme-color" content="#b5121b">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="apple-touch-icon" href="./icon-180.png">
+<meta name="theme-color" content="#b5121b"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-180.png">
 <style>
-:root{--red:#b5121b;--dark:#8f0e15;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2}
-*{box-sizing:border-box}
-body{margin:0;padding-bottom:88px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
-header{padding:28px 18px 24px;color:#fff;background:linear-gradient(145deg,var(--red),var(--dark));border-radius:0 0 28px 28px}
-header h1{margin:0;font-size:27px} header p{margin:6px 0 0;color:#ffdede;font-size:13px}
-main{max-width:760px;margin:auto;padding:16px}
-.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.06)}
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat{padding:12px;border-radius:15px;background:#fff8f8;text-align:center}
-.stat span{display:block;color:var(--muted);font-size:11px}.stat strong{display:block;margin-top:3px;font-size:22px}
-.topline{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.name{font-weight:900;font-size:18px}
-.meta{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.5}
-.rolepill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:var(--red);font-size:12px;font-weight:900;white-space:nowrap}
-.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}
-button,select{font:inherit;border-radius:12px}
-button{border:0;padding:10px 7px;background:#fff1f2;color:var(--red);font-weight:800}
-button.active{background:var(--red);color:#fff}
-button:disabled{opacity:.5}
-.regbox{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:8px}
-select{width:100%;padding:10px;border:1px solid #ddd5d1;background:#fff}
-.small{font-size:12px;color:var(--muted);line-height:1.55}
-.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}.danger-soft{background:#fff1f2!important;color:#b5121b!important;border:1px solid #f1c8cc!important}
-.refresh{width:100%;padding:12px}
-.empty{text-align:center;color:var(--muted);padding:22px}
-.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}
-.global-bottom-nav button{margin:0;padding:7px 4px;background:transparent;color:#6e6e73;font-size:11px}.global-bottom-nav .gicon{display:block;font-size:20px;margin-bottom:4px}
+:root{--red:#b5121b;--dark:#8f0e15;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2;--ok:#15803d}
+*{box-sizing:border-box}body{margin:0;padding-bottom:88px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:28px 18px 24px;color:#fff;background:linear-gradient(145deg,var(--red),var(--dark));border-radius:0 0 28px 28px}header h1{margin:0;font-size:27px}header p{margin:6px 0 0;color:#ffdede;font-size:13px}
+main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.06)}
+.topline{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.name{font-weight:900;font-size:18px}.meta,.small{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55}.rolepill,.statuspill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}.rolepill{background:var(--soft);color:var(--red)}.statuspill.off{background:#f2f2f7;color:#666}.statuspill.on{background:#ecfdf3;color:#15803d}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.tabs button,.chips button,.actions button,.regbox button,.action-primary,.action-danger,.refresh{border:0;border-radius:12px;font:inherit;font-weight:850;padding:10px;background:#f4f1ef;color:#555}.tabs button.active,.chips button.active{background:var(--red);color:#fff}
+.search{width:100%;padding:13px 14px;border:1px solid #d9d2cf;border-radius:14px;font:inherit;background:#fff;margin-top:12px}.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 0 2px}.chips button{white-space:nowrap;font-size:12px;padding:8px 10px}.count{opacity:.7;margin-left:4px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat{padding:11px;border-radius:15px;background:#fff8f8;text-align:center}.stat span{display:block;color:var(--muted);font-size:11px}.stat strong{font-size:20px}.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}.actions button.active{background:var(--red);color:#fff}.regbox{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:8px}select{width:100%;padding:10px;border:1px solid #ddd5d1;border-radius:12px;background:#fff;font:inherit}
+.action-primary{width:100%;margin-top:12px;background:#ecfdf3;color:#15803d}.action-danger{width:100%;margin-top:10px;background:#fff1f2;color:#b5121b;border:1px solid #f1c8cc}.refresh{background:#fff;color:var(--red)}button:disabled{opacity:.45}.empty{text-align:center;color:var(--muted);padding:24px}.ok{color:var(--ok);font-weight:800}.err{color:#b00020;font-weight:800}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.42);display:none;align-items:flex-end;justify-content:center;z-index:10000}.modal-backdrop.show{display:flex}.modal{width:min(100%,620px);background:#fff;border-radius:24px 24px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -10px 35px rgba(0,0,0,.2)}.modal h2{margin:0 0 5px}.modal label{display:block;font-weight:800;margin:14px 0 6px}.modal input,.modal select{width:100%;padding:12px;border:1px solid #d9d2cf;border-radius:12px;font:inherit}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.modal-actions button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:900}.cancel{background:#f2f2f7}.confirm{background:var(--red);color:#fff}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}.global-bottom-nav button{border:0;background:transparent;color:#6e6e73;font:inherit;font-size:11px;font-weight:700}.gicon{display:block;font-size:20px;margin-bottom:4px}
 @media(max-width:560px){.summary{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}}
-</style>
-</head>
+</style></head>
 <body>
-<header>
-  <h1>現在出勤中・役割変更</h1>
-  <p>店長・管理者用｜出勤状況を見ながらその場で役割変更</p>
-</header>
-
+<header><h1>勤怠・役割管理</h1><p>店長・管理者用｜検索・出退勤・役割変更を1画面で管理</p></header>
 <main>
-  <section class="card">
-    <div class="topline">
-      <div>
-        <div class="small">現在出勤中</div>
-        <div style="font-size:34px;font-weight:900"><span id="total">0</span>人</div>
-      </div>
-      <button class="refresh" style="width:auto" onclick="loadAll()">更新</button>
-    </div>
-    <div class="summary" id="summary"></div>
-    <div id="msg" class="small" style="margin-top:10px"></div>
-  </section>
-
-  <section id="staffList">
-    <div class="card">読み込み中...</div>
-  </section>
-
-  <section class="card">
-    <div class="small">
-      売り子へ戻す場合は「売り子」を押します。レジはレジチームへの所属も必要なため、
-      下のレジ選択からチームを指定します。役割変更中も勤怠自体は継続します。
-    </div>
-  </section>
+<section class="card">
+  <div class="topline"><div><div class="small">スタッフ管理</div><div style="font-size:28px;font-weight:900"><span id="workingCount">0</span>人 出勤中</div></div><button class="refresh" onclick="loadAll()">更新</button></div>
+  <div class="tabs" style="margin-top:12px">
+    <button id="tabWorking" class="active" onclick="setTab('working')">出勤中</button>
+    <button id="tabOff" onclick="setTab('off')">未出勤</button>
+    <button id="tabAll" onclick="setTab('all')">全スタッフ</button>
+  </div>
+  <input id="searchInput" class="search" placeholder="名前で検索" autocomplete="off">
+  <div id="roleFilters" class="chips"></div>
+  <div class="summary" id="summary"></div>
+  <div id="msg" class="small"></div>
+</section>
+<section id="staffList"><div class="card">読み込み中...</div></section>
+<section class="card"><div class="small">「出勤させる」「退勤させる」は本人のQR操作とは別に「管理出勤 / 管理退勤」として理由・操作者・時刻を保存します。買い出し中のスタッフは、先に買い出しミッションを終了してください。</div></section>
 </main>
+<nav class="global-bottom-nav"><button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 
-<nav class="global-bottom-nav">
-  <button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button>
-  <button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button>
-  <button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button>
-</nav>
+<div id="modalBackdrop" class="modal-backdrop" onclick="backdropClose(event)"><div class="modal" onclick="event.stopPropagation()">
+  <h2 id="modalTitle">管理出勤</h2><div id="modalStaff" class="small"></div>
+  <label>理由</label><select id="reasonSelect" onchange="toggleOtherReason()"><option>QR操作忘れ</option><option>スマホ・通信トラブル</option><option>店長判断</option><option>その他</option></select>
+  <div id="otherReasonWrap" style="display:none"><label>その他の理由</label><input id="otherReason" placeholder="理由を入力"></div>
+  <div class="modal-actions"><button class="cancel" onclick="closeModal()">キャンセル</button><button class="confirm" onclick="confirmAttendanceAction()">確定</button></div>
+</div></div>
 
 <script>
-const sb=window.supabase.createClient(
-  "https://gsniytemgrbtgfywhqlu.supabase.co",
-  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
-);
-
-let rows=[], teams=[];
-const roleLabel=r=>({
-  seller:"売り子",manager:"店長",register:"レジ",cook:"調理",support:"サポート",
-  shopping_driver:"買い出し運転手",shopping_helper:"買い出し手伝い"
-}[r]||r||"売り子");
-
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function clock(v){return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}
-function duration(v){
-  const ms=Math.max(0,Date.now()-new Date(v).getTime());
-  const mins=Math.floor(ms/60000);
-  const h=Math.floor(mins/60),m=mins%60;
-  return h>0?`${h}時間${m}分`:`${m}分`;
+const sb=window.supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+let rows=[],teams=[],tab='working',roleFilter='all',pending=null;
+const roleLabel=r=>({seller:'売り子',manager:'店長',register:'レジ',cook:'調理',support:'サポート',shopping_driver:'買い出し運転手',shopping_helper:'買い出し手伝い'}[r]||r||'売り子');
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function clock(v){return v?new Date(v).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'-'}
+function duration(v){if(!v)return '-';const mins=Math.floor(Math.max(0,Date.now()-new Date(v).getTime())/60000);const h=Math.floor(mins/60),m=mins%60;return h?`${h}時間${m}分`:`${m}分`}
+function isShopping(r){return r==='shopping_driver'||r==='shopping_helper'}
+async function guard(){const {data,error}=await sb.rpc('is_store_manager');if(error||!data){document.querySelector('main').innerHTML='<div class="card">店長勤務中または管理者のみ利用できます。</div>';return false}return true}
+async function loadAll(show=true){if(show)staffList.innerHTML='<div class="card">読み込み中...</div>';const {data,error}=await sb.rpc('manager_staff_attendance_context');if(error){staffList.innerHTML=`<div class="card err">エラー：${esc(error.message)}</div>`;return}rows=data?.staff||[];teams=data?.register_teams||[];render()}
+function setTab(v){tab=v;roleFilter='all';['working','off','all'].forEach(x=>document.getElementById('tab'+(x==='working'?'Working':x==='off'?'Off':'All')).classList.toggle('active',x===v));render()}
+function roleKey(r){return isShopping(r)?'shopping':(r||'seller')}
+function renderFilters(){
+  const working=rows.filter(x=>x.working);const roles=[['all','すべて'],['seller','売り子'],['manager','店長'],['register','レジ'],['cook','調理'],['support','サポート'],['shopping','買い出し']];
+  roleFilters.style.display=tab==='working'?'flex':'none';
+  roleFilters.innerHTML=roles.map(([k,n])=>{const c=k==='all'?working.length:working.filter(x=>roleKey(x.role)===k).length;return `<button class="${roleFilter===k?'active':''}" onclick="roleFilter='${k}';render()">${n}<span class="count">${c}</span></button>`}).join('');
+  const counts={seller:0,manager:0,register:0,cook:0,support:0,shopping:0};working.forEach(x=>counts[roleKey(x.role)]++);
+  summary.innerHTML=[['売り子',counts.seller],['店長',counts.manager],['レジ',counts.register],['調理',counts.cook],['サポート',counts.support],['買い出し',counts.shopping]].map(([n,c])=>`<div class="stat"><span>${n}</span><strong>${c}</strong></div>`).join('');
+  summary.style.display=tab==='working'?'grid':'none';
 }
-
-async function guard(){
-  const {data,error}=await sb.rpc("is_store_manager");
-  if(error||!data){
-    document.querySelector("main").innerHTML='<div class="card">店長勤務中または管理者のみ利用できます。</div>';
-    return false;
-  }
-  return true;
-}
-
-async function loadTeams(){
-  const {data,error}=await sb.from("register_teams")
-    .select("id,team_name,color_key,active").eq("active",true).order("id");
-  if(!error) teams=data||[];
-}
-
-async function loadActive(){
-  const {data:att,error:aerr}=await sb.from("staff_attendance")
-    .select("user_id,clock_in")
-    .is("clock_out",null)
-    .order("clock_in",{ascending:true});
-  if(aerr) throw aerr;
-
-  const ids=[...new Set((att||[]).map(x=>x.user_id))];
-  if(!ids.length){ rows=[]; return; }
-
-  const [{data:staff,error:serr},{data:segments,error:rerr},{data:regs,error:merr}] = await Promise.all([
-    sb.from("staff_members").select("user_id,staff_name,is_active").in("user_id",ids),
-    sb.from("work_role_segments").select("user_id,role,started_at").in("user_id",ids).is("ended_at",null),
-    sb.from("register_team_memberships").select("user_id,team_id,started_at").in("user_id",ids).is("ended_at",null)
-  ]);
-  if(serr) throw serr;if(rerr) throw rerr;if(merr) throw merr;
-
-  const sm=new Map((staff||[]).map(x=>[x.user_id,x]));
-  const rm=new Map((segments||[]).map(x=>[x.user_id,x]));
-  const regm=new Map((regs||[]).map(x=>[x.user_id,x]));
-
-  rows=(att||[]).map(a=>{
-    const s=sm.get(a.user_id)||{};
-    const seg=rm.get(a.user_id);
-    const reg=regm.get(a.user_id);
-    const role=seg?.role || "seller";
-    return {
-      user_id:a.user_id,
-      staff_name:s.staff_name||"名前未登録",
-      clock_in:a.clock_in,
-      role,
-      role_started_at:seg?.started_at||a.clock_in,
-      register_team_id:reg?.team_id||null
-    };
-  });
-}
-
 function render(){
-  total.textContent=rows.length;
-  const counts={seller:0,manager:0,register:0,cook:0,support:0,shopping:0};
-  rows.forEach(x=>{
-    if(x.role==="shopping_driver"||x.role==="shopping_helper") counts.shopping++;
-    else if(counts[x.role]!==undefined) counts[x.role]++;
-  });
-  const items=[
-    ["売り子",counts.seller],["店長",counts.manager],["レジ",counts.register],
-    ["調理",counts.cook],["サポート",counts.support],["買い出し",counts.shopping]
-  ];
-  summary.innerHTML=items.map(([n,v])=>`<div class="stat"><span>${n}</span><strong>${v}</strong></div>`).join("");
-
-  if(!rows.length){
-    staffList.innerHTML='<div class="card empty">現在出勤中のスタッフはいません。</div>';
-    return;
-  }
-
-  staffList.innerHTML=rows.map(x=>{
-    const locked=x.role==="shopping_driver"||x.role==="shopping_helper";
-    const buttons=["seller","manager","cook","support"].map(r=>
-      `<button ${locked?"disabled":""} class="${x.role===r?"active":""}" onclick="changeRole('${x.user_id}','${r}','${esc(x.staff_name)}')">${roleLabel(r)}</button>`
-    ).join("");
-    const teamOptions=['<option value="">レジチームを選択</option>'].concat(
-      teams.map(t=>`<option value="${t.id}" ${Number(x.register_team_id)===Number(t.id)?"selected":""}>${esc(t.team_name)}</option>`)
-    ).join("");
-    return `<div class="card">
-      <div class="topline">
-        <div>
-          <div class="name">${esc(x.staff_name)}</div>
-          <div class="meta">出勤 ${clock(x.clock_in)} ／ 勤務 <span data-clock="${esc(x.clock_in)}">${duration(x.clock_in)}</span></div>
-          <div class="meta">現在役割開始 ${clock(x.role_started_at)}</div>
-        </div>
-        <span class="rolepill">${roleLabel(x.role)}</span>
-      </div>
-      ${locked?`<div class="small" style="margin-top:12px">買い出し中はミッション側で役割を管理します。強制退勤する場合は、先に買い出しミッションを終了してください。</div>`:
-      `<div class="actions">${buttons}</div>
-       <div class="regbox">
-         <select id="reg-${x.user_id}">${teamOptions}</select>
-         <button class="${x.role==="register"?"active":""}" onclick="changeRegister('${x.user_id}','${esc(x.staff_name)}')">レジ</button>
-       </div>`}
-      <button class="danger-soft" style="margin-top:10px;width:100%" onclick="forceClockOut('${x.user_id}','${esc(x.staff_name)}','${x.role}')">強制退勤</button>
-    </div>`;
-  }).join("");
+  workingCount.textContent=rows.filter(x=>x.working).length;renderFilters();
+  const q=searchInput.value.trim().toLowerCase();
+  let view=rows.filter(x=>tab==='working'?x.working:tab==='off'?!x.working:true);
+  if(tab==='working'&&roleFilter!=='all')view=view.filter(x=>roleKey(x.role)===roleFilter);
+  if(q)view=view.filter(x=>String(x.staff_name||'').toLowerCase().includes(q));
+  if(!view.length){staffList.innerHTML='<div class="card empty">該当するスタッフはいません。</div>';return}
+  staffList.innerHTML=view.map(cardHtml).join('');
 }
-
-async function changeRole(uid,role,name){
-  if(!confirm(`${name}さんを「${roleLabel(role)}」に変更しますか？`)) return;
-  msg.textContent="変更中...";
-  const {error}=await sb.rpc("set_work_role",{p_user:uid,p_role:role});
-  if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}
-  msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${roleLabel(role)}」に変更しました</span>`;
-  await loadAll(false);
+function cardHtml(x){
+  if(!x.working)return `<div class="card"><div class="topline"><div><div class="name">${esc(x.staff_name)}</div><div class="meta">現在：未出勤</div></div><span class="statuspill off">未出勤</span></div><button class="action-primary" onclick="openAttendanceModal('in','${x.user_id}','${esc(x.staff_name)}')">出勤させる</button></div>`;
+  const locked=isShopping(x.role);
+  const buttons=['seller','manager','cook','support'].map(r=>`<button ${locked?'disabled':''} class="${x.role===r?'active':''}" onclick="changeRole('${x.user_id}','${r}','${esc(x.staff_name)}')">${roleLabel(r)}</button>`).join('');
+  const opts=['<option value="">レジチームを選択</option>'].concat(teams.map(t=>`<option value="${t.id}" ${Number(x.register_team_id)===Number(t.id)?'selected':''}>${esc(t.team_name)}</option>`)).join('');
+  return `<div class="card"><div class="topline"><div><div class="name">${esc(x.staff_name)}</div><div class="meta">出勤 ${clock(x.clock_in)} ／ 勤務 <span data-clock="${esc(x.clock_in)}">${duration(x.clock_in)}</span></div><div class="meta">現在役割開始 ${clock(x.role_started_at)}</div></div><div><span class="statuspill on">出勤中</span> <span class="rolepill">${roleLabel(x.role)}</span></div></div>
+  ${locked?'<div class="small" style="margin-top:12px">買い出し中はミッション側で役割を管理します。</div>':`<div class="actions">${buttons}</div><div class="regbox"><select id="reg-${x.user_id}">${opts}</select><button class="${x.role==='register'?'active':''}" onclick="changeRegister('${x.user_id}','${esc(x.staff_name)}')">レジ</button></div>`}
+  <button class="action-danger" onclick="openAttendanceModal('out','${x.user_id}','${esc(x.staff_name)}','${x.role}')">退勤させる</button></div>`;
 }
-
-async function changeRegister(uid,name){
-  const sel=document.getElementById(`reg-${uid}`);
-  const team=Number(sel?.value||0);
-  if(!team){alert("レジチームを選択してください");return}
-  const tn=teams.find(x=>Number(x.id)===team)?.team_name||"レジ";
-  if(!confirm(`${name}さんを「${tn}」へ変更しますか？`)) return;
-  msg.textContent="変更中...";
-  const {error}=await sb.rpc("assign_register_member",{p_user:uid,p_team:team});
-  if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}
-  msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${esc(tn)}」へ変更しました</span>`;
-  await loadAll(false);
-}
-
-
-async function forceClockOut(uid,name,role){
-  if(role==="shopping_driver"||role==="shopping_helper"){
-    alert("買い出し中は、先に買い出しミッションを終了してください。");
-    return;
-  }
-  const reason=prompt(`${name}さんを強制退勤します。\n理由を入力してください。`,"退勤処理忘れ");
-  if(reason===null) return;
-  if(!reason.trim()){alert("強制退勤の理由を入力してください。");return}
-  if(!confirm(`${name}さんを現在時刻で強制退勤します。\n\n現在役割とレジ所属も終了し、勤怠に修正履歴を残します。\n\n実行しますか？`)) return;
-
-  msg.textContent="強制退勤中...";
-  const {error}=await sb.rpc("force_clock_out_staff",{p_user:uid,p_note:reason.trim()});
-  if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}
-  msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを強制退勤しました</span>`;
-  await loadAll(false);
-}
-
-async function loadAll(showLoading=true){
-  if(showLoading) staffList.innerHTML='<div class="card">読み込み中...</div>';
-  try{
-    await Promise.all([loadTeams(),loadActive()]);
-    render();
-  }catch(e){
-    staffList.innerHTML=`<div class="card err">エラー：${esc(e.message)}</div>`;
-  }
-}
-
-(async()=>{
-  if(!await guard()) return;
-  await loadAll();
-  setInterval(()=>{
-    document.querySelectorAll("[data-clock]").forEach(el=>{
-      el.textContent=duration(el.dataset.clock);
-    });
-  },30000);
-  setInterval(()=>loadAll(false),60000);
-})();
-</script>
-</body>
-</html>
+async function changeRole(uid,role,name){if(!confirm(`${name}さんを「${roleLabel(role)}」に変更しますか？`))return;msg.textContent='変更中...';const {error}=await sb.rpc('set_work_role',{p_user:uid,p_role:role});if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${roleLabel(role)}」に変更しました</span>`;await loadAll(false)}
+async function changeRegister(uid,name){const team=Number(document.getElementById(`reg-${uid}`)?.value||0);if(!team){alert('レジチームを選択してください');return}const tn=teams.find(x=>Number(x.id)===team)?.team_name||'レジ';if(!confirm(`${name}さんを「${tn}」へ変更しますか？`))return;const {error}=await sb.rpc('assign_register_member',{p_user:uid,p_team:team});if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${esc(tn)}」へ変更しました</span>`;await loadAll(false)}
+function openAttendanceModal(action,uid,name,role=null){if(action==='out'&&isShopping(role)){alert('買い出し中です。先に買い出しミッションを終了してください。');return}pending={action,uid,name};modalTitle.textContent=action==='in'?'出勤させる':'退勤させる';modalStaff.textContent=`${name}さんを現在時刻で${action==='in'?'管理出勤':'管理退勤'}します。`;reasonSelect.value='QR操作忘れ';otherReason.value='';toggleOtherReason();modalBackdrop.classList.add('show')}
+function closeModal(){modalBackdrop.classList.remove('show');pending=null}function backdropClose(e){if(e.target===modalBackdrop)closeModal()}function toggleOtherReason(){otherReasonWrap.style.display=reasonSelect.value==='その他'?'block':'none'}
+async function confirmAttendanceAction(){if(!pending)return;let reason=reasonSelect.value;if(reason==='その他')reason=otherReason.value.trim();if(!reason){alert('理由を入力してください');return}const fn=pending.action==='in'?'manager_clock_in_staff':'manager_clock_out_staff';const name=pending.name;const {error}=await sb.rpc(fn,{p_user:pending.uid,p_note:reason});if(error){alert('エラー：'+error.message);return}closeModal();msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを${fn.includes('in_')?'出勤':'退勤'}させました</span>`;await loadAll(false)}
+searchInput.addEventListener('input',render);
+(async()=>{if(!await guard())return;await loadAll();setInterval(()=>document.querySelectorAll('[data-clock]').forEach(x=>x.textContent=duration(x.dataset.clock)),30000);setInterval(()=>loadAll(false),60000)})();
+</script></body></html>
