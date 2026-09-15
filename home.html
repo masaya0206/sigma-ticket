@@ -482,6 +482,10 @@
     .admin-entry{display:none;margin-top:18px}
     @media(max-width:390px){.core-grid{gap:9px}.core-card{padding:15px}}
 
+  
+    .core-card.points-card {
+      grid-column: 1 / -1;
+    }
   </style>
 
 <style id="v80BottomNav">
@@ -701,6 +705,11 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
               <span class="core-name">前売り券・当日券</span>
               <span class="core-desc">券の発行・ノルマ・販売状況</span>
             </button>
+            <button class="core-card points-card" onclick="location.href='points-my.html'">
+              <span class="core-icon">pt</span>
+              <span class="core-name">4部門ポイント</span>
+              <span class="core-desc">テント内・外・前売り券・食材保存</span>
+            </button>
           </div>
 
           <div id="roleSection" class="role-section">
@@ -721,7 +730,7 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
         </section>
 
         <div class="notice">
-          通常は「勤怠・シフト」「前売り券・当日券」の2つだけ表示します。
+          通常は「勤怠・シフト」「前売り券・当日券」「4部門ポイント」を表示します。
           出勤中は「店長・レジ・サポート・買い出し」のうち必要な機能だけ自動で追加されます。
           売り子・調理には専用メニューを追加しません。
         </div>
