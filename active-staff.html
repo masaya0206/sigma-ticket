@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>現在出勤中・役割変更 | シグマ祭</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<style>
+:root{--red:#b5121b;--dark:#8f0e15;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2}
+*{box-sizing:border-box}
+body{margin:0;padding-bottom:88px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:28px 18px 24px;color:#fff;background:linear-gradient(145deg,var(--red),var(--dark));border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px} header p{margin:6px 0 0;color:#ffdede;font-size:13px}
+main{max-width:760px;margin:auto;padding:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.06)}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{padding:12px;border-radius:15px;background:#fff8f8;text-align:center}
+.stat span{display:block;color:var(--muted);font-size:11px}.stat strong{display:block;margin-top:3px;font-size:22px}
+.topline{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.name{font-weight:900;font-size:18px}
+.meta{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.5}
+.rolepill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:var(--red);font-size:12px;font-weight:900;white-space:nowrap}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}
+button,select{font:inherit;border-radius:12px}
+button{border:0;padding:10px 7px;background:#fff1f2;color:var(--red);font-weight:800}
+button.active{background:var(--red);color:#fff}
+button:disabled{opacity:.5}
+.regbox{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:8px}
+select{width:100%;padding:10px;border:1px solid #ddd5d1;background:#fff}
+.small{font-size:12px;color:var(--muted);line-height:1.55}
+.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
+.refresh{width:100%;padding:12px}
+.empty{text-align:center;color:var(--muted);padding:22px}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}
+.global-bottom-nav button{margin:0;padding:7px 4px;background:transparent;color:#6e6e73;font-size:11px}.global-bottom-nav .gicon{display:block;font-size:20px;margin-bottom:4px}
+@media(max-width:560px){.summary{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>現在出勤中・役割変更</h1>
+  <p>店長・管理者用｜出勤状況を見ながらその場で役割変更</p>
+</header>
+
+<main>
+  <section class="card">
+    <div class="topline">
+      <div>
+        <div class="small">現在出勤中</div>
+        <div style="font-size:34px;font-weight:900"><span id="total">0</span>人</div>
+      </div>
+      <button class="refresh" style="width:auto" onclick="loadAll()">更新</button>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div id="msg" class="small" style="margin-top:10px"></div>
+  </section>
+
+  <section id="staffList">
+    <div class="card">読み込み中...</div>
+  </section>
+
+  <section class="card">
+    <div class="small">
+      売り子へ戻す場合は「売り子」を押します。レジはレジチームへの所属も必要なため、
+      下のレジ選択からチームを指定します。役割変更中も勤怠自体は継続します。
+    </div>
+  </section>
+</main>
+
+<nav class="global-bottom-nav">
+  <button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button>
+  <button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button>
+  <button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button>
+</nav>
+
+<script>
+const sb=window.supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+
+let rows=[], teams=[];
+const roleLabel=r=>({
+  seller:"売り子",manager:"店長",register:"レジ",cook:"調理",support:"サポート",
+  shopping_driver:"買い出し運転手",shopping_helper:"買い出し手伝い"
+}[r]||r||"売り子");
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function clock(v){return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}
+function duration(v){
+  const ms=Math.max(0,Date.now()-new Date(v).getTime());
+  const mins=Math.floor(ms/60000);
+  const h=Math.floor(mins/60),m=mins%60;
+  return h>0?`${h}時間${m}分`:`${m}分`;
+}
+
+async function guard(){
+  const {data,error}=await sb.rpc("is_store_manager");
+  if(error||!data){
+    document.querySelector("main").innerHTML='<div class="card">店長勤務中または管理者のみ利用できます。</div>';
+    return false;
+  }
+  return true;
+}
+
+async function loadTeams(){
+  const {data,error}=await sb.from("register_teams")
+    .select("id,team_name,color_key,active").eq("active",true).order("id");
+  if(!error) teams=data||[];
+}
+
+async function loadActive(){
+  const {data:att,error:aerr}=await sb.from("staff_attendance")
+    .select("user_id,clock_in")
+    .is("clock_out",null)
+    .order("clock_in",{ascending:true});
+  if(aerr) throw aerr;
+
+  const ids=[...new Set((att||[]).map(x=>x.user_id))];
+  if(!ids.length){ rows=[]; return; }
+
+  const [{data:staff,error:serr},{data:segments,error:rerr},{data:regs,error:merr}] = await Promise.all([
+    sb.from("staff_members").select("user_id,staff_name,is_active").in("user_id",ids),
+    sb.from("work_role_segments").select("user_id,role,started_at").in("user_id",ids).is("ended_at",null),
+    sb.from("register_team_memberships").select("user_id,team_id,started_at").in("user_id",ids).is("ended_at",null)
+  ]);
+  if(serr) throw serr;if(rerr) throw rerr;if(merr) throw merr;
+
+  const sm=new Map((staff||[]).map(x=>[x.user_id,x]));
+  const rm=new Map((segments||[]).map(x=>[x.user_id,x]));
+  const regm=new Map((regs||[]).map(x=>[x.user_id,x]));
+
+  rows=(att||[]).map(a=>{
+    const s=sm.get(a.user_id)||{};
+    const seg=rm.get(a.user_id);
+    const reg=regm.get(a.user_id);
+    const role=seg?.role || "seller";
+    return {
+      user_id:a.user_id,
+      staff_name:s.staff_name||"名前未登録",
+      clock_in:a.clock_in,
+      role,
+      role_started_at:seg?.started_at||a.clock_in,
+      register_team_id:reg?.team_id||null
+    };
+  });
+}
+
+function render(){
+  total.textContent=rows.length;
+  const counts={seller:0,manager:0,register:0,cook:0,support:0,shopping:0};
+  rows.forEach(x=>{
+    if(x.role==="shopping_driver"||x.role==="shopping_helper") counts.shopping++;
+    else if(counts[x.role]!==undefined) counts[x.role]++;
+  });
+  const items=[
+    ["売り子",counts.seller],["店長",counts.manager],["レジ",counts.register],
+    ["調理",counts.cook],["サポート",counts.support],["買い出し",counts.shopping]
+  ];
+  summary.innerHTML=items.map(([n,v])=>`<div class="stat"><span>${n}</span><strong>${v}</strong></div>`).join("");
+
+  if(!rows.length){
+    staffList.innerHTML='<div class="card empty">現在出勤中のスタッフはいません。</div>';
+    return;
+  }
+
+  staffList.innerHTML=rows.map(x=>{
+    const locked=x.role==="shopping_driver"||x.role==="shopping_helper";
+    const buttons=["seller","manager","cook","support"].map(r=>
+      `<button ${locked?"disabled":""} class="${x.role===r?"active":""}" onclick="changeRole('${x.user_id}','${r}','${esc(x.staff_name)}')">${roleLabel(r)}</button>`
+    ).join("");
+    const teamOptions=['<option value="">レジチームを選択</option>'].concat(
+      teams.map(t=>`<option value="${t.id}" ${Number(x.register_team_id)===Number(t.id)?"selected":""}>${esc(t.team_name)}</option>`)
+    ).join("");
+    return `<div class="card">
+      <div class="topline">
+        <div>
+          <div class="name">${esc(x.staff_name)}</div>
+          <div class="meta">出勤 ${clock(x.clock_in)} ／ 勤務 <span data-clock="${esc(x.clock_in)}">${duration(x.clock_in)}</span></div>
+          <div class="meta">現在役割開始 ${clock(x.role_started_at)}</div>
+        </div>
+        <span class="rolepill">${roleLabel(x.role)}</span>
+      </div>
+      ${locked?`<div class="small" style="margin-top:12px">買い出し中はミッション側で役割を管理します。</div>`:
+      `<div class="actions">${buttons}</div>
+       <div class="regbox">
+         <select id="reg-${x.user_id}">${teamOptions}</select>
+         <button class="${x.role==="register"?"active":""}" onclick="changeRegister('${x.user_id}','${esc(x.staff_name)}')">レジ</button>
+       </div>`}
+    </div>`;
+  }).join("");
+}
+
+async function changeRole(uid,role,name){
+  if(!confirm(`${name}さんを「${roleLabel(role)}」に変更しますか？`)) return;
+  msg.textContent="変更中...";
+  const {error}=await sb.rpc("set_work_role",{p_user:uid,p_role:role});
+  if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}
+  msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${roleLabel(role)}」に変更しました</span>`;
+  await loadAll(false);
+}
+
+async function changeRegister(uid,name){
+  const sel=document.getElementById(`reg-${uid}`);
+  const team=Number(sel?.value||0);
+  if(!team){alert("レジチームを選択してください");return}
+  const tn=teams.find(x=>Number(x.id)===team)?.team_name||"レジ";
+  if(!confirm(`${name}さんを「${tn}」へ変更しますか？`)) return;
+  msg.textContent="変更中...";
+  const {error}=await sb.rpc("assign_register_member",{p_user:uid,p_team:team});
+  if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}
+  msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${esc(tn)}」へ変更しました</span>`;
+  await loadAll(false);
+}
+
+async function loadAll(showLoading=true){
+  if(showLoading) staffList.innerHTML='<div class="card">読み込み中...</div>';
+  try{
+    await Promise.all([loadTeams(),loadActive()]);
+    render();
+  }catch(e){
+    staffList.innerHTML=`<div class="card err">エラー：${esc(e.message)}</div>`;
+  }
+}
+
+(async()=>{
+  if(!await guard()) return;
+  await loadAll();
+  setInterval(()=>{
+    document.querySelectorAll("[data-clock]").forEach(el=>{
+      el.textContent=duration(el.dataset.clock);
+    });
+  },30000);
+  setInterval(()=>loadAll(false),60000);
+})();
+</script>
+</body>
+</html>

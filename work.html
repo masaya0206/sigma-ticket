@@ -1,5 +1,6 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="theme-color" content="#b5121b"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-180.png"><title>勤怠・シフト</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--red:#b5121b;--dark:#8f0e15;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
@@ -78,5 +79,19 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 <div class="top"><button class="back" onclick="history.length>1?history.back():location.href='home.html'">←</button><div><h1>勤怠・シフト</h1><div class="sub">勤務と希望シフト</div></div></div>
 <button class="card" onclick="location.href='staff.html'"><span class="icon">時</span><span class="name">勤怠</span><span class="desc">現在の勤務状態・出退勤の確認</span></button>
 <button class="card" onclick="location.href='shift.html'"><span class="icon">予</span><span class="name">希望シフト</span><span class="desc">参加できる日・時間を提出・確認</span></button>
+<button class="card" id="activeStaffCard" style="display:none" onclick="location.href='active-staff.html'"><span class="icon">人</span><span class="name">現在出勤中・役割変更</span><span class="desc">店長・管理者用｜出勤中の人数確認と役割変更</span></button>
 </main><nav class="global-bottom-nav"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="active" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
+<script>
+(async()=>{
+  const sb=window.supabase.createClient(
+    "https://gsniytemgrbtgfywhqlu.supabase.co",
+    "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+  );
+  const {data,error}=await sb.rpc("is_store_manager");
+  if(!error && data){
+    const card=document.getElementById("activeStaffCard");
+    if(card) card.style.display="block";
+  }
+})();
+</script>
 </body></html>
