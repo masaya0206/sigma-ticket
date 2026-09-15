@@ -1,49 +1,134 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>マイポイント</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4部門ポイント | Match Point</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<style>
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
-header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
+:root{--red:#b5121b;--dark:#8f0e15;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4}
+body{margin:0;padding-bottom:90px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(145deg,var(--red),var(--dark));color:#fff;padding:32px 20px 26px;border-radius:0 0 28px 28px}
 header h1{margin:0;font-size:27px}
-main{max-width:720px;margin:auto;padding:18px}
-.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
-button,input,select,textarea{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
-input,select,textarea{border:1px solid #ddd5d1;background:#fff}
-button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
-.primary{background:#b5121b;color:#fff}
-.danger{background:#7f1d1d;color:#fff}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.small{font-size:12px;color:#6e6e73;line-height:1.55}
-.big{font-size:30px;font-weight:900}
+header p{margin:7px 0 0;color:#ffdede;font-size:13px}
+main{max-width:760px;margin:auto;padding:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:17px;margin:12px 0;box-shadow:0 7px 22px rgba(70,25,25,.06)}
+.mode{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:var(--red);font-size:12px;font-weight:800}
+.departments{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:13px}
+.dept{border:1px solid #eee6e3;border-radius:18px;padding:15px;background:#fff}
+.dept .title{font-size:14px;font-weight:900}
+.dept .pt{font-size:29px;font-weight:900;margin-top:6px}
+.dept .desc{font-size:11px;color:var(--muted);line-height:1.45;margin-top:4px}
+.inside{border-top:4px solid #b5121b}
+.outside{border-top:4px solid #d97706}
+.presale{border-top:4px solid #2563eb}
+.food{border-top:4px solid #15803d}
+.small{font-size:12px;color:var(--muted);line-height:1.55}
 .row{padding:11px 0;border-top:1px solid #eee}
-.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:#b5121b;font-size:12px;font-weight:800}
-.ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
-@media(max-width:520px){.grid{grid-template-columns:1fr}}
-.scorebox{background:#fff8f8;border-radius:15px;padding:14px}</style></head><body>
-<header><h1>⭐ マイポイント</h1></header><main>
-<div class="card"><h2>前売り</h2><div class="big" id="pre">-</div><div id="res" class="small"></div></div>
-<div class="card"><h2>当日ポイント</h2><div id="mode" class="pill">暫定</div><div class="grid" style="margin-top:12px"><div class="scorebox">当日内<div class="big" id="inside">0</div></div><div class="scorebox">当日外<div class="big" id="outside">0</div></div></div><p class="small">買い出しptは当日外ptに含めます。準備日・片付け日は独立ptではなく、最終配分時の横断補正係数として扱います。</p></div>
-<div class="card"><h2>内訳</h2><div id="details"></div></div><button onclick="location.href='staff.html'">スタッフ画面へ戻る</button></main><script>
-const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+.row:first-child{border-top:0}
+.row b{font-size:14px}
+.right{float:right;font-weight:900}
+button{width:100%;border:0;border-radius:13px;padding:13px;margin:7px 0;background:#fff1f2;color:var(--red);font-size:15px;font-weight:800}
+.section-title{font-size:17px;font-weight:900;margin:0 0 8px}
+.totalnote{margin-top:10px;padding:10px 12px;border-radius:13px;background:#faf7f5;font-size:12px;color:#5f5b59;line-height:1.5}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}
+.global-bottom-nav button{margin:0;padding:7px 4px;background:transparent;color:#6e6e73;font-size:11px}.global-bottom-nav .gicon{display:block;font-size:20px;margin-bottom:4px}
+@media(max-width:520px){.departments{grid-template-columns:1fr 1fr}.dept{padding:13px}.dept .pt{font-size:25px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>4部門ポイント</h1>
+  <p>テント内・テント外・前売り券・食材保存</p>
+</header>
+
+<main>
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <h2 class="section-title" style="margin:0">自分のポイント</h2>
+      <span class="mode" id="mode">暫定</span>
+    </div>
+
+    <div class="departments">
+      <div class="dept inside">
+        <div class="title">🏮 テント内</div>
+        <div class="pt" id="inside">0.0 pt</div>
+        <div class="desc">店長・調理・サポート</div>
+      </div>
+
+      <div class="dept outside">
+        <div class="title">📣 テント外</div>
+        <div class="pt" id="outside">0.0 pt</div>
+        <div class="desc">売り子・レジ・買い出し</div>
+      </div>
+
+      <div class="dept presale">
+        <div class="title">🎫 前売り券</div>
+        <div class="pt" id="presale">0.0 pt</div>
+        <div class="desc" id="presaleSub">ノルマ・超過販売</div>
+      </div>
+
+      <div class="dept food">
+        <div class="title">🥡 食材保存</div>
+        <div class="pt" id="food">0.0 pt</div>
+        <div class="desc">管理した食材量 × 基礎pt × 重さ係数</div>
+      </div>
+    </div>
+
+    <div class="totalnote">
+      4部門はそれぞれ計算方法が異なります。最終インセンティブでは、各部門のポイントをその部門内の配分比率として使用します。
+      準備日・片付け日の参加は、4部門すべての最終配分に共通の補正係数として反映されます。
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">ポイント内訳</h2>
+    <div id="details">読み込み中...</div>
+  </section>
+</main>
+
+<nav class="global-bottom-nav">
+  <button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button>
+  <button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button>
+  <button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button>
+</nav>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
 async function run(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user){location.href='home.html';return}
 
-  const pr=await sb.rpc('my_presale_status');
-  if(!pr.error){
-    pre.textContent=Number(pr.data?.presale_points||0).toFixed(1)+' pt';
-    res.textContent='残券 '+(pr.data?.residual_remaining||0)+'枚 / '+Number(pr.data?.residual_value||0).toLocaleString()+'円相当';
+  const pres=await sb.rpc('my_presale_status');
+  const presalePt=pres.error?0:Number(pres.data?.presale_points||0);
+  document.getElementById('presale').textContent=presalePt.toFixed(1)+' pt';
+  if(!pres.error){
+    document.getElementById('presaleSub').textContent=
+      `販売 ${pres.data?.presale_sold||0}枚 / 残券 ${pres.data?.residual_remaining||0}枚`;
   }
 
   let r=await sb.rpc('my_point_summary',{p_final:true});
-  let final=true;
-  if(r.error||!r.data?.length){
+  let isFinal=true;
+  if(r.error || !r.data?.length){
     r=await sb.rpc('my_point_summary',{p_final:false});
-    final=false;
+    isFinal=false;
   }
+  document.getElementById('mode').textContent=isFinal?'確定':'暫定';
 
-  const sh=await sb.rpc('my_shopping_point_total',{p_final:final});
+  const sh=await sb.rpc('my_shopping_point_total',{p_final:isFinal});
   const shoppingPt=sh.error?0:Number(sh.data||0);
 
-  mode.textContent=final?'確定':'暫定';
+  const foodRes=await sb.rpc('my_food_storage_points');
+  const foodPt=foodRes.error?0:Number(foodRes.data?.total_points||0);
 
   const sum={inside:0,outside:0};
   for(const x of (r.data||[])){
@@ -51,19 +136,42 @@ async function run(){
     if(x.point_side==='outside')sum.outside+=Number(x.points||0);
   }
 
-  inside.textContent=sum.inside.toFixed(1)+' pt';
-  outside.textContent=(sum.outside+shoppingPt).toFixed(1)+' pt';
+  document.getElementById('inside').textContent=sum.inside.toFixed(1)+' pt';
+  document.getElementById('outside').textContent=(sum.outside+shoppingPt).toFixed(1)+' pt';
+  document.getElementById('food').textContent=foodPt.toFixed(1)+' pt';
 
-  const rows=(r.data||[]).filter(x=>x.point_side==='inside'||x.point_side==='outside').map(x=>{
-    const side=x.point_side==='inside'?'当日内':'当日外';
-    return `<div class="row"><b>${x.point_type}</b><span style="float:right">${Number(x.points).toFixed(2)} pt</span><br><span class="small">${side}</span></div>`;
-  });
+  const rows=[];
 
-  if(shoppingPt!==0){
-    rows.push(`<div class="row"><b>買い出し</b><span style="float:right">${shoppingPt.toFixed(2)} pt</span><br><span class="small">当日外</span></div>`);
+  rows.push(`<div class="row"><b>🎫 前売り券</b><span class="right">${presalePt.toFixed(2)} pt</span>
+    <br><span class="small">ノルマ確定pt＋超過販売pt</span></div>`);
+
+  for(const x of (r.data||[])){
+    if(x.point_side!=='inside' && x.point_side!=='outside') continue;
+    const side=x.point_side==='inside'?'🏮 テント内':'📣 テント外';
+    const label={
+      manager:'店長',cook:'調理',support:'サポート',
+      seller:'売り子',seller_team:'売り子チーム',register:'レジ'
+    }[x.point_type]||x.point_type;
+    rows.push(`<div class="row"><b>${side}｜${esc(label)}</b><span class="right">${Number(x.points||0).toFixed(2)} pt</span></div>`);
   }
 
-  details.innerHTML=rows.length?rows.join(''):'ポイントはまだありません。';
+  if(shoppingPt!==0){
+    rows.push(`<div class="row"><b>📣 テント外｜買い出し</b><span class="right">${shoppingPt.toFixed(2)} pt</span></div>`);
+  }
+
+  const foodEntries=foodRes.data?.entries||[];
+  if(foodEntries.length){
+    for(const x of foodEntries){
+      rows.push(`<div class="row"><b>🥡 食材保存｜${esc(x.item_name)}</b><span class="right">${Number(x.points||0).toFixed(2)} pt</span>
+        <br><span class="small">${Number(x.unit_count||0)}単位 × 重さ係数 ${Number(x.weight_coefficient||0)}</span></div>`);
+    }
+  }else{
+    rows.push(`<div class="row"><b>🥡 食材保存</b><span class="right">0.00 pt</span><br><span class="small">登録された食材保存実績はありません</span></div>`);
+  }
+
+  document.getElementById('details').innerHTML=rows.join('');
 }
 run();
-</script></body></html>
+</script>
+</body>
+</html>
