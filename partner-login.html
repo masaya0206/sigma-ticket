@@ -30,6 +30,55 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 .instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
 pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
 </style>
+
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
 </head>
 <body>
 
@@ -52,7 +101,12 @@ async function login(){
   const t=localStorage.getItem("partner_pending_invite");
   if(t){
     const {error:e}=await sb.rpc("claim_partner_invite",{p_token:t});
-    if(e){msg.textContent="招待参加エラー："+e.message;return;}
+    if(e){
+      // 使用済み・期限切れ・無効化など、再利用できない招待を端末に残さない。
+      localStorage.removeItem("partner_pending_invite");
+      msg.textContent="招待参加エラー："+e.message;
+      return;
+    }
     localStorage.removeItem("partner_pending_invite");
   }
   location.href="partner-scanner.html";

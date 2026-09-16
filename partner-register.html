@@ -30,6 +30,55 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 .instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
 pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
 </style>
+
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
 </head>
 <body>
 
@@ -38,7 +87,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;bo
   <div class="card">
     <label>メールアドレス</label><input id="email" type="email" autocomplete="email">
     <label>パスワード</label><input id="password" type="password" minlength="6" autocomplete="new-password">
-    <button onclick="signup()">登録して参加する</button>
+    <button id="registerBtn" onclick="signup()">登録して参加する</button>
     <div id="msg" class="small" style="margin-top:12px"></div>
   </div>
   <a class="btn secondary" href="partner-login.html">すでに登録済みの方</a>
@@ -47,25 +96,90 @@ pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;bo
 <script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 
-const token=new URLSearchParams(location.search).get("token");
-if(token) localStorage.setItem("partner_pending_invite",token);
+const urlToken=new URLSearchParams(location.search).get("token");
+let inviteToken=urlToken||localStorage.getItem("partner_pending_invite");
+
+function setInviteFormEnabled(enabled){
+  email.disabled=!enabled;
+  password.disabled=!enabled;
+  registerBtn.disabled=!enabled;
+  registerBtn.style.opacity=enabled?"1":"0.55";
+}
+
+async function validateInvite(t,{showValidMessage=false}={}){
+  if(!t){
+    setInviteFormEnabled(false);
+    msg.textContent="招待URLから開いてください。";
+    return false;
+  }
+
+  const {data,error}=await sb.rpc("partner_invite_status",{p_token:t});
+  if(error){
+    setInviteFormEnabled(false);
+    msg.textContent="招待URLの確認に失敗しました："+error.message;
+    return false;
+  }
+
+  if(!data?.usable){
+    if(localStorage.getItem("partner_pending_invite")===t){
+      localStorage.removeItem("partner_pending_invite");
+    }
+    inviteToken=null;
+    setInviteFormEnabled(false);
+    msg.textContent=data?.message||"この招待URLは利用できません。";
+    return false;
+  }
+
+  inviteToken=t;
+  if(urlToken===t){
+    localStorage.setItem("partner_pending_invite",t);
+  }
+  setInviteFormEnabled(true);
+  if(showValidMessage){
+    msg.textContent="この招待URLは利用できます。";
+  }
+  return true;
+}
 
 async function signup(){
-  if(!token && !localStorage.getItem("partner_pending_invite")){
-    msg.textContent="招待URLから開いてください。";return;
+  const t=inviteToken||localStorage.getItem("partner_pending_invite");
+  if(!await validateInvite(t)) return;
+
+  registerBtn.disabled=true;
+  msg.textContent="登録処理中...";
+
+  const {data,error}=await sb.auth.signUp({
+    email:email.value.trim(),
+    password:password.value
+  });
+
+  if(error){
+    registerBtn.disabled=false;
+    msg.textContent="エラー："+error.message;
+    return;
   }
-  const {data,error}=await sb.auth.signUp({email:email.value.trim(),password:password.value});
-  if(error){msg.textContent="エラー："+error.message;return;}
-  const t=token||localStorage.getItem("partner_pending_invite");
+
   if(data.session){
-    const {data:r,error:e}=await sb.rpc("claim_partner_invite",{p_token:t});
-    if(e){msg.textContent="登録はできましたが、参加処理エラー："+e.message;return;}
+    const {error:e}=await sb.rpc("claim_partner_invite",{p_token:t});
+    if(e){
+      localStorage.removeItem("partner_pending_invite");
+      inviteToken=null;
+      setInviteFormEnabled(false);
+      msg.textContent="参加処理エラー："+e.message;
+      return;
+    }
+
     localStorage.removeItem("partner_pending_invite");
     location.href="partner-scanner.html";
   }else{
     msg.innerHTML="アカウントを作成しました。確認メールが届く設定の場合はメール認証後、<b>ログイン画面</b>からログインしてください。";
   }
 }
+
+(async()=>{
+  setInviteFormEnabled(false);
+  await validateInvite(inviteToken);
+})();
 
 </script>
 </body>
