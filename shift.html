@@ -82,19 +82,246 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 .global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
 </style>
 
+
+<style id="shiftPolish">
+.card{overflow:hidden}
+.field{min-width:0;margin:10px 0}
+.field label{display:block;font-weight:800;margin-bottom:6px}
+.field input,.field select,.field textarea{
+  display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:0;
+}
+.time-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.day-summary{padding:14px 0;border-top:1px solid #eee}
+.day-summary:first-child{border-top:0}
+.day-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;margin-bottom:8px}
+.day-name{font-size:17px;font-weight:900}
+.day-total{font-size:13px;color:#6e6e73;font-weight:800}
+.timeline-scale{display:flex;justify-content:space-between;font-size:10px;color:#8a8080;margin-bottom:5px}
+.timeline{position:relative;height:20px;border-radius:999px;background:#f1ece9;overflow:hidden}
+.timeline-seg{position:absolute;top:0;bottom:0;border-radius:999px;background:#b5121b;min-width:3px}
+.availability-entry{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0}
+.availability-entry+.availability-entry{border-top:1px dashed #eee}
+.availability-time{font-weight:900}
+.availability-note{font-size:12px;color:#6e6e73;margin-top:3px}
+.small-delete{width:auto!important;margin:0!important;padding:8px 12px!important;font-size:12px!important;background:#fff1f2!important;color:#b5121b!important}
+.empty-day{font-size:12px;color:#9a9090;padding-top:8px}
+@media(max-width:520px){
+  .time-grid{grid-template-columns:1fr}
+  header{padding:26px 18px}
+  header h1{font-size:24px}
+  main{padding:14px}
+  .card{padding:16px}
+  .day-top{align-items:center}
+}
+</style>
+
 </head><body>
-<header><h1>🗓 希望シフト</h1></header><main>
-<div class="card"><h2>参加可能時間を追加</h2><label>日<select id="day"></select></label><label>開始<input id="from" type="datetime-local"></label><label>終了<input id="to" type="datetime-local"></label><label>メモ<textarea id="note" placeholder="例：午後から参加できます"></textarea></label><button class="primary" id="save">追加</button><div id="msg"></div><p class="small">これは希望時間です。ポイント計算には提出シフトではなく実際の勤怠時間を使います。</p></div>
-<div class="card"><h2>提出済み</h2><div id="list">読み込み中...</div></div><button onclick="location.href='work.html'">← 勤怠・シフト</button></main>
+<header><h1>🗓 希望シフト</h1></header>
+<main>
+  <div class="card">
+    <h2>参加可能時間を追加</h2>
+
+    <div class="field">
+      <label for="day">日</label>
+      <select id="day"></select>
+    </div>
+
+    <div class="time-grid">
+      <div class="field">
+        <label for="from">開始</label>
+        <input id="from" type="datetime-local">
+      </div>
+      <div class="field">
+        <label for="to">終了</label>
+        <input id="to" type="datetime-local">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="note">メモ</label>
+      <textarea id="note" rows="3" placeholder="例：午後から参加できます"></textarea>
+    </div>
+
+    <button class="primary" id="save">追加</button>
+    <div id="msg"></div>
+    <p class="small">これは希望時間です。ポイント計算には提出シフトではなく実際の勤怠時間を使います。</p>
+  </div>
+
+  <div class="card">
+    <h2>提出済み</h2>
+    <p class="small">希望時間を日ごとの横棒で表示します。赤い部分が提出済みの参加可能時間です。</p>
+    <div id="list">読み込み中...</div>
+  </div>
+
+  <button onclick="location.href='work.html'">← 勤怠・シフト</button>
+</main>
+
 <script>
-const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");let days=[];
-const localInput=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,16)};
-async function loadDays(){const {data,error}=await sb.from('event_days').select('*').eq('is_enabled',true).order('id');if(error){msg.textContent=error.message;return}days=data||[];day.innerHTML=days.map(d=>`<option value="${d.id}">${d.label}</option>`).join('');syncTime()}
-function syncTime(){const d=days.find(x=>x.id==day.value);if(!d)return;from.value=localInput(d.starts_at);to.value=localInput(d.ends_at)}
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+
+let days=[];
+
+const localInput=d=>{
+  const x=new Date(d);
+  x.setMinutes(x.getMinutes()-x.getTimezoneOffset());
+  return x.toISOString().slice(0,16);
+};
+
+const fmtTime=d=>new Date(d).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+
+function durationHours(a,b){
+  return Math.max(0,(new Date(b)-new Date(a))/3600000);
+}
+
+function mergeIntervals(items){
+  const sorted=items
+    .map(x=>[new Date(x.available_from).getTime(),new Date(x.available_to).getTime()])
+    .sort((a,b)=>a[0]-b[0]);
+
+  const merged=[];
+  for(const cur of sorted){
+    if(!merged.length || cur[0]>merged[merged.length-1][1]){
+      merged.push([...cur]);
+    }else{
+      merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],cur[1]);
+    }
+  }
+  return merged;
+}
+
+async function loadDays(){
+  const {data,error}=await sb.from('event_days').select('*').eq('is_enabled',true).order('id');
+  if(error){msg.textContent=error.message;return}
+  days=data||[];
+  day.innerHTML=days.map(d=>`<option value="${d.id}">${d.label}</option>`).join('');
+  syncTime();
+}
+
+function syncTime(){
+  const d=days.find(x=>x.id==day.value);
+  if(!d)return;
+  from.value=localInput(d.starts_at);
+  to.value=localInput(d.ends_at);
+}
 day.onchange=syncTime;
-save.onclick=async()=>{msg.textContent='保存中...';const {data,error}=await sb.rpc('save_my_availability',{p_event_day_id:+day.value,p_from:new Date(from.value).toISOString(),p_to:new Date(to.value).toISOString(),p_note:note.value});msg.innerHTML=error?'<span class="err">'+error.message+'</span>':'<span class="ok">✅ 追加しました</span>';if(!error){note.value='';await loadList()}};
-async function del(id){if(!confirm('この希望時間を削除しますか？'))return;const {error}=await sb.rpc('delete_my_availability',{p_id:id});if(error)alert(error.message);else loadList()}
-async function loadList(){const {data,error}=await sb.from('staff_availability').select('id,event_day_id,available_from,available_to,note').order('available_from');if(error){list.textContent=error.message;return}list.innerHTML=(data||[]).length?(data||[]).map(x=>{const d=days.find(y=>y.id===x.event_day_id);return `<div class="row"><b>${d?.label||''}</b><br>${new Date(x.available_from).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}〜${new Date(x.available_to).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}<br><span class="small">${x.note||''}</span><button onclick="del(${x.id})">削除</button></div>`}).join(''):'まだ提出していません。'}
-(async()=>{const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return}await loadDays();await loadList()})();
-</script><nav class="global-bottom-nav"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="active" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
+
+save.onclick=async()=>{
+  msg.textContent='保存中...';
+
+  if(!from.value || !to.value){
+    msg.innerHTML='<span class="err">開始と終了を入力してください。</span>';
+    return;
+  }
+  if(new Date(from.value)>=new Date(to.value)){
+    msg.innerHTML='<span class="err">終了は開始より後にしてください。</span>';
+    return;
+  }
+
+  const {error}=await sb.rpc('save_my_availability',{
+    p_event_day_id:+day.value,
+    p_from:new Date(from.value).toISOString(),
+    p_to:new Date(to.value).toISOString(),
+    p_note:note.value
+  });
+
+  msg.innerHTML=error
+    ?'<span class="err">'+error.message+'</span>'
+    :'<span class="ok">✅ 追加しました</span>';
+
+  if(!error){
+    note.value='';
+    await loadList();
+  }
+};
+
+async function del(id){
+  if(!confirm('この希望時間を削除しますか？'))return;
+  const {error}=await sb.rpc('delete_my_availability',{p_id:id});
+  if(error)alert(error.message);
+  else loadList();
+}
+
+function renderDay(d,items){
+  const dayStart=new Date(d.starts_at).getTime();
+  const dayEnd=new Date(d.ends_at).getTime();
+  const span=Math.max(1,dayEnd-dayStart);
+
+  const merged=mergeIntervals(items);
+  const total=merged.reduce((s,[a,b])=>s+Math.max(0,b-a),0)/3600000;
+
+  const segments=merged.map(([a,b])=>{
+    const ca=Math.max(a,dayStart);
+    const cb=Math.min(b,dayEnd);
+    if(cb<=ca)return '';
+    const left=((ca-dayStart)/span)*100;
+    const width=((cb-ca)/span)*100;
+    return `<span class="timeline-seg" style="left:${left.toFixed(3)}%;width:${width.toFixed(3)}%"></span>`;
+  }).join('');
+
+  const entries=items.length
+    ? items.map(x=>`
+      <div class="availability-entry">
+        <div>
+          <div class="availability-time">${fmtTime(x.available_from)}〜${fmtTime(x.available_to)}</div>
+          ${x.note?`<div class="availability-note">${escapeHtml(x.note)}</div>`:''}
+        </div>
+        <button class="small-delete" onclick="del(${x.id})">削除</button>
+      </div>
+    `).join('')
+    : '<div class="empty-day">この日の希望時間はまだありません。</div>';
+
+  return `
+    <section class="day-summary">
+      <div class="day-top">
+        <div class="day-name">${escapeHtml(d.label||'')}</div>
+        <div class="day-total">希望 ${total.toFixed(total%1?1:0)}時間</div>
+      </div>
+      <div class="timeline-scale">
+        <span>${fmtTime(d.starts_at)}</span>
+        <span>${fmtTime(d.ends_at)}</span>
+      </div>
+      <div class="timeline" aria-label="${escapeHtml(d.label||'')} の希望時間">${segments}</div>
+      <div style="margin-top:8px">${entries}</div>
+    </section>
+  `;
+}
+
+function escapeHtml(v){
+  return String(v??'')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+
+async function loadList(){
+  const {data,error}=await sb
+    .from('staff_availability')
+    .select('id,event_day_id,available_from,available_to,note')
+    .order('available_from');
+
+  if(error){
+    list.textContent=error.message;
+    return;
+  }
+
+  const rows=data||[];
+  list.innerHTML=days.map(d=>{
+    const items=rows.filter(x=>x.event_day_id===d.id);
+    return renderDay(d,items);
+  }).join('');
+}
+
+(async()=>{
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='home.html';return}
+  await loadDays();
+  await loadList();
+})();
+</script>
+<nav class="global-bottom-nav"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="active" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body></html>

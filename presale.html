@@ -49,39 +49,153 @@
 </style>
 
 </head><body><main>
-<button class="secondary" onclick="location.href='tickets.html'">← 前売り券・当日券</button><h1>前売りノルマ</h1>
-<div class="card"><h2>現在の状況</h2><div class="grid"><div class="metric"><div class="muted">前売りポイント</div><div class="big" id="pt">--</div></div><div class="metric"><div class="muted">残券</div><div class="big" id="res">--</div></div></div><p id="resValue" class="muted"></p></div>
-<div class="card"><h2>ノルマ選択</h2><p class="muted">最低6枚・1枚刻み・上限なし。管理者が確定した瞬間から返金不可です。未選択は6枚になります。</p><label>希望ノルマ枚数</label><input id="quota" type="number" min="6" step="1" value="6"><div id="preview"></div><button id="save" onclick="saveQuota()">この枚数を選択</button><p id="msg"></p></div>
-<div class="card"><h2>確定内容</h2><div id="details">読み込み中...</div></div>
-<script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+<button class="secondary" onclick="location.href='tickets.html'">← 前売り券・当日券</button>
+<h1>前売りノルマ</h1>
+
+<div class="card">
+  <h2>ノルマ別ポイントシミュレーション</h2>
+  <p class="muted">希望ノルマを増やしたとき、初期ポイントがどのくらい変わるか確認できます。管理者の現在の加速係数設定に自動で連動します。</p>
+  <div class="sim-wrap">
+    <div class="sim-head">
+      <span>ノルマ</span><span>倍率</span><span>初期pt</span><span>6枚との差</span>
+    </div>
+    <div id="simRows"><div class="muted">計算中...</div></div>
+  </div>
+  <p class="muted" style="margin-bottom:0">※ 6〜12枚を一覧表示します。13枚以上も下の入力欄でそのまま計算できます。</p>
+</div>
+
+<div class="card">
+  <h2>ノルマ選択</h2>
+  <p class="muted">最低6枚・1枚刻み・上限なし。管理者が確定した瞬間から返金不可です。未選択は6枚になります。</p>
+  <label>希望ノルマ枚数</label>
+  <input id="quota" type="number" min="6" step="1" value="6" inputmode="numeric">
+  <div id="preview" class="choice-preview"></div>
+  <button id="save" onclick="saveQuota()">この枚数を選択</button>
+  <p id="msg"></p>
+</div>
+
+<div class="card">
+  <h2>確定内容</h2>
+  <div id="details">読み込み中...</div>
+</div>
+
+<style>
+.sim-wrap{border:1px solid #f0d6d6;border-radius:14px;overflow:hidden;margin-top:12px}
+.sim-head,.sim-row{display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr;gap:6px;align-items:center;padding:10px 12px}
+.sim-head{background:#fff1f2;color:#7d171d;font-size:12px;font-weight:800}
+.sim-row{border-top:1px solid #f4e1e1;font-size:14px}
+.sim-row:first-child{border-top:0}
+.sim-row strong{font-size:16px}
+.sim-row.selected{background:#fff5f5;box-shadow:inset 4px 0 0 #b5121b}
+.sim-row .plus{color:#b5121b;font-weight:800}
+.choice-preview{margin:10px 0 4px;padding:14px;border-radius:14px;background:#fff7f7;border:1px solid #f0d6d6}
+.choice-big{font-size:24px;font-weight:900}
+.choice-sub{margin-top:4px;color:#725b5b;font-size:13px}
+@media(max-width:480px){
+  .sim-head,.sim-row{grid-template-columns:.8fr .9fr 1fr 1.2fr;padding:9px 8px;font-size:12px}
+  .sim-row strong{font-size:14px}
+}
+</style>
+
+<script>
+const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let baseSixPoints=6;
+let simData=[];
+
+async function pointsFor(n){
+  const {data,error}=await db.rpc('presale_points_for_quota',{p_quota:n});
+  if(error) throw error;
+  return Number(data||0);
+}
+
+async function loadSimulation(){
+  simRows.innerHTML='<div class="muted" style="padding:12px">計算中...</div>';
+  try{
+    const values=await Promise.all(Array.from({length:7},(_,i)=>pointsFor(6+i)));
+    baseSixPoints=values[0]||6;
+    simData=values.map((pt,i)=>{
+      const n=6+i;
+      return {n,pt,multiplier:n>0?pt/n:0,delta:pt-baseSixPoints};
+    });
+    renderSimulation();
+  }catch(e){
+    simRows.innerHTML='<div class="warn" style="padding:12px">シミュレーション取得エラー: '+e.message+'</div>';
+  }
+}
+
+function renderSimulation(selected=Number(quota?.value||6)){
+  if(!simData.length)return;
+  simRows.innerHTML=simData.map(x=>`
+    <div class="sim-row ${x.n===selected?'selected':''}">
+      <span><strong>${x.n}</strong>枚</span>
+      <span>×${x.multiplier.toFixed(1)}</span>
+      <span><strong>${x.pt.toFixed(1)}</strong></span>
+      <span class="${x.delta>0?'plus':''}">${x.delta>0?'+':''}${x.delta.toFixed(1)} pt</span>
+    </div>
+  `).join('');
+}
+
 async function updatePreview(){
   const raw=quota.value.trim();
+  renderSimulation(Number(raw||6));
 
-  // 入力途中で空欄にしても6へ戻さない
   if(raw===''){
     preview.innerHTML='<span class="muted">6枚以上を入力してください。</span>';
     return;
   }
 
   const n=Number(raw);
-
   if(!Number.isInteger(n)||n<6){
     preview.innerHTML='<span class="warn">最低ノルマは6枚です。</span>';
     return;
   }
 
-  preview.innerHTML='計算中...';
-  const{data,error}=await db.rpc('presale_points_for_quota',{p_quota:n});
-  preview.innerHTML=error
-    ? '<span class="warn">計算エラー: '+error.message+'</span>'
-    : `<b>${n}枚 → 初期 ${Number(data).toFixed(1)}pt</b>`;
+  preview.innerHTML='<span class="muted">計算中...</span>';
+  try{
+    const pt=await pointsFor(n);
+    const mult=n>0?pt/n:0;
+    const delta=pt-baseSixPoints;
+    preview.innerHTML=`
+      <div class="choice-big">${n}枚 → ${pt.toFixed(1)} pt</div>
+      <div class="choice-sub">倍率 ×${mult.toFixed(1)} ／ 6枚より <b>${delta>=0?'+':''}${delta.toFixed(1)} pt</b></div>
+    `;
+  }catch(e){
+    preview.innerHTML='<span class="warn">計算エラー: '+e.message+'</span>';
+  }
 }
+
 quota.oninput=updatePreview;
-async function load(){const{data:{user}}=await db.auth.getUser();if(!user){location.href='home.html';return}const{data,error}=await db.rpc('my_presale_status');if(error){details.textContent='エラー: '+error.message;return}quota.value=data.requested_quota||6;await updatePreview();pt.textContent=Number(data.presale_points||0).toFixed(1)+' pt';res.textContent=(data.residual_remaining||0)+' 枚';resValue.textContent=(data.residual_remaining||0)>0?'残券相当額 '+Number(data.residual_value||0).toLocaleString()+'円':'残券なし ✓';const confirmed=!!data.confirmed_at;
-save.disabled=confirmed;
-quota.disabled=confirmed;
-const overflowPt=Number(data.overflow_points_per_sale||1);
-details.innerHTML=`希望: <b>${data.requested_quota}枚</b><br>確定: <b>${confirmed?data.confirmed_quota+'枚':'未確定'}</b><br>確定時徴収額: <b>${data.collected_amount==null?'--':Number(data.collected_amount).toLocaleString()+'円'}</b><br>祭前販売: <b>${data.presale_sold}枚</b><br>超過販売: <b>${data.overflow_sold}枚</b><br><span class="muted">超過分は1枚=${overflowPt.toFixed(1)}pt</span>`;}
+
+async function load(){
+  const {data:{user}}=await db.auth.getUser();
+  if(!user){location.href='home.html';return}
+
+  await loadSimulation();
+
+  const {data,error}=await db.rpc('my_presale_status');
+  if(error){details.textContent='エラー: '+error.message;return}
+
+  quota.value=data.requested_quota||6;
+  await updatePreview();
+
+  const confirmed=!!data.confirmed_at;
+  save.disabled=confirmed;
+  quota.disabled=confirmed;
+
+  const overflowPt=Number(data.overflow_points_per_sale||1);
+  details.innerHTML=`
+    希望: <b>${data.requested_quota}枚</b><br>
+    確定: <b>${confirmed?data.confirmed_quota+'枚':'未確定'}</b><br>
+    確定時徴収額: <b>${data.collected_amount==null?'--':Number(data.collected_amount).toLocaleString()+'円'}</b><br>
+    祭前販売: <b>${data.presale_sold}枚</b><br>
+    超過販売: <b>${data.overflow_sold}枚</b><br>
+    <span class="muted">超過分は1枚=${overflowPt.toFixed(1)}pt</span>
+  `;
+}
+
 async function saveQuota(){
   const n=Number(quota.value);
   if(!Number.isInteger(n)||n<6){
@@ -89,8 +203,11 @@ async function saveQuota(){
     return;
   }
   msg.textContent='保存中...';
-  const{error}=await db.rpc('select_presale_quota',{p_quota:n});
+  const {error}=await db.rpc('select_presale_quota',{p_quota:n});
   msg.textContent=error?'エラー: '+error.message:'✅ 選択を保存しました';
   if(!error)load();
-}load();</script></main><nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="active" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
+}
+
+load();
+</script></main><nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="active" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body></html>
