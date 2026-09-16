@@ -1,5 +1,6 @@
-<!DOCTYPE html><html lang="ja"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="utf-8"/><meta content="width=device-width,initial-scale=1.0" name="viewport"/>
 <title>管理者メニュー</title>
 <style>
 :root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2}
@@ -24,13 +25,34 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 .global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px;line-height:1}
 .global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
 </style>
+
+<style id="responsiveOverflowFixV1">
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{min-width:0;max-width:100%}
+input,select,textarea,button{max-width:100%;min-width:0;box-sizing:border-box}
+img,video,canvas,svg,iframe{max-width:100%}
+pre,code{max-width:100%;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+</style>
+
 </head><body><main>
-<div class="top"><button class="back" onclick="history.length>1?history.back():location.href='home.html'">←</button>
+<div class="top"><button class="back" onclick="history.length&gt;1?history.back():location.href='home.html'">←</button>
 <div><h1>管理者メニュー</h1><div class="sub">出勤・役割に関係なく全機能へアクセス</div></div></div>
+<button class="card" onclick="location.href='manager.html'"><span class="icon">店</span><span class="name">店長画面</span><span class="desc">注文・人員・レジ・買い出し</span></button>
+<button class="card" onclick="location.href='admin.html'"><span class="icon">管</span><span class="name">運営・チケット管理</span><span class="desc">発行者・チケット・当日運営</span></button>
+<button class="card" onclick="location.href='operations.html'"><span class="icon">価</span><span class="name">価格・販売管理</span><span class="desc">商品価格・販売状態・購入者向けお知らせ</span></button>
+<button class="card" onclick="location.href='event-admin.html'"><span class="icon">日</span><span class="name">シフト集計・日時設定</span><span class="desc">5日間の日時設定・希望シフト一覧</span></button>
+<button class="card" onclick="location.href='data-reset.html'"><span class="icon">初</span><span class="name">データ初期化</span><span class="desc">本番前のテスト実績を一括初期化</span></button>
+<button class="card" onclick="location.href='presale-admin.html'"><span class="icon">券</span><span class="name">前売り・券種管理</span><span class="desc">ノルマ確定・価格・インセンティブ</span></button>
+<button class="card" onclick="location.href='variables-admin.html'"><span class="icon">変</span><span class="name">変数設定</span><span class="desc">ノルマ・役割・運転手・準備片付けの係数を一括管理</span></button>
+<button class="card" onclick="location.href='points-admin.html'"><span class="icon">点</span><span class="name">ポイント管理</span><span class="desc">再計算・ランキング・本番確認</span></button>
+
 <button class="card" onclick="location.href='attendance-qr.html'"><span class="icon">QR</span><span class="name">勤怠QR管理</span><span class="desc">動的QR表示</span></button>
+
 <button class="card" onclick="location.href='shopping-team-admin.html'"><span class="icon">員</span><span class="name">運転手チーム管理</span><span class="desc">固定の運転手チームメンバーを登録</span></button>
 <button class="card" onclick="location.href='partner-admin.html'"><span class="icon">提</span><span class="name">提携先管理</span><span class="desc">提携特典・専用スタッフ・QRリーダー</span></button>
-
 <button class="card" onclick="location.href='food-storage-admin.html'"><span class="icon">食</span><span class="name">食材保存ポイント管理</span><span class="desc">食材・管理単位数・重さ係数を登録</span></button>
 <button class="card" onclick="location.href='incentive-admin.html'"><span class="icon">円</span><span class="name">最終インセンティブ計算</span><span class="desc">4部門の原資と個人配分を確定</span></button>
 </main><nav class="global-bottom-nav admin-nav"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button><button class="active" onclick="location.href='admin-menu.html'"><span class="gicon">管</span>管理</button></nav></body></html>
