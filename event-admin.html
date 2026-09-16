@@ -52,6 +52,217 @@ details.missing summary{cursor:pointer;font-weight:800}
   }
 }
 
+
+/* ===== 希望シフト 可視化 v1 ===== */
+.shift-control-row{
+  display:flex;
+  gap:10px;
+  align-items:end;
+  flex-wrap:wrap;
+  margin:8px 0 14px;
+}
+.shift-control-row .control{
+  flex:1 1 180px;
+  min-width:0;
+}
+.shift-control-row label{
+  display:block;
+  font-size:12px;
+  font-weight:800;
+  color:#6e6e73;
+  margin-bottom:4px;
+}
+.shift-control-row select{
+  margin:0;
+}
+.shift-view-note{
+  font-size:12px;
+  color:#6e6e73;
+  line-height:1.55;
+  margin:6px 0 12px;
+}
+.coverage-wrap{
+  margin:14px 0 16px;
+  padding:13px 12px 10px;
+  border-radius:14px;
+  background:#faf8f7;
+  border:1px solid #eee6e2;
+}
+.coverage-title-row{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
+}
+.coverage-title{
+  font-size:14px;
+  font-weight:900;
+}
+.coverage-peak{
+  font-size:12px;
+  color:#8a817d;
+  text-align:right;
+}
+.coverage-chart{
+  height:150px;
+  display:grid;
+  align-items:end;
+  gap:4px;
+  border-bottom:1px solid #d9d1cd;
+  padding-top:18px;
+}
+.coverage-col{
+  position:relative;
+  height:100%;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  min-width:0;
+}
+.coverage-bar{
+  width:100%;
+  max-width:34px;
+  min-height:2px;
+  border-radius:8px 8px 3px 3px;
+  background:#b5121b;
+  position:relative;
+  transition:height .15s ease;
+}
+.coverage-count{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(100% + 3px);
+  font-size:10px;
+  font-weight:900;
+  color:#8f1118;
+}
+.coverage-label{
+  position:absolute;
+  top:calc(100% + 5px);
+  left:50%;
+  transform:translateX(-50%);
+  font-size:9px;
+  color:#8a817d;
+  white-space:nowrap;
+}
+.timeline-panel{
+  margin-top:20px;
+}
+.timeline-panel-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:10px;
+  margin-bottom:8px;
+}
+.timeline-panel-title b{font-size:15px}
+.timeline-panel-title span{font-size:11px;color:#8a817d}
+.staff-timeline-list{
+  display:grid;
+  gap:9px;
+}
+.staff-timeline-row{
+  display:grid;
+  grid-template-columns:minmax(88px,120px) 1fr;
+  gap:10px;
+  align-items:center;
+  min-width:0;
+}
+.staff-timeline-meta{
+  min-width:0;
+}
+.staff-timeline-name{
+  font-size:13px;
+  font-weight:900;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.staff-timeline-roles{
+  margin-top:3px;
+  font-size:10px;
+  color:#8a817d;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.staff-timeline-track{
+  height:27px;
+  border-radius:8px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      #f3efed 0,
+      #f3efed calc(9.09% - 1px),
+      #e6dfdc calc(9.09% - 1px),
+      #e6dfdc 9.09%
+    );
+  position:relative;
+  overflow:hidden;
+  border:1px solid #ebe4e0;
+}
+.staff-timeline-seg{
+  position:absolute;
+  top:3px;
+  bottom:3px;
+  border-radius:6px;
+  background:#c8101e;
+  min-width:3px;
+}
+.timeline-axis{
+  margin-left:130px;
+  display:flex;
+  justify-content:space-between;
+  font-size:9px;
+  color:#8a817d;
+  padding:0 1px 3px;
+}
+.shift-detail-toggle{
+  margin-top:15px;
+  background:#f8f5f3;
+  border-radius:12px;
+  padding:10px 12px;
+}
+.shift-detail-toggle summary{
+  font-weight:900;
+  cursor:pointer;
+}
+.compact-staff{
+  padding:10px 0;
+  border-top:1px solid #eee;
+}
+.compact-staff:first-child{border-top:0}
+.compact-staff-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+.compact-time{
+  color:#a5141b;
+  font-weight:900;
+  font-size:13px;
+  text-align:right;
+}
+.filter-empty{
+  padding:16px 0;
+  color:#8a817d;
+  font-size:13px;
+}
+@media(max-width:520px){
+  .coverage-chart{height:132px;gap:3px}
+  .coverage-count{font-size:9px}
+  .coverage-label{font-size:8px}
+  .staff-timeline-row{
+    grid-template-columns:82px 1fr;
+    gap:7px;
+  }
+  .timeline-axis{margin-left:89px}
+  .staff-timeline-name{font-size:12px}
+}
+
 </style>
 <style id="responsiveOverflowFixV1">
 /* 共通：iPhone/Safariを含む横はみ出し防止 */
@@ -177,10 +388,30 @@ input[type="time"]::-webkit-datetime-edit{
 <header><h1>📅 シフト集計・日時設定</h1></header><main>
 <div class="card"><h2>5日間の日時</h2><div id="days"></div><button class="primary" id="saveDays">日時を保存</button><div id="dayMsg"></div></div>
 <div class="card">
-  <h2>希望シフト一覧</h2>
-  <p class="small">シグマ祭の5日間だけを表示します。日付タブで切り替えるか、「全5日」でまとめて確認できます。</p>
+  <h2>希望シフト集計</h2>
+  <p class="small">日ごとの人数推移とスタッフ別タイムラインで、どの時間に何人参加できるかを確認できます。</p>
+
   <div id="shiftTabs" class="shift-tabs"></div>
+
+  <div class="shift-control-row">
+    <div class="control">
+      <label for="roleFilter">希望職種で絞り込み</label>
+      <select id="roleFilter">
+        <option value="all">全員</option>
+        <option value="seller">売り子</option>
+        <option value="register">レジ</option>
+        <option value="cook">調理</option>
+        <option value="support">サポート</option>
+        <option value="shopping_helper">買い出し補助</option>
+        <option value="shopping_driver">ドライバー</option>
+        <option value="manager">店長</option>
+      </select>
+    </div>
+  </div>
+
   <div id="shiftSummary" class="shift-summary"></div>
+  <div class="shift-view-note">棒グラフ＝その時間帯に参加可能な人数。横棒＝各スタッフの参加可能時間です。</div>
+
   <button id="loadShifts">一覧を更新</button>
   <div id="shifts"></div>
 </div>
@@ -195,7 +426,8 @@ saveDays.onclick=async()=>{dayMsg.textContent='保存中...';for(const d of dayR
 let shiftRows=[];
 let shiftStaff=[];
 let shiftRoleMap={};
-let selectedShiftDay='all';
+let selectedShiftDay=null;
+let selectedRole='all';
 
 const esc=v=>String(v??'')
   .replaceAll('&','&amp;')
@@ -221,10 +453,20 @@ const roleLabel={
   support:'サポート'
 };
 
+function roleValues(uid){
+  const r=shiftRoleMap[uid];
+  if(!r)return [];
+  return [r.first_role,r.second_role,r.third_role].filter(Boolean);
+}
+
+function staffMatchesRole(uid){
+  return selectedRole==='all' || roleValues(uid).includes(selectedRole);
+}
+
 function renderShiftTabs(){
   const tabs=[
-    {key:'all',label:'全5日'},
-    ...dayRows.map(d=>({key:String(d.id),label:d.label}))
+    ...dayRows.map(d=>({key:String(d.id),label:d.label})),
+    {key:'all',label:'全5日'}
   ];
   shiftTabs.innerHTML=tabs.map(t=>`
     <button class="shift-tab ${String(selectedShiftDay)===String(t.key)?'active':''}"
@@ -238,42 +480,185 @@ function selectShiftDay(key){
   renderShiftList();
 }
 
-function roleHtml(uid){
-  const r=shiftRoleMap[uid];
-  if(!r || !r.first_role)return '<span class="small">希望職種：未登録</span>';
-  const vals=[r.first_role,r.second_role,r.third_role].filter(Boolean);
-  return `<div class="role-line">希望職種：
-    ${vals.map((x,i)=>`<span class="role-badge">${i+1}. ${esc(roleLabel[x]||x)}</span>`).join('')}
-  </div>`;
+function mergeIntervals(items){
+  const a=items
+    .map(x=>[new Date(x.available_from).getTime(),new Date(x.available_to).getTime()])
+    .filter(([s,e])=>Number.isFinite(s)&&Number.isFinite(e)&&e>s)
+    .sort((x,y)=>x[0]-y[0]);
+
+  const out=[];
+  for(const [s,e] of a){
+    if(!out.length || s>out[out.length-1][1]){
+      out.push([s,e]);
+    }else{
+      out[out.length-1][1]=Math.max(out[out.length-1][1],e);
+    }
+  }
+  return out;
+}
+
+function getDayUserMap(d){
+  const m=new Map();
+  shiftRows
+    .filter(x=>Number(x.event_day_id)===Number(d.id))
+    .forEach(x=>{
+      if(!m.has(x.user_id))m.set(x.user_id,[]);
+      m.get(x.user_id).push(x);
+    });
+  return m;
+}
+
+function buildCoverageBins(d,userMap,staffIds){
+  const start=new Date(d.starts_at).getTime();
+  const end=new Date(d.ends_at).getTime();
+  const oneHour=60*60*1000;
+  const bins=[];
+
+  for(let s=start;s<end;s+=oneHour){
+    const e=Math.min(s+oneHour,end);
+    let count=0;
+    for(const uid of staffIds){
+      const items=userMap.get(uid)||[];
+      const overlaps=items.some(x=>{
+        const a=new Date(x.available_from).getTime();
+        const b=new Date(x.available_to).getTime();
+        return a<e && b>s;
+      });
+      if(overlaps)count++;
+    }
+    bins.push({start:s,end:e,count});
+  }
+  return bins;
+}
+
+function roleShort(uid){
+  const vals=roleValues(uid);
+  if(!vals.length)return '希望職種未登録';
+  return vals.map((x,i)=>`${i+1}.${roleLabel[x]||x}`).join(' / ');
+}
+
+function renderCoverageChart(d,userMap,submittedStaff){
+  const ids=submittedStaff.map(s=>s.user_id);
+  const bins=buildCoverageBins(d,userMap,ids);
+  const maxCount=Math.max(1,...bins.map(b=>b.count));
+  const peak=Math.max(0,...bins.map(b=>b.count));
+  const peakBins=bins.filter(b=>b.count===peak && peak>0);
+
+  const peakText=peakBins.length
+    ? `最大 ${peak}人（${peakBins.map(b=>fmtTime(b.start)).join('・')}頃）`
+    : '提出なし';
+
+  return `
+    <div class="coverage-wrap">
+      <div class="coverage-title-row">
+        <div class="coverage-title">時間帯別 参加可能人数</div>
+        <div class="coverage-peak">${peakText}</div>
+      </div>
+      <div class="coverage-chart" style="grid-template-columns:repeat(${Math.max(1,bins.length)},minmax(0,1fr))">
+        ${bins.map((b,i)=>{
+          const h=b.count===0?2:Math.max(10,(b.count/maxCount)*100);
+          const showLabel=i===0 || i===bins.length-1 || i%2===0;
+          return `
+            <div class="coverage-col" title="${fmtTime(b.start)}〜${fmtTime(b.end)}：${b.count}人">
+              <div class="coverage-bar" style="height:${h}%">
+                <span class="coverage-count">${b.count}</span>
+              </div>
+              ${showLabel?`<span class="coverage-label">${fmtTime(b.start)}</span>`:''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderTimeline(d,userMap,submittedStaff){
+  const ds=new Date(d.starts_at).getTime();
+  const de=new Date(d.ends_at).getTime();
+  const span=Math.max(1,de-ds);
+
+  const rows=submittedStaff.map(s=>{
+    const merged=mergeIntervals(userMap.get(s.user_id)||[]);
+    const segs=merged.map(([a,b])=>{
+      const ca=Math.max(ds,a);
+      const cb=Math.min(de,b);
+      if(cb<=ca)return '';
+      const left=((ca-ds)/span)*100;
+      const width=((cb-ca)/span)*100;
+      return `<span class="staff-timeline-seg" style="left:${left.toFixed(3)}%;width:${width.toFixed(3)}%"></span>`;
+    }).join('');
+
+    return `
+      <div class="staff-timeline-row">
+        <div class="staff-timeline-meta">
+          <div class="staff-timeline-name">${esc(s.staff_name)}</div>
+          <div class="staff-timeline-roles">${esc(roleShort(s.user_id))}</div>
+        </div>
+        <div class="staff-timeline-track" title="${esc(s.staff_name)}">${segs}</div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="timeline-panel">
+      <div class="timeline-panel-title">
+        <b>スタッフ別タイムライン</b>
+        <span>${submittedStaff.length}人</span>
+      </div>
+      <div class="timeline-axis">
+        <span>${fmtTime(d.starts_at)}</span>
+        <span>${fmtTime(d.ends_at)}</span>
+      </div>
+      <div class="staff-timeline-list">
+        ${rows || '<div class="filter-empty">条件に一致する提出者はいません。</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderDetailList(userMap,submittedStaff){
+  const html=submittedStaff.map(s=>{
+    const items=(userMap.get(s.user_id)||[])
+      .sort((a,b)=>new Date(a.available_from)-new Date(b.available_from));
+
+    return `
+      <div class="compact-staff">
+        <div class="compact-staff-head">
+          <div>
+            <b>${esc(s.staff_name)}</b>
+            <div class="role-line">${esc(roleShort(s.user_id))}</div>
+          </div>
+          <div class="compact-time">
+            ${items.map(x=>`${fmtTime(x.available_from)}〜${fmtTime(x.available_to)}`).join('<br>')}
+          </div>
+        </div>
+        ${items.filter(x=>x.note).map(x=>`<div class="note-text">📝 ${esc(x.note)}</div>`).join('')}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <details class="shift-detail-toggle">
+      <summary>詳細一覧を表示</summary>
+      <div style="margin-top:8px">${html || '<div class="empty">提出なし</div>'}</div>
+    </details>
+  `;
 }
 
 function renderOneDay(d){
-  const rows=shiftRows.filter(x=>Number(x.event_day_id)===Number(d.id));
-  const byUser=new Map();
-  rows.forEach(x=>{
-    if(!byUser.has(x.user_id))byUser.set(x.user_id,[]);
-    byUser.get(x.user_id).push(x);
-  });
+  const userMap=getDayUserMap(d);
 
-  const submitted=[...byUser.keys()];
-  const missing=shiftStaff.filter(s=>!byUser.has(s.user_id));
-  const staffHtml=shiftStaff
-    .filter(s=>byUser.has(s.user_id))
-    .map(s=>{
-      const items=(byUser.get(s.user_id)||[]).sort((a,b)=>new Date(a.available_from)-new Date(b.available_from));
-      return `
-        <div class="staff-shift">
-          <div class="staff-name">${esc(s.staff_name)}</div>
-          <div>
-            ${items.map(x=>`
-              <span class="time-chip">${fmtTime(x.available_from)}〜${fmtTime(x.available_to)}</span>
-            `).join('')}
-          </div>
-          ${items.filter(x=>x.note).map(x=>`<div class="note-text">📝 ${esc(x.note)}</div>`).join('')}
-          ${roleHtml(s.user_id)}
-        </div>
-      `;
-    }).join('');
+  const roleTargetStaff=shiftStaff.filter(s=>staffMatchesRole(s.user_id));
+  const submittedStaff=roleTargetStaff
+    .filter(s=>userMap.has(s.user_id))
+    .sort((a,b)=>{
+      const ai=(userMap.get(a.user_id)||[])[0];
+      const bi=(userMap.get(b.user_id)||[])[0];
+      return new Date(ai?.available_from||0)-new Date(bi?.available_from||0)
+        || String(a.staff_name).localeCompare(String(b.staff_name),'ja');
+    });
+
+  const missing=roleTargetStaff.filter(s=>!userMap.has(s.user_id));
 
   return `
     <section class="day-block">
@@ -282,10 +667,12 @@ function renderOneDay(d){
           <div class="day-title">${esc(d.label)}</div>
           <div class="day-date">${fmtDate(d.starts_at)}　${fmtTime(d.starts_at)}〜${fmtTime(d.ends_at)}</div>
         </div>
-        <span class="pill">${submitted.length}人提出</span>
+        <span class="pill">${submittedStaff.length}人提出</span>
       </div>
 
-      ${staffHtml || '<div class="empty">この日の希望シフト提出はまだありません。</div>'}
+      ${renderCoverageChart(d,userMap,submittedStaff)}
+      ${renderTimeline(d,userMap,submittedStaff)}
+      ${renderDetailList(userMap,submittedStaff)}
 
       <details class="missing">
         <summary>未提出 ${missing.length}人</summary>
@@ -304,12 +691,20 @@ function renderShiftList(){
 
   const validDayIds=new Set(dayRows.map(d=>Number(d.id)));
   const validRows=shiftRows.filter(x=>validDayIds.has(Number(x.event_day_id)));
-  const submittedUsers=new Set(validRows.map(x=>x.user_id));
+
+  const targetStaff=shiftStaff.filter(s=>staffMatchesRole(s.user_id));
+  const targetIds=new Set(targetStaff.map(s=>s.user_id));
+  const submittedUsers=new Set(
+    validRows
+      .filter(x=>targetIds.has(x.user_id))
+      .map(x=>x.user_id)
+  );
 
   shiftSummary.innerHTML=`
-    <span class="pill">対象：5日間</span>
-    <span class="pill">スタッフ ${shiftStaff.length}人</span>
-    <span class="pill">1日以上提出 ${submittedUsers.size}人</span>
+    <span class="pill">対象 ${selectedShiftDay==='all'?'5日間':'1日'}</span>
+    <span class="pill">${selectedRole==='all'?'全職種':esc(roleLabel[selectedRole]||selectedRole)}</span>
+    <span class="pill">対象スタッフ ${targetStaff.length}人</span>
+    <span class="pill">提出 ${submittedUsers.size}人</span>
   `;
 
   shifts.innerHTML=daysToShow.length
@@ -322,17 +717,20 @@ async function loadShiftList(){
 
   const enabledIds=new Set(dayRows.map(d=>Number(d.id)));
 
-  const [{data:availability,error:availabilityError},{data:staff,error:staffError},{data:roles,error:rolesError}]
-    =await Promise.all([
-      sb.from('staff_availability')
-        .select('user_id,event_day_id,available_from,available_to,note')
-        .order('available_from'),
-      sb.from('staff_members')
-        .select('user_id,staff_name,is_active')
-        .eq('is_active',true)
-        .order('staff_name'),
-      sb.rpc('admin_staff_role_preferences')
-    ]);
+  const [
+    {data:availability,error:availabilityError},
+    {data:staff,error:staffError},
+    {data:roles,error:rolesError}
+  ]=await Promise.all([
+    sb.from('staff_availability')
+      .select('user_id,event_day_id,available_from,available_to,note')
+      .order('available_from'),
+    sb.from('staff_members')
+      .select('user_id,staff_name,is_active')
+      .eq('is_active',true)
+      .order('staff_name'),
+    sb.rpc('admin_staff_role_preferences')
+  ]);
 
   if(availabilityError){shifts.textContent=availabilityError.message;return}
   if(staffError){shifts.textContent=staffError.message;return}
@@ -341,9 +739,19 @@ async function loadShiftList(){
   shiftStaff=staff||[];
   shiftRoleMap=Object.fromEntries((rolesError?[]:(roles||[])).map(r=>[r.user_id,r]));
 
+  if(selectedShiftDay===null){
+    selectedShiftDay=dayRows.length?String(dayRows[0].id):'all';
+  }
+
   renderShiftTabs();
   renderShiftList();
 }
+
+roleFilter.onchange=()=>{
+  selectedRole=roleFilter.value;
+  renderShiftList();
+};
+
 loadShifts.onclick=loadShiftList;
 (async()=>{if(await check()){await loadDays();await loadShiftList()}})();
 </script></body></html>

@@ -300,7 +300,7 @@ async function load(){
     確定時徴収額: <b>${data.collected_amount==null?'--':Number(data.collected_amount).toLocaleString()+'円'}</b><br>
     祭前販売: <b>${data.presale_sold}枚</b><br>
     追加販売扱い: <b>${data.overflow_sold}枚</b><br>
-    <span class="muted">追加販売は1枚=${overflowPt.toFixed(2)}pt。受取追加券でノルマ倍率は上がりません。</span>
+    <span class="muted">ノルマ超過後の追加販売は、1枚につき現在倍率分（${overflowPt.toFixed(2)}pt）が加算されます。受取追加券ではノルマ倍率は上がりません。</span>
   `;
 }
 

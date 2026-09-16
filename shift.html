@@ -540,9 +540,16 @@ function escapeHtml(v){
 }
 
 async function loadList(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){
+    location.href='home.html';
+    return;
+  }
+
   const {data,error}=await sb
     .from('staff_availability')
     .select('id,event_day_id,available_from,available_to,note')
+    .eq('user_id',user.id)
     .order('available_from');
 
   if(error){
@@ -552,7 +559,7 @@ async function loadList(){
 
   const rows=data||[];
   list.innerHTML=days.map(d=>{
-    const items=rows.filter(x=>x.event_day_id===d.id);
+    const items=rows.filter(x=>Number(x.event_day_id)===Number(d.id));
     return renderDay(d,items);
   }).join('');
 }
