@@ -57,6 +57,7 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
 
   <section>
     <h2>注文一覧</h2>
+    <p class="small">古い注文から表示します。操作は「提供済みにする」のみです。</p>
     <div id="orders"><div class="card">読み込み中...</div></div>
   </section>
 
@@ -108,7 +109,10 @@ async function loadOrders(){
   newCount.textContent=rows.filter(x=>x.order_status==="new").length;
   readyCount.textContent=rows.filter(x=>x.order_status==="ready").length;
 
-  const visible=rows.filter(x=>x.order_status!=="served").slice(0,80);
+  const visible=rows
+    .filter(x=>x.order_status!=="served")
+    .sort((a,b)=>new Date(a.ordered_at)-new Date(b.ordered_at))
+    .slice(0,80);
   if(!visible.length){
     orders.innerHTML='<div class="card">現在、未提供の注文はありません。</div>';
     return;
@@ -135,9 +139,7 @@ async function loadOrders(){
         <strong>${statusName(x.order_status)}</strong>
       </div>
       <div class="actions">
-        ${x.order_status==="new"?`<button onclick="setStatus(${x.id},'cooking')">調理中</button>`:""}
-        ${["new","cooking"].includes(x.order_status)?`<button onclick="setStatus(${x.id},'ready')">受け渡し待ち</button>`:""}
-        <button onclick="setStatus(${x.id},'served')">提供済み</button>
+        <button onclick="setStatus(${x.id},'served')">提供済みにする</button>
       </div>
     </div>`;
   }).join("");
