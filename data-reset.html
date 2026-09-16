@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>データ初期化</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
+header{background:linear-gradient(145deg,#7f1d1d,#5f1515);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:27px}
+main{max-width:720px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
+button,input{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
+input{border:1px solid #ddd5d1;background:#fff}
+button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
+.danger{background:#7f1d1d;color:#fff}
+.small{font-size:12px;color:#6e6e73;line-height:1.65}
+.warn{padding:12px;border-radius:14px;background:#fff7ed;color:#9a3412;font-size:13px;line-height:1.6;margin:12px 0}
+.ok{color:#15803d;font-weight:800}
+.err{color:#b00020;font-weight:800}
+.back{background:#fff;color:#7f1d1d}
+</style>
+</head>
+<body>
+<header><h1>🗑️ データ初期化</h1></header>
+<main>
+  <div class="card">
+    <h2>本番前テストデータ初期化</h2>
+    <p class="small">
+      スタッフ・管理者・価格・変数設定などの設定は残し、
+      運営テストで蓄積した実績データを一括初期化します。
+    </p>
+
+    <div class="warn">
+      この操作は元に戻せません。<br>
+      本番直前など、テスト実績を消して運用をまっさらな状態にするときだけ使用してください。
+    </div>
+
+    <label for="confirmText"><b>確認入力</b></label>
+    <p class="small">実行する場合は <b>RESET</b> と入力してください。</p>
+    <input id="confirmText" placeholder="RESET と入力">
+
+    <button class="danger" id="resetBtn">テスト実績を一括初期化</button>
+    <div id="resetMsg"></div>
+  </div>
+
+  <button class="back" onclick="location.href='admin-menu.html'">管理者メニューへ戻る</button>
+</main>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+
+async function check(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){
+    location.href='index.html';
+    return false;
+  }
+  const {data}=await sb.from('admins')
+    .select('user_id')
+    .eq('user_id',user.id)
+    .maybeSingle();
+
+  if(!data){
+    document.body.innerHTML='<main><div class="card">管理者権限が必要です</div></main>';
+    return false;
+  }
+  return true;
+}
+
+resetBtn.onclick=async()=>{
+  if(confirmText.value!=='RESET'){
+    resetMsg.innerHTML='<span class="err">RESET と入力してください</span>';
+    return;
+  }
+
+  if(!confirm(
+    '本当にテスト実績をすべて初期化しますか？\n\nこの操作は元に戻せません。'
+  )) return;
+
+  resetBtn.disabled=true;
+  resetMsg.textContent='初期化中...';
+
+  const {data,error}=await sb.rpc('reset_test_operational_data');
+
+  resetMsg.innerHTML=error
+    ? '<span class="err">'+error.message+'</span>'
+    : '<span class="ok">✅ '+(data?.message||'初期化しました')+'</span>';
+
+  resetBtn.disabled=false;
+};
+
+(async()=>{
+  await check();
+})();
+</script>
+</body>
+</html>
