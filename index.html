@@ -408,6 +408,30 @@ table{
 }
 </style>
 
+
+<style id="checkoutFlowChangeCalcV2">
+.payment-mode-box{margin:14px 0;padding:16px;border:1px solid #eadfdb;border-radius:18px;background:#fff}
+.payment-mode-title{font-weight:900;font-size:18px;margin-bottom:10px}
+.payment-mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.payment-mode-btn{margin:0!important;min-height:58px;padding:10px 8px!important;border:1px solid #eadfdb!important;background:#fff7f7!important;color:#8f1118!important;font-size:14px!important}
+.payment-mode-btn.active{background:#b5121b!important;color:#fff!important;border-color:#b5121b!important}
+.payment-mode-help{margin-top:10px;font-size:12px;color:#6e6e73;line-height:1.55}
+#cashContent[hidden],#qrContent[hidden]{display:none!important}
+.tender-box{margin-top:14px;padding:14px;border-radius:14px;background:#faf8f7;border:1px solid #eee4df}
+.tender-box label{display:block;font-weight:900;margin-bottom:7px}
+.tender-box input{display:block;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important;text-align:right;font-size:22px!important;font-weight:900}
+.change-card{margin-top:10px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid #eadfdb;line-height:1.65}
+.change-main{font-size:20px;font-weight:1000}
+.change-ok{color:#0a7a2f}
+.change-error{color:#b5121b}
+.cash-confirm-lock{margin-top:10px;padding:12px;border-radius:12px;background:#fff8e8;color:#6b4a00;font-size:12px;line-height:1.6}
+.return-total{margin:14px 0;padding:14px;border-radius:14px;background:#fff1f2;border:1px solid #f3c8cc}
+.return-total .label{font-size:12px;color:#7d5558}
+.return-total .amount{font-size:28px;font-weight:1000;color:#a90f18}
+.return-breakdown{margin-top:8px;font-size:13px;line-height:1.65}
+@media(max-width:520px){.payment-mode-grid{grid-template-columns:1fr}.payment-mode-btn{min-height:50px}}
+</style>
+
 </head>
 
 <body>
@@ -435,6 +459,17 @@ table{
            placeholder="例：123" autocomplete="off">
     <div class="small">お客さんに伝える番号を入力してください。</div>
   </div>
+  <div class="payment-mode-box">
+    <div class="payment-mode-title">会計方法を選択</div>
+    <div class="payment-mode-grid">
+      <button id="modeCash" class="payment-mode-btn" type="button" onclick="setPaymentMode('cash')">💴 現金のみ</button>
+      <button id="modeQr" class="payment-mode-btn" type="button" onclick="setPaymentMode('qr')">🎫 QR交換のみ</button>
+      <button id="modeMixed" class="payment-mode-btn" type="button" onclick="setPaymentMode('mixed')">💴＋🎫 QR＋現金</button>
+    </div>
+    <div id="paymentModeHelp" class="payment-mode-help">最初に会計方法を選んでください。</div>
+  </div>
+
+  <div id="cashContent" hidden>
   <div class="cash-order">
     <h2>現金会計 <span class="mixed-badge">QR併用可</span></h2>
     <div id="myRegisterLabel" class="small">レジ情報を確認中...</div>
@@ -467,9 +502,22 @@ table{
 
     <div id="cashTotal" class="cash-total">合計 0円</div>
     <button id="cashOrderButton" onclick="recordCashOrder()">現金会計を確定</button>
+    <div class="tender-box">
+      <label for="cashReceived">お預かり金額</label>
+      <input id="cashReceived" type="number" min="0" step="1" inputmode="numeric"
+             placeholder="例：1000" oninput="renderCashOrder()">
+      <div id="changePreview" class="change-card">商品を選び、お預かり金額を入力してください。</div>
+    </div>
+
+    <div id="cashConfirmLock" class="cash-confirm-lock" style="display:none">
+      QR＋現金では、ここで現金会計を確定しません。QRを読み取り、交換商品を選んだ時点でまとめて確定します。
+    </div>
+
     <div id="cashOrderMessage" class="small"></div>
   </div>
+  </div>
 
+  <div id="qrContent" hidden>
   <h2 style="margin-top:24px">QR商品交換</h2>
 <button
     id="scanButton"
@@ -491,6 +539,7 @@ table{
 
   <div id="result">
     まだQRコードは読み取られていません。
+  </div>
   </div>
 
   <script>
@@ -1004,6 +1053,26 @@ let scanner = null;
       ticketCode,
       item
     ) {
+      if(paymentMode!=="qr" && paymentMode!=="mixed"){
+        alert("会計方法で「QR交換のみ」または「QR＋現金」を選択してください。");
+        return;
+      }
+
+      if(paymentMode==="mixed"){
+        const total=currentCashTotal();
+        const received=getCashReceived();
+
+        if(cashRice+cashSesame<=0){
+          alert("QR＋現金では、現金追加商品を選んでください。");
+          return;
+        }
+        if(received<total){
+          alert(`お預かり金額が${(total-received).toLocaleString()}円不足しています。`);
+          document.getElementById("cashReceived").focus();
+          return;
+        }
+      }
+
       const pickup=
         document.getElementById("pickupNumber").value.trim();
 
@@ -1043,7 +1112,7 @@ let scanner = null;
       resultBox.innerHTML =
         "使用処理中...";
 
-      const hasCashAddOn=(cashRice+cashSesame)>0;
+      const hasCashAddOn=(paymentMode==="mixed" && (cashRice+cashSesame)>0);
 
       const rpcName=hasCashAddOn
         ? "use_ticket_and_record_mixed_order"
@@ -1151,6 +1220,10 @@ let scanner = null;
       const mixedCashRice=Number(data.cash_rice_qty||0);
       const mixedCashSesame=Number(data.cash_sesame_qty||0);
       const isMixed=(mixedCashRice+mixedCashSesame)>0;
+      const receivedCash=isMixed?getCashReceived():0;
+      const cashChange=isMixed?Math.max(receivedCash-mixedCashAmount,0):0;
+      const qrRefund=Number(data.cashback_amount||0);
+      const totalReturn=cashChange+qrRefund;
 
       resultBox.className =
         "valid";
@@ -1175,7 +1248,21 @@ let scanner = null;
         ` : ""}
 
         <p><strong>QR交換商品の当日価格：</strong>${data.redemption_price}円</p>
-        ${data.cashback_amount > 0 ? `<p class="warning"><strong>💴 QR券差額 ${data.cashback_amount}円を購入者へ返金してください</strong></p>` : `<p>QR券の追加返金なし</p>`}
+
+        ${isMixed ? `
+          <div class="return-total">
+            <div class="label">お客さんへ返す総額</div>
+            <div class="amount">${totalReturn.toLocaleString()}円</div>
+            <div class="return-breakdown">
+              現金のお釣り：${cashChange.toLocaleString()}円<br>
+              QR券の差額返金：${qrRefund.toLocaleString()}円
+            </div>
+          </div>
+        ` : (
+          qrRefund>0
+            ? `<p class="warning"><strong>💴 QR券差額 ${qrRefund.toLocaleString()}円を購入者へ返金してください</strong></p>`
+            : `<p>QR券の追加返金なし</p>`
+        )}
 
         <p>
           ${new Date(
@@ -1212,6 +1299,8 @@ let scanner = null;
       if(isMixed){
         cashRice=0;
         cashSesame=0;
+        const received=document.getElementById("cashReceived");
+        if(received) received.value="";
         renderCashOrder();
       }
     }
@@ -1228,6 +1317,7 @@ let scanner = null;
     };
 
     function changeCashQty(kind,delta){
+      if(paymentMode!=="cash" && paymentMode!=="mixed") return;
       if(kind==="rice") cashRice=Math.max(0,cashRice+delta);
       if(kind==="sesame") cashSesame=Math.max(0,cashSesame+delta);
       renderCashOrder();
@@ -1237,6 +1327,65 @@ let scanner = null;
       // 現金販売は1個単価×個数。
       // 2個セット価格はQR交換時の価値判定用として扱う。
       return qty * registerMenu.sesameSingle;
+    }
+
+    let paymentMode=null;
+
+    function getCashReceived(){
+      const el=document.getElementById("cashReceived");
+      const n=Number(el?.value||0);
+      return Number.isFinite(n)?Math.max(0,Math.floor(n)):0;
+    }
+
+    function currentCashTotal(){
+      return cashRice*registerMenu.rice+cashSesameAmount(cashSesame);
+    }
+
+    function resetCheckoutState(){
+      cashRice=0;
+      cashSesame=0;
+      const received=document.getElementById("cashReceived");
+      if(received) received.value="";
+      const pickup=document.getElementById("pickupNumber");
+      if(pickup) pickup.value="";
+      const result=document.getElementById("result");
+      if(result){
+        result.className="";
+        result.textContent="まだQRコードは読み取られていません。";
+      }
+      renderCashOrder();
+    }
+
+    function setPaymentMode(mode){
+      paymentMode=mode;
+
+      ["cash","qr","mixed"].forEach(m=>{
+        const id=m==="cash"?"modeCash":m==="qr"?"modeQr":"modeMixed";
+        document.getElementById(id)?.classList.toggle("active",m===mode);
+      });
+
+      const cashContent=document.getElementById("cashContent");
+      const qrContent=document.getElementById("qrContent");
+      const help=document.getElementById("paymentModeHelp");
+
+      if(cashContent) cashContent.hidden=(mode===null || mode==="qr");
+      if(qrContent) qrContent.hidden=(mode===null || mode==="cash");
+
+      if(help){
+        help.textContent=
+          mode===null
+            ? "最初に会計方法を選んでください。"
+          : mode==="cash"
+            ? "現金商品の数量とお預かり金額を入力し、お釣りを確認して確定します。"
+          : mode==="qr"
+            ? "QRを読み取り、交換商品を選んで確定します。"
+          : "現金追加商品を選び、お預かり金額を入力してからQRを読み取ります。現金だけを先に確定することはできません。";
+      }
+
+      const lock=document.getElementById("cashConfirmLock");
+      if(lock) lock.style.display=mode==="mixed"?"block":"none";
+
+      resetCheckoutState();
     }
 
     function updateMixedUi(){
@@ -1255,8 +1404,16 @@ let scanner = null;
             cashRice>0?`炒飯 ${cashRice}個`:"",
             cashSesame>0?`胡麻団子 ${cashSesame}個`:""
           ].filter(Boolean).join("・");
+          const received=getCashReceived();
+          const change=received-total;
           summary.style.display="block";
-          summary.textContent=`現金追加：${items} ／ ${total.toLocaleString()}円`;
+          summary.innerHTML=
+            `現金追加：${items}<br>`+
+            `支払額：${total.toLocaleString()}円`+
+            (received>0
+              ? `<br>お預かり：${received.toLocaleString()}円`+
+                `<br>${change>=0?`現金のお釣り：${change.toLocaleString()}円`:`不足：${Math.abs(change).toLocaleString()}円`}`
+              : `<br>お預かり金額を入力してください。`);
         }else{
           summary.style.display="none";
           summary.textContent="";
@@ -1281,15 +1438,40 @@ let scanner = null;
       if(r) r.textContent=cashRice;
       if(s) s.textContent=cashSesame;
 
-      const total=
-        cashRice*registerMenu.rice+
-        cashSesameAmount(cashSesame);
+      const total=currentCashTotal();
+      const received=getCashReceived();
+      const change=received-total;
 
       const t=document.getElementById("cashTotal");
-      if(t) t.textContent=`合計 ${total.toLocaleString()}円`;
+      if(t) t.textContent=`現金支払額 ${total.toLocaleString()}円`;
+
+      const preview=document.getElementById("changePreview");
+      if(preview){
+        if(total<=0){
+          preview.className="change-card";
+          preview.innerHTML="商品を選んでください。";
+        }else if(received<=0){
+          preview.className="change-card";
+          preview.innerHTML=`支払額：<strong>${total.toLocaleString()}円</strong><br>お預かり金額を入力してください。`;
+        }else if(change<0){
+          preview.className="change-card change-error";
+          preview.innerHTML=`支払額：${total.toLocaleString()}円<br>お預かり：${received.toLocaleString()}円<br><span class="change-main">不足 ${Math.abs(change).toLocaleString()}円</span>`;
+        }else{
+          preview.className="change-card change-ok";
+          preview.innerHTML=`支払額：${total.toLocaleString()}円<br>お預かり：${received.toLocaleString()}円<br><span class="change-main">お釣り ${change.toLocaleString()}円</span>`;
+        }
+      }
 
       const b=document.getElementById("cashOrderButton");
-      if(b) b.disabled=(cashRice+cashSesame===0);
+      if(b){
+        b.style.display=paymentMode==="mixed"?"none":"block";
+        b.disabled=(
+          paymentMode!=="cash" ||
+          (cashRice+cashSesame===0) ||
+          total<=0 ||
+          received<total
+        );
+      }
 
       updateMixedUi();
     }
@@ -1323,11 +1505,17 @@ let scanner = null;
         row ? `${row.team_name}で会計中` : "レジチーム未設定";
 
       renderCashOrder();
+      setPaymentMode(null);
     }
 
     async function recordCashOrder(){
       const msg=document.getElementById("cashOrderMessage");
       const btn=document.getElementById("cashOrderButton");
+
+      if(paymentMode!=="cash"){
+        msg.textContent="現金のみを選択した場合だけ、ここから確定できます。";
+        return;
+      }
 
       const pickup=document.getElementById("pickupNumber").value.trim();
       if(!pickup){
@@ -1341,9 +1529,16 @@ let scanner = null;
         return;
       }
 
-      const total=
-        cashRice*registerMenu.rice+
-        cashSesameAmount(cashSesame);
+      const total=currentCashTotal();
+      const received=getCashReceived();
+
+      if(received<total){
+        msg.textContent=`お預かり金額が${(total-received).toLocaleString()}円不足しています。`;
+        document.getElementById("cashReceived").focus();
+        return;
+      }
+
+      const change=received-total;
 
       btn.disabled=true;
       msg.textContent="会計を記録しています...";
@@ -1364,13 +1559,14 @@ let scanner = null;
         return;
       }
 
-      msg.textContent=`✅ 注文 #${data} を送信しました`;
+      msg.innerHTML=`✅ 注文 #${data} を送信しました<br><strong>お釣り ${change.toLocaleString()}円</strong>`;
       cashRice=0;
       cashSesame=0;
       document.getElementById("pickupNumber").value="";
+      document.getElementById("cashReceived").value="";
       renderCashOrder();
 
-      setTimeout(()=>{msg.textContent="";},2200);
+      setTimeout(()=>{msg.textContent="";},3500);
     }
 
 
