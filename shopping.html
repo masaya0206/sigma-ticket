@@ -48,6 +48,55 @@
   }
 </style>
 
+
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
 </head><body><main><button class="secondary" onclick="history.length>1?history.back():location.href='home.html'">← 前の画面</button><h1>買い出し</h1><p class="muted">運転手チームは管理者が事前登録する固定チームです。1ミッションで実際に行く運転手は1人だけです。</p><p class="muted">ポイント対象になるのは、店長または管理者が複数要請をまとめて正式承認した「買い出しミッション」だけです。</p>
 <div class="card" id="requestCard"><h2>① 買い出し要請を出す</h2><input id="note" placeholder="例：油2本、米10kg"><button onclick="requestShop()">要請を追加</button><p id="rmsg"></p></div>
 <div class="card" id="approveCard"><h2>② 未処理要請をまとめて承認</h2><div id="requests">読み込み中...</div><button onclick="approveMission()">選択した要請を1ミッションとして承認</button><p id="amsg"></p></div>

@@ -62,6 +62,55 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
 .sim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.sim-grid label{font-size:11px;color:var(--muted);font-weight:700}.sim-grid input{margin-top:5px}.sim-table{margin-top:12px;border-top:1px solid var(--line)}.sim-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}.sim-row.head{font-weight:900;color:#555}.sim-total{margin-top:10px;padding:11px;border-radius:12px;background:#faf7f5;font-weight:850}.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#faf7f5;border-radius:10px;padding:10px;margin-top:8px;font-size:12px;overflow:auto}
 @media(max-width:480px){.sim-grid{grid-template-columns:1fr}.sim-row{grid-template-columns:1.1fr 1fr 1fr}}
 </style>
+
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
 </head>
 <body>
 <main>

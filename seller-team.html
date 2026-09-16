@@ -1,7 +1,56 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>シグマ祭 売り子チーム</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="manifest" href="./manifest.webmanifest"><meta name="theme-color" content="#b5121b">
-<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff7f4;color:#222;max-width:760px;margin:auto;padding:20px}h1{color:#8f0e15}.card{background:#fff;border:1px solid #ead6d1;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 6px 20px #0001}button{background:#b5121b;color:white;border:0;border-radius:12px;padding:12px 16px;margin:6px 4px;font-weight:800}button.secondary{background:#555}input,select,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:10px;margin:6px 0 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ok{background:#edf8ef}.warn{background:#fff5d8}.danger{background:#ffe7e7}.small{font-size:13px;color:#666}.price{font-size:24px;font-weight:900}@media(max-width:600px){.grid{grid-template-columns:1fr}}</style></head><body><h1>売り子チーム</h1><button onclick="location.href='seller.html'">← 売り子画面</button><button onclick="location.href='home.html'">🏠 ポータル</button>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff7f4;color:#222;max-width:760px;margin:auto;padding:20px}h1{color:#8f0e15}.card{background:#fff;border:1px solid #ead6d1;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 6px 20px #0001}button{background:#b5121b;color:white;border:0;border-radius:12px;padding:12px 16px;margin:6px 4px;font-weight:800}button.secondary{background:#555}input,select,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:10px;margin:6px 0 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ok{background:#edf8ef}.warn{background:#fff5d8}.danger{background:#ffe7e7}.small{font-size:13px;color:#666}.price{font-size:24px;font-weight:900}@media(max-width:600px){.grid{grid-template-columns:1fr}}</style>
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
+</head><body><h1>売り子チーム</h1><button onclick="location.href='seller.html'">← 売り子画面</button><button onclick="location.href='home.html'">🏠 ポータル</button>
 <div id="status" class="card">読み込み中...</div>
 <div id="soloArea" style="display:none"><div class="card"><h2>チームを作る</h2><input id="teamName" placeholder="チーム名"><button onclick="createTeam()">作成</button><p class="small">作成直後は「編成中」です。2人目が加入して初めてチームとして有効になります。</p></div><div class="card"><h2>既存チームに加入申請</h2><input id="joinCode" placeholder="8文字の参加コード"><button onclick="joinTeam()">加入申請</button><p class="small">既存メンバーの過半数承認で加入します。</p></div></div>
 <div id="teamArea" style="display:none"><div class="card"><h2 id="teamTitle"></h2><div id="teamInfo"></div><button onclick="leaveTeam()" class="secondary">チームを離脱</button></div><div class="card"><h2>ポイント配分比率</h2><div id="ratioInfo"></div><input id="ratio" type="range" step="0.1"><div id="ratioPreview"></div><button onclick="proposeRatio()">この比率を変更申請</button><p class="small">過半数承認までは現在の比率が継続されます。変更は過去の販売には遡りません。</p></div><div class="card"><h2>承認待ち</h2><div id="proposals"></div></div></div>

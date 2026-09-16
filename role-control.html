@@ -13,5 +13,54 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 .global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
 </style>
 
+
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
 </head><body><header><h1>👥 役割変更</h1></header><main><div class="card"><p>全員のベースは売り子です。店長・調理・サポートへ切り替えた時間は、それぞれの役割として記録されます。レジは「レジ編成」から派遣します。</p><select id="staff"></select><select id="role"><option value="seller">売り子へ戻す</option><option value="manager">店長</option><option value="cook">調理</option><option value="support">サポート</option></select><button class="primary" id="apply">役職を変更</button><div id="msg"></div></div><div class="card"><h2>現在の特殊役職</h2><div id="list"></div></div><button onclick="location.href='manager.html'">店長画面へ戻る</button></main><script>const sb=window.supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");async function load(){const {data:s}=await sb.from('staff_members').select('user_id,staff_name').eq('is_active',true).order('staff_name');staff.innerHTML=(s||[]).map(x=>`<option value="${x.user_id}">${x.staff_name}</option>`).join('');const {data:r,error}=await sb.from('work_role_segments').select('user_id,role,started_at').is('ended_at',null);if(error){list.textContent=error.message;return}const map=new Map((s||[]).map(x=>[x.user_id,x.staff_name]));list.innerHTML=(r||[]).map(x=>`<div class="row"><b>${map.get(x.user_id)||x.user_id}</b>：${x.role==='manager'?'店長':x.role==='cook'?'調理':x.role==='support'?'サポート':x.role==='register'?'レジ':x.role}<br><small>${new Date(x.started_at).toLocaleTimeString('ja-JP')}</small></div>`).join('')||'全員売り子です';}apply.onclick=async()=>{const {error}=await sb.rpc('set_work_role',{p_user:staff.value,p_role:role.value});msg.textContent=error?'エラー：'+error.message:'✅ 変更しました';if(!error)load()};load();</script><nav class="global-bottom-nav"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body></html>
