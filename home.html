@@ -319,28 +319,54 @@
       background: currentColor;
     }
 
-    .schedule-row {
+    .stats-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 15px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
     }
 
     .mini-stat {
-      padding: 12px;
-      border-radius: 14px;
+      min-height: 86px;
+      padding: 13px 14px;
+      border-radius: 16px;
       background: #faf7f5;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .mini-stat.primary {
+      background: linear-gradient(180deg, #fff7f7 0%, #faf4f2 100%);
+      border: 1px solid rgba(181,18,27,.08);
     }
 
     .mini-label {
       color: var(--muted);
       font-size: 12px;
+      line-height: 1.35;
     }
 
     .mini-value {
-      margin-top: 5px;
+      margin-top: 0;
       font-size: 16px;
+      line-height: 1.35;
       font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .mini-value.emphasis {
+      color: var(--red);
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .mini-value.subtext {
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
     }
 
     .section {
@@ -463,6 +489,19 @@
       .menu-card {
         padding: 14px;
       }
+
+      .stats-grid,
+      .portal-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .mini-stat {
+        min-height: auto;
+      }
+
+      .mini-value.emphasis {
+        font-size: 24px;
+      }
     }
 
     .core-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -500,6 +539,55 @@ border-radius:12px!important;background:transparent!important;color:#6e6e73!impo
 font-weight:700!important;line-height:1.15;box-shadow:none!important}
 .global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px;line-height:1}
 .global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
+</style>
+
+
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
 </style>
 
 </head>
@@ -634,37 +722,34 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
           </div>
 
 
-          <div class="schedule-row" style="margin-top:18px;">
-                                    <div class="mini-stat"><div class="mini-label">残券</div><div id="homeResidual" class="mini-value">-</div></div>
-          </div>
-          <div id="homeResidualValue" class="section-hint" style="margin-top:8px;"></div>
+          <div class="stats-grid">
 
-          <div class="schedule-row">
+            <div class="mini-stat primary">
+              <div class="mini-label">
+                現状残り枚数
+              </div>
+              <div id="homeResidual" class="mini-value emphasis">-</div>
+            </div>
+
+            <div class="mini-stat">
+              <div class="mini-label">
+                前売り状況
+              </div>
+              <div id="homeResidualValue" class="mini-value subtext">-</div>
+            </div>
 
             <div class="mini-stat">
               <div class="mini-label">
                 現在の予定
               </div>
-
-              <div
-                id="plannedRole"
-                class="mini-value"
-              >
-                -
-              </div>
+              <div id="plannedRole" class="mini-value">-</div>
             </div>
 
             <div class="mini-stat">
               <div class="mini-label">
                 現在の勤務
               </div>
-
-              <div
-                id="workingRole"
-                class="mini-value"
-              >
-                -
-              </div>
+              <div id="workingRole" class="mini-value">-</div>
             </div>
 
           </div>
@@ -1059,12 +1144,53 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
         !!adminResult.data;
 
       const presaleData = presaleResult.data || {};
+
+      const presaleClosed =
+        !!presaleData.day_enabled &&
+        !presaleData.presale_enabled;
+
+      const soldCount =
+        Number(presaleData.presale_sold || 0);
+
+      const currentQuota =
+        Number(presaleData.current_quota || 0);
+
+      const transferredIn =
+        Number(presaleData.transferred_in || 0);
+
+      const currentRemaining =
+        presaleData.confirmed_at
+          ? (
+              presaleClosed
+                ? Number(presaleData.residual_remaining || 0)
+                : Math.max(
+                    currentQuota +
+                    transferredIn -
+                    soldCount,
+                    0
+                  )
+            )
+          : 0;
+
       document.getElementById("homeResidual").textContent =
-        Number(presaleData.residual_remaining || 0) + " 枚";
+        currentRemaining + " 枚";
+
       document.getElementById("homeResidualValue").textContent =
-        Number(presaleData.residual_remaining || 0) > 0
-          ? "残券相当額 " + Number(presaleData.residual_value || 0).toLocaleString() + "円"
-          : "残券なし";
+        !presaleData.confirmed_at
+          ? "ノルマ未確定"
+          : presaleClosed
+            ? (
+                currentRemaining > 0
+                  ? "確定残券 " + currentRemaining + "枚"
+                  : "確定残券なし"
+              )
+            : (
+                "販売 " +
+                soldCount +
+                "枚 / 現在ノルマ " +
+                (currentQuota + transferredIn) +
+                "枚"
+              );
 
 
       portalIsAdmin = isAdmin;
