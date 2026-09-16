@@ -91,8 +91,8 @@ table{
 <div class="wrap">
   <div class="hero">
     <div class="eyebrow">MATCH POINT × 第十六回紫熊祭</div>
-    <h1>前売り券</h1>
-    <p>購入者用チケットページ</p>
+    <h1 id="heroTitle">券情報</h1>
+    <p id="heroSub">購入者用ページ</p>
   </div>
 
   <div id="main">
@@ -114,7 +114,7 @@ function esc(v){
     .replace(/'/g,"&#39;");
 }
 
-async function partnerHtml(){
+async function partnerHtml(ticketKind){
   const {data,error}=await sb.rpc("public_partner_benefits");
   if(error || !data || data.length===0) return "";
 
@@ -189,7 +189,7 @@ async function partnerHtml(){
         : ""}
 
       <div class="small" style="margin-top:12px">
-        この前売り券のQRコードを提携先スタッフに提示してください。
+        ${esc(ticketKind)}のQRコードを提携先スタッフに提示してください。
       </div>
 
     </div>
@@ -207,11 +207,18 @@ async function copyTicketUrl(encodedCode){
 }
 
 async function renderTicket(t){
-  const partner=await partnerHtml();
+  const ticketKind=t.sale_type==="same_day" ? "当日券" : "前売り券";
+  document.title=`シグマ祭 ${ticketKind}`;
+  const heroTitle=document.getElementById("heroTitle");
+  const heroSub=document.getElementById("heroSub");
+  if(heroTitle) heroTitle.textContent=ticketKind;
+  if(heroSub) heroSub.textContent=`購入者用 ${ticketKind}ページ`;
+
+  const partner=await partnerHtml(ticketKind);
   const used=t.status==="used";
   main.innerHTML=`
     <div class="card ticket">
-      <div class="ticket-title">シグマ祭 前売り券</div>
+      <div class="ticket-title">シグマ祭 ${esc(ticketKind)}</div>
       <div class="product">${esc(t.product_name)}</div>
 
       <div style="text-align:center;margin-bottom:14px">

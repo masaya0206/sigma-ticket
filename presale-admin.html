@@ -100,17 +100,34 @@ input[type="time"]::-webkit-datetime-edit{
 }
 </style>
 
+
+<style id="quotaUnlockStyleV1">
+.warn{background:#fff4e5!important;color:#8a4b00!important;border:1px solid #f1c98a!important}
+.mini{width:auto!important;padding:8px 10px!important;font-size:12px!important;margin:2px!important}
+.lock-note{font-size:12px;color:#7a6a64;line-height:1.55;margin-top:8px}
+</style>
+
 </head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>前売り・券種管理</h1>
 <div class="card"><h2>販売設定</h2><div class="grid"><div><label>前売り券価格</label><input id="pp" type="number"></div><div><label>当日券価格</label><input id="dp" type="number"></div></div><label><input id="pe" type="checkbox" style="width:auto"> 前売り券を販売中</label><br><label><input id="de" type="checkbox" style="width:auto"> 当日券を販売中</label><br><label>ノルマ選択期限</label><input id="deadline" type="datetime-local"><label>前売り終了予定</label><input id="endat" type="datetime-local"><button onclick="saveSettings()">設定を保存</button><p id="setmsg"></p></div>
 
 
 </div>
 
-<div class="card"><h2>ノルマ確定</h2><p class="muted">未選択者は6枚として確定します。確定した瞬間から返金不可・徴収額固定です。</p><button class="danger" onclick="confirmAll()">全スタッフのノルマを確定</button><p id="cmsg"></p></div>
+<div class="card">
+  <h2>ノルマ確定</h2>
+  <p class="muted">未選択者は6枚として確定します。確定した瞬間から徴収額が固定されます。</p>
+  <button class="danger" onclick="confirmAll()">全スタッフのノルマを確定</button>
+  <button class="warn" onclick="unlockAll()">販売前の確定を一括解除</button>
+  <div class="lock-note">
+    解除できるのは、前売り販売実績がなく、ノルマ譲渡が進行中でないスタッフだけです。
+    前売り終了・残券確定後は解除できません。
+  </div>
+  <p id="cmsg"></p>
+</div>
 <div class="card"><h2>前売り終了・残券確定</h2><p class="muted">祭前販売を締め、その瞬間の残券数と売れ残り率を固定します。同時に前売り停止・当日券販売開始になります。</p><button class="danger" onclick="closePre()">前売りを締めて残券を確定</button><p id="clmsg"></p></div>
 <div class="card"><h2>ポイント変数</h2><p class="muted">ノルマ加速係数は「変数設定」に一本化しました。</p><button onclick="location.href='variables-admin.html'">変数設定を開く</button></div>
 <div class="card"><h2>最終インセンティブ</h2><p class="muted">前売り・食材保存・当日内・当日外の最終配分は専用画面で計算します。</p><button onclick="location.href='incentive-admin.html'">最終インセンティブ計算を開く</button></div>
-<div class="card"><h2>スタッフ一覧</h2><button class="secondary" onclick="loadStaff()">更新</button><div style="overflow:auto"><table><thead><tr><th>名前</th><th>希望</th><th>確定</th><th>販売</th><th>pt</th><th>残券</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="card"><h2>スタッフ一覧</h2><button class="secondary" onclick="loadStaff()">更新</button><div style="overflow:auto"><table><thead><tr><th>名前</th><th>希望</th><th>確定</th><th>販売</th><th>pt</th><th>残券</th><th>確定操作</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const loc=v=>v?new Date(new Date(v).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';const iso=v=>v?new Date(v).toISOString():null;
 async function ensureAdmin(){const{data:{user}}=await db.auth.getUser();if(!user)throw Error('ログインしてください');const{data}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data)throw Error('管理者のみ利用できます')}
@@ -145,7 +162,76 @@ async function saveSettings(){
 
 
 
-async function confirmAll(){if(!confirm('全員のノルマを確定します。確定後は返金不可です。よろしいですか？'))return;const{data,error}=await db.rpc('confirm_all_presale_quotas');cmsg.textContent=error?'エラー: '+error.message:`✅ ${data.confirmed}人を確定しました`;loadStaff()}
-async function closePre(){if(!confirm('前売りを終了し、残券数を固定しますか？'))return;const{data,error}=await db.rpc('close_presale_period');clmsg.textContent=error?'エラー: '+error.message:`✅ 残券 ${data.residual}枚 / 売れ残り率 ${(data.risk_rate*100).toFixed(1)}%`;loadSettings();loadStaff()}
-async function loadStaff(){const{data,error}=await db.rpc('admin_presale_staff_status');if(error){rows.innerHTML='<tr><td>'+error.message+'</td></tr>';return}rows.innerHTML=data.map(x=>`<tr><td>${x.staff_name}</td><td>${x.requested_quota}</td><td>${x.confirmed_quota??'-'}</td><td>${x.presale_sold}</td><td>${Number(x.presale_points||0).toFixed(1)}</td><td>${x.residual_remaining}</td></tr>`).join('')}
+async function confirmAll(){
+  if(!confirm('全員のノルマを確定します。確定後は徴収額が固定されます。よろしいですか？'))return;
+  const{data,error}=await db.rpc('confirm_all_presale_quotas');
+  cmsg.textContent=error?'エラー: '+error.message:`✅ ${data.confirmed}人を確定しました`;
+  loadStaff();
+}
+
+async function unlockOne(userId,staffName,sold){
+  if(Number(sold)>0){
+    alert('前売り販売実績があるため、このスタッフの確定は解除できません。');
+    return;
+  }
+  if(!confirm(`${staffName}さんのノルマ確定を解除しますか？\n\n解除すると、本人が再び希望ノルマを変更できる状態に戻ります。`))return;
+
+  cmsg.textContent='解除中...';
+  const{data,error}=await db.rpc('admin_unlock_presale_quota',{p_user:userId});
+  cmsg.textContent=error
+    ? 'エラー: '+error.message
+    : `✅ ${staffName}さんのノルマ確定を解除しました`;
+  await loadStaff();
+}
+
+async function unlockAll(){
+  if(!confirm('販売前のスタッフについて、ノルマ確定を一括解除しますか？\n\n販売実績がある人・譲渡中の人は解除されません。'))return;
+
+  cmsg.textContent='一括解除中...';
+  const{data,error}=await db.rpc('admin_unlock_all_presale_quotas');
+
+  if(error){
+    cmsg.textContent='エラー: '+error.message;
+    return;
+  }
+
+  cmsg.textContent=
+    `✅ ${data.unlocked}人を解除しました`+
+    ` / 販売済み ${data.skipped_sales}人`+
+    ` / 譲渡あり ${data.skipped_transfers}人`;
+  await loadStaff();
+}
+
+async function closePre(){
+  if(!confirm('前売りを終了し、残券数を固定しますか？'))return;
+  const{data,error}=await db.rpc('close_presale_period');
+  clmsg.textContent=error?'エラー: '+error.message:`✅ 残券 ${data.residual}枚 / 売れ残り率 ${(data.risk_rate*100).toFixed(1)}%`;
+  loadSettings();
+  loadStaff();
+}
+
+async function loadStaff(){
+  const{data,error}=await db.rpc('admin_presale_staff_status');
+  if(error){rows.innerHTML='<tr><td>'+error.message+'</td></tr>';return}
+
+  rows.innerHTML=data.map(x=>{
+    const confirmed=x.confirmed_quota!=null;
+    const sold=Number(x.presale_sold||0);
+    const action=!confirmed
+      ? '<span class="muted">未確定</span>'
+      : sold>0
+        ? '<span class="muted">販売済み</span>'
+        : `<button class="mini warn" onclick='unlockOne(${JSON.stringify(x.user_id)},${JSON.stringify(x.staff_name)},${sold})'>解除</button>`;
+
+    return `<tr>
+      <td>${x.staff_name}</td>
+      <td>${x.requested_quota}</td>
+      <td>${x.confirmed_quota??'-'}</td>
+      <td>${x.presale_sold}</td>
+      <td>${Number(x.presale_points||0).toFixed(1)}</td>
+      <td>${x.residual_remaining}</td>
+      <td>${action}</td>
+    </tr>`;
+  }).join('');
+}
 (async()=>{try{await loadSettings();await loadStaff()}catch(e){document.body.innerHTML='<main><div class="card">'+e.message+'</div></main>'}})();</script></main></body></html>
