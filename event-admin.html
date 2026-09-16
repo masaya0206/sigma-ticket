@@ -52,7 +52,128 @@ details.missing summary{cursor:pointer;font-weight:800}
   }
 }
 
-</style></head><body>
+</style>
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
+
+<style id="eventIOSOverflowFixV2">
+#days,.row{min-width:0;max-width:100%}
+#days input[type="datetime-local"]{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  inline-size:100%!important;
+  max-inline-size:100%!important;
+  min-inline-size:0!important;
+  -webkit-appearance:none!important;
+  appearance:none!important;
+}
+@media(max-width:520px){
+  #days .row{overflow:hidden}
+}
+</style>
+
+
+<style id="iosNativeDateOverflowFixV3">
+/*
+  iOS Safari の date / datetime-local 固有の最小幅による
+  右方向のはみ出しを止める。
+*/
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"]{
+  box-sizing:border-box!important;
+  display:block!important;
+  width:calc(100% - 4px)!important;
+  max-width:calc(100% - 4px)!important;
+  min-width:0!important;
+  inline-size:calc(100% - 4px)!important;
+  max-inline-size:calc(100% - 4px)!important;
+  min-inline-size:0!important;
+  -webkit-min-logical-width:0!important;
+  margin-left:0!important;
+  margin-right:4px!important;
+  overflow:hidden!important;
+}
+
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value{
+  min-width:0!important;
+  width:auto!important;
+  text-align:left;
+}
+
+input[type="datetime-local"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+
+@media(max-width:600px){
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="time"]{
+    font-size:16px!important;
+    width:calc(100% - 8px)!important;
+    max-width:calc(100% - 8px)!important;
+    inline-size:calc(100% - 8px)!important;
+    max-inline-size:calc(100% - 8px)!important;
+    margin-right:8px!important;
+  }
+}
+</style>
+
+</head><body>
 <header><h1>📅 シフト集計・日時設定</h1></header><main>
 <div class="card"><h2>5日間の日時</h2><div id="days"></div><button class="primary" id="saveDays">日時を保存</button><div id="dayMsg"></div></div>
 <div class="card">
