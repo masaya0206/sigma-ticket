@@ -49,6 +49,31 @@ summary{font-size:12px;font-weight:800;color:#5f5552;cursor:pointer}
   .day-grid{gap:3px}
   .day-label,.day-time{font-size:9px}
 }
+
+.day-filter-card{padding:14px}
+.filter-title{font-size:13px;font-weight:900;margin-bottom:9px}
+.day-filters{display:flex;flex-wrap:wrap;gap:7px}
+.day-filter{width:auto;margin:0;padding:9px 12px;border:1px solid #ded8d4;border-radius:999px;background:#fff;color:#554c49;font-weight:800;font-size:12px}
+.day-filter.active{border-color:var(--red);background:var(--red);color:#fff}
+.day-filter.all{font-weight:950}
+.selection-note{margin-top:8px;font-size:11px;color:var(--muted)}
+.role-summary{margin-top:12px}
+.role-summary h2{font-size:17px;margin:0 0 11px}
+.role-total-row,.person-role-row{display:grid;grid-template-columns:100px 1fr auto;gap:9px;align-items:center;padding:7px 0}
+.role-total-row+.role-total-row,.person-role-row+.person-role-row{border-top:1px solid #f3eeeb}
+.role-label{font-size:12px;font-weight:850;min-width:0}
+.role-track{height:8px;background:#f1e9e7;border-radius:999px;overflow:hidden}
+.role-fill{height:100%;background:var(--red);border-radius:999px}
+.role-time{font-size:12px;font-weight:900;white-space:nowrap}
+.person-role-section{margin-top:12px;padding:10px 12px;border-radius:14px;background:#fcf9f8}
+.person-role-title{font-size:11px;color:var(--muted);font-weight:800;margin-bottom:3px}
+.selected-days-grid{display:grid;gap:5px}
+.no-role{font-size:12px;color:var(--muted);padding:6px 0}
+@media(max-width:560px){
+  .role-total-row,.person-role-row{grid-template-columns:82px 1fr auto;gap:7px}
+  .day-filter{padding:8px 10px}
+}
+
 </style>
 </head>
 <body>
@@ -69,10 +94,21 @@ summary{font-size:12px;font-weight:800;color:#5f5552;cursor:pointer}
   <button class="refresh" onclick="loadData()">最新の勤務時間に更新</button>
 </div>
 
+<div class="card day-filter-card">
+  <div class="filter-title">対象日</div>
+  <div id="dayFilters" class="day-filters"></div>
+  <div id="selectionNote" class="selection-note">全日を集計中</div>
+</div>
+
 <div class="metrics">
   <div class="metric"><div class="v" id="peopleCount">-</div><div class="l">勤務記録あり</div></div>
   <div class="metric"><div class="v" id="totalHours">-</div><div class="l">総人時</div></div>
   <div class="metric"><div class="v" id="avgHours">-</div><div class="l">1人平均</div></div>
+</div>
+
+<div class="card role-summary">
+  <h2>職種別 総人時</h2>
+  <div id="overallRoles"></div>
 </div>
 
 <div id="status" class="sub" style="margin:12px 2px"></div>
@@ -88,8 +124,10 @@ const roleName={
   seller:"売り子",register:"レジ",cook:"調理",support:"サポート",
   shopping_helper:"買い出し補助",shopping_driver:"ドライバー",manager:"店長"
 };
+const roleOrder=["seller","register","cook","support","shopping_helper","shopping_driver","manager"];
 
 let people=[],days=[];
+let selectedDayIds=new Set();
 
 const esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
@@ -109,6 +147,75 @@ function clock(v){
   return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
 }
 
+function selectedDays(){
+  return days.filter(d=>selectedDayIds.has(String(d.id)));
+}
+
+function renderDayFilters(){
+  const allSelected=days.length>0 && selectedDayIds.size===days.length;
+  const buttons=[
+    `<button class="day-filter all ${allSelected?'active':''}" onclick="selectAllDays()">全体</button>`,
+    ...days.map(d=>`
+      <button class="day-filter ${selectedDayIds.has(String(d.id))?'active':''}"
+        onclick='toggleDay(${JSON.stringify(String(d.id))})'>
+        ${esc(d.label)} ${esc(shortDate(d.starts_at))}
+      </button>`)
+  ];
+  dayFilters.innerHTML=buttons.join("");
+
+  const selected=selectedDays();
+  selectionNote.textContent=allSelected
+    ? "全5日を集計中"
+    : selected.length
+      ? selected.map(d=>`${d.label} ${shortDate(d.starts_at)}`).join("・")+" を集計中"
+      : "対象日が選択されていません";
+}
+
+function selectAllDays(){
+  selectedDayIds=new Set(days.map(d=>String(d.id)));
+  renderDayFilters();
+  render();
+}
+
+function toggleDay(id){
+  if(selectedDayIds.has(id)) selectedDayIds.delete(id);
+  else selectedDayIds.add(id);
+  renderDayFilters();
+  render();
+}
+
+function filteredMinutesForPerson(p){
+  const pDays=Array.isArray(p.days)?p.days:[];
+  return pDays
+    .filter(x=>selectedDayIds.has(String(x.day_id)))
+    .reduce((s,x)=>s+Number(x.minutes||0),0);
+}
+
+function filteredRolesForPerson(p){
+  const src=Array.isArray(p.role_days)?p.role_days:[];
+  const totals={};
+  for(const x of src){
+    if(!selectedDayIds.has(String(x.day_id))) continue;
+    totals[x.role]=(totals[x.role]||0)+Number(x.minutes||0);
+  }
+  return roleOrder.map(role=>({role,minutes:Number(totals[role]||0)}));
+}
+
+function roleRowsHtml(roles,total,cls){
+  const nonzero=roles.filter(r=>Number(r.minutes)>0);
+  if(!nonzero.length) return '<div class="no-role">この対象日の勤務記録はありません。</div>';
+  const max=Math.max(1,...nonzero.map(r=>Number(r.minutes||0)));
+  return nonzero.map(r=>{
+    const mins=Number(r.minutes||0);
+    const pct=Math.min(100,(mins/max)*100);
+    return `<div class="${cls}">
+      <div class="role-label">${esc(roleName[r.role]||r.role)}</div>
+      <div class="role-track"><div class="role-fill" style="width:${Math.max(2,pct)}%"></div></div>
+      <div class="role-time">${esc(hm(mins))}</div>
+    </div>`;
+  }).join("");
+}
+
 async function loadData(){
   status.textContent="読み込み中...";
   const{data,error}=await db.rpc("manager_staff_work_summary");
@@ -119,33 +226,70 @@ async function loadData(){
   }
   people=data?.staff||[];
   days=data?.days||[];
+
+  const validIds=new Set(days.map(d=>String(d.id)));
+  if(selectedDayIds.size===0){
+    selectedDayIds=new Set(validIds);
+  }else{
+    selectedDayIds=new Set([...selectedDayIds].filter(id=>validIds.has(id)));
+    if(selectedDayIds.size===0) selectedDayIds=new Set(validIds);
+  }
+
+  renderDayFilters();
   status.textContent=`更新：${new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}`;
   render();
 }
 
 function render(){
   const q=search.value.trim().toLowerCase();
-  let rows=people.filter(p=>!q || String(p.staff_name||"").toLowerCase().includes(q));
 
-  if(sort.value==="time_desc") rows.sort((a,b)=>Number(b.total_minutes)-Number(a.total_minutes));
-  if(sort.value==="time_asc") rows.sort((a,b)=>Number(a.total_minutes)-Number(b.total_minutes));
+  let rows=people
+    .map(p=>({
+      ...p,
+      filtered_total:filteredMinutesForPerson(p),
+      filtered_roles:filteredRolesForPerson(p)
+    }))
+    .filter(p=>!q || String(p.staff_name||"").toLowerCase().includes(q));
+
+  if(sort.value==="time_desc") rows.sort((a,b)=>Number(b.filtered_total)-Number(a.filtered_total));
+  if(sort.value==="time_asc") rows.sort((a,b)=>Number(a.filtered_total)-Number(b.filtered_total));
   if(sort.value==="name") rows.sort((a,b)=>String(a.staff_name).localeCompare(String(b.staff_name),"ja"));
 
-  const worked=people.filter(p=>Number(p.total_minutes)>0);
-  const total=worked.reduce((s,p)=>s+Number(p.total_minutes||0),0);
+  const allFiltered=people.map(p=>({
+    ...p,
+    filtered_total:filteredMinutesForPerson(p),
+    filtered_roles:filteredRolesForPerson(p)
+  }));
+
+  const worked=allFiltered.filter(p=>Number(p.filtered_total)>0);
+  const total=worked.reduce((s,p)=>s+Number(p.filtered_total||0),0);
+
   peopleCount.textContent=worked.length+"人";
   totalHours.textContent=hm(total);
   avgHours.textContent=worked.length?hm(total/worked.length):"0分";
 
-  const max=Math.max(1,...people.map(p=>Number(p.total_minutes||0)));
+  const overallRoleMap={};
+  for(const p of allFiltered){
+    for(const r of p.filtered_roles){
+      overallRoleMap[r.role]=(overallRoleMap[r.role]||0)+Number(r.minutes||0);
+    }
+  }
+  const overallRoleRows=roleOrder.map(role=>({
+    role,
+    minutes:Number(overallRoleMap[role]||0)
+  }));
+  overallRoles.innerHTML=roleRowsHtml(overallRoleRows,total,"role-total-row");
+
+  const max=Math.max(1,...allFiltered.map(p=>Number(p.filtered_total||0)));
+  const visibleDays=selectedDays();
 
   list.innerHTML=rows.length?rows.map(p=>{
     const pDays=Array.isArray(p.days)?p.days:[];
     const dayMap=Object.fromEntries(pDays.map(x=>[String(x.day_id),x]));
-    const roles=Array.isArray(p.roles)?p.roles:[];
-    const sessions=Array.isArray(p.sessions)?p.sessions:[];
+    const sessions=(Array.isArray(p.sessions)?p.sessions:[])
+      .filter(s=>selectedDayIds.has(String(s.day_id)));
 
-    const dayHtml=days.map(d=>{
+    const dayHtml=visibleDays.map(d=>{
       const x=dayMap[String(d.id)]||{minutes:0};
       const mins=Number(x.minutes||0);
       const pct=Math.min(100,(mins/Math.max(1,Number(d.duration_minutes||1)))*100);
@@ -156,10 +300,6 @@ function render(){
       </div>`;
     }).join("");
 
-    const roleHtml=roles.filter(r=>Number(r.minutes)>0).map(r=>
-      `<span class="role">${esc(roleName[r.role]||r.role)} ${esc(hm(r.minutes))}</span>`
-    ).join("") || '<span class="role">勤務記録なし</span>';
-
     const sessionHtml=sessions.map(s=>
       `<div class="session"><span>${esc(s.day_label)}　${esc(clock(s.clock_in))}〜${esc(clock(s.clock_out))}</span><b>${esc(hm(s.minutes))}</b></div>`
     ).join("");
@@ -167,14 +307,25 @@ function render(){
     return `<div class="person">
       <div class="person-head">
         <div class="person-name">${esc(p.staff_name)}</div>
-        <div class="person-total">${esc(hm(p.total_minutes))}</div>
+        <div class="person-total">${esc(hm(p.filtered_total))}</div>
       </div>
-      <div class="total-track"><div class="total-bar" style="width:${Math.max(Number(p.total_minutes)>0?2:0,(Number(p.total_minutes||0)/max)*100)}%"></div></div>
-      <div class="day-grid">${dayHtml}</div>
-      <div class="role-wrap">${roleHtml}</div>
+
+      <div class="total-track">
+        <div class="total-bar" style="width:${Math.max(Number(p.filtered_total)>0?2:0,(Number(p.filtered_total||0)/max)*100)}%"></div>
+      </div>
+
+      <div class="day-grid selected-days-grid" style="grid-template-columns:repeat(${Math.max(1,visibleDays.length)},minmax(0,1fr))">
+        ${dayHtml || '<div class="empty">対象日を選択してください。</div>'}
+      </div>
+
+      <div class="person-role-section">
+        <div class="person-role-title">職種別勤務時間</div>
+        ${roleRowsHtml(p.filtered_roles,p.filtered_total,"person-role-row")}
+      </div>
+
       <details>
         <summary>出退勤の内訳を見る</summary>
-        ${sessionHtml||'<div class="empty">勤務記録はありません。</div>'}
+        ${sessionHtml||'<div class="empty">この対象日の勤務記録はありません。</div>'}
       </details>
     </div>`;
   }).join(""):'<div class="empty">該当するスタッフはいません。</div>';
