@@ -78,9 +78,9 @@ button.save{width:100%;border:0;border-radius:16px;background:var(--red);color:#
     <div class="field">
       <div>
         <div class="label">ノルマ加速係数</div>
-        <div class="help">6枚を基準に、ノルマを1枚増やすごとの倍率上昇量</div>
+        <div class="help">ノルマ枚数そのものに掛ける加速係数。倍率 = 加速係数 × 現在ノルマ枚数</div>
         <div class="setting-help">
-          <p class="help-change">上げると、高いノルマを選んだ人ほど前売りptが大きく伸びます。</p>
+          <p class="help-change">上げると、ノルマ枚数に応じた倍率と前売りptが大きくなります。譲渡元は現在ノルマで再計算されます。</p>
           <p class="help-example" id="quotaExample"></p>
           <span class="help-target">前売りptに反映</span>
         </div>
@@ -268,7 +268,7 @@ async function load(){
     return;
   }
 
-  el("quota").value=Number(data.quota_acceleration??0.2).toFixed(2);
+  el("quota").value=Number(data.quota_acceleration??1).toFixed(2);
   el("manager").value=Number(data.manager_coefficient??1.15).toFixed(2);
   el("cook").value=Number(data.cook_coefficient??1.10).toFixed(2);
   el("support").value=Number(data.support_coefficient??1.00).toFixed(2);
@@ -337,11 +337,11 @@ function updateVariableExamples(){
   const p=n("prep");
   const cl=n("cleanup");
 
-  const qp=(count)=>count*(1+q*(count-6));
+  const qp=(count)=>q*count*count;
 
   if(Number.isFinite(q)){
     el("quotaExample").textContent=
-      `例：${q.toFixed(2)}なら 6枚=${qp(6).toFixed(1)}pt / 7枚=${qp(7).toFixed(1)}pt / 8枚=${qp(8).toFixed(1)}pt`;
+      `例：${q.toFixed(2)}なら 0枚=${qp(0).toFixed(1)}pt / 6枚=${qp(6).toFixed(1)}pt / 8枚=${qp(8).toFixed(1)}pt（倍率はそれぞれ ×${(q*0).toFixed(1)} / ×${(q*6).toFixed(1)} / ×${(q*8).toFixed(1)}）`;
   }
   if(Number.isFinite(m)){
     el("managerExample").textContent=`例：基礎10ptなら ${m.toFixed(2)} → ${(10*m).toFixed(1)}pt`;

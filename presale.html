@@ -74,6 +74,43 @@
   <p id="msg"></p>
 </div>
 
+
+<div class="card" id="transferCard">
+  <h2>ノルマ譲渡</h2>
+  <p class="muted">
+    締切・ノルマ確定後、まだ売っていない自分のノルマ券だけを他スタッフへ譲渡できます。
+    譲渡元は現在ノルマとポイントを再計算します。受取側は追加券扱いで、本人のノルマ枚数自体は増えません。
+  </p>
+
+  <div class="grid">
+    <div class="metric">
+      <div class="muted">現在ノルマ</div>
+      <div class="big" id="currentQuota">--</div>
+    </div>
+    <div class="metric">
+      <div class="muted">譲渡可能</div>
+      <div class="big" id="transferableQuota">--</div>
+    </div>
+  </div>
+
+  <div class="transfer-note" id="transferRule">読み込み中...</div>
+
+  <div class="transfer-form">
+    <label>譲渡先</label>
+    <select id="transferTo"><option value="">選択してください</option></select>
+    <label>譲渡枚数</label>
+    <input id="transferQty" type="number" min="1" step="1" value="1" inputmode="numeric">
+    <button id="transferSend" onclick="requestTransfer()">譲渡申請を送る</button>
+    <p id="transferMsg"></p>
+  </div>
+
+  <h3>届いている譲渡申請</h3>
+  <div id="incomingTransfers" class="transfer-list"><span class="muted">読み込み中...</span></div>
+
+  <h3>譲渡履歴</h3>
+  <div id="transferHistory" class="transfer-list"><span class="muted">読み込み中...</span></div>
+</div>
+
 <div class="card">
   <h2>確定内容</h2>
   <div id="details">読み込み中...</div>
@@ -91,6 +128,19 @@
 .choice-preview{margin:10px 0 4px;padding:14px;border-radius:14px;background:#fff7f7;border:1px solid #f0d6d6}
 .choice-big{font-size:24px;font-weight:900}
 .choice-sub{margin-top:4px;color:#725b5b;font-size:13px}
+
+.transfer-note{margin:12px 0;padding:12px;border-radius:12px;background:#fff8e8;border:1px solid #f1dfb9;font-size:13px;line-height:1.6}
+.transfer-form{margin-top:14px}
+.transfer-list{margin-top:8px}
+.transfer-row{padding:12px 0;border-top:1px solid #f0dddd}
+.transfer-row:first-child{border-top:0}
+.transfer-main{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.transfer-name{font-weight:800}
+.transfer-meta{font-size:12px;color:#725b5b;margin-top:4px;line-height:1.5}
+.transfer-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.transfer-actions button{margin:0;padding:10px}
+.transfer-actions .secondary{background:#fff;color:#a91520;border:1px solid #a91520}
+h3{font-size:15px;margin:18px 0 6px}
 @media(max-width:480px){
   .sim-head,.sim-row{grid-template-columns:.8fr .9fr 1fr 1.2fr;padding:9px 8px;font-size:12px}
   .sim-row strong{font-size:14px}
@@ -102,8 +152,10 @@ const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
 const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
 const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-let baseSixPoints=6;
+let baseSixPoints=36;
 let simData=[];
+let presaleStatus=null;
+let transferCandidates=[];
 
 async function pointsFor(n){
   const {data,error}=await db.rpc('presale_points_for_quota',{p_quota:n});
@@ -178,8 +230,10 @@ async function load(){
   const {data,error}=await db.rpc('my_presale_status');
   if(error){details.textContent='エラー: '+error.message;return}
 
+  presaleStatus=data;
   quota.value=data.requested_quota||6;
   await updatePreview();
+  await loadTransferArea();
 
   const confirmed=!!data.confirmed_at;
   save.disabled=confirmed;
@@ -188,12 +242,128 @@ async function load(){
   const overflowPt=Number(data.overflow_points_per_sale||1);
   details.innerHTML=`
     希望: <b>${data.requested_quota}枚</b><br>
-    確定: <b>${confirmed?data.confirmed_quota+'枚':'未確定'}</b><br>
+    確定ノルマ: <b>${confirmed?data.confirmed_quota+'枚':'未確定'}</b><br>
+    現在ノルマ: <b>${confirmed?Number(data.current_quota??data.confirmed_quota)+'枚':'--'}</b><br>
+    受取追加券: <b>${Number(data.transferred_in||0)}枚</b><br>
+    譲渡済み: <b>${Number(data.transferred_out||0)}枚</b><br>
+    現在倍率: <b>×${Number(data.current_multiplier||0).toFixed(2)}</b><br>
+    現在前売りpt: <b>${Number(data.presale_points||0).toFixed(2)}pt</b><br>
     確定時徴収額: <b>${data.collected_amount==null?'--':Number(data.collected_amount).toLocaleString()+'円'}</b><br>
     祭前販売: <b>${data.presale_sold}枚</b><br>
-    超過販売: <b>${data.overflow_sold}枚</b><br>
-    <span class="muted">超過分は1枚=${overflowPt.toFixed(1)}pt</span>
+    追加販売扱い: <b>${data.overflow_sold}枚</b><br>
+    <span class="muted">追加販売は1枚=${overflowPt.toFixed(2)}pt。受取追加券でノルマ倍率は上がりません。</span>
   `;
+}
+
+
+function esc(v){
+  return String(v??'')
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'","&#039;");
+}
+
+async function loadTransferArea(){
+  const card=document.getElementById('transferCard');
+  if(!presaleStatus){card.style.display='none';return}
+
+  const confirmed=!!presaleStatus.confirmed_at;
+  const deadlinePassed=!!presaleStatus.transfer_open;
+
+  currentQuota.textContent=confirmed?`${Number(presaleStatus.current_quota??0)} 枚`:'--';
+  transferableQuota.textContent=confirmed?`${Number(presaleStatus.transferable_quota??0)} 枚`:'--';
+  transferQty.max=Math.max(1,Number(presaleStatus.transferable_quota??0));
+
+  if(!confirmed){
+    transferRule.textContent='ノルマ確定後に利用できます。';
+    transferSend.disabled=true;
+  }else if(!deadlinePassed){
+    transferRule.textContent='ノルマ選択締切後に利用できます。';
+    transferSend.disabled=true;
+  }else{
+    transferRule.textContent=
+      `現在ノルマ ${Number(presaleStatus.current_quota??0)}枚。`+
+      `譲渡すると譲渡元のポイントは新しい現在ノルマで再計算されます。`+
+      `すでに販売済みの券は譲渡できません。`;
+    transferSend.disabled=Number(presaleStatus.transferable_quota??0)<=0;
+  }
+
+  const [candRes,listRes]=await Promise.all([
+    db.rpc('presale_transfer_candidates'),
+    db.rpc('my_presale_transfers')
+  ]);
+
+  if(!candRes.error){
+    transferCandidates=candRes.data||[];
+    transferTo.innerHTML='<option value="">選択してください</option>'+
+      transferCandidates.map(x=>`<option value="${x.user_id}">${esc(x.staff_name)}</option>`).join('');
+  }else{
+    transferTo.innerHTML='<option value="">候補取得エラー</option>';
+  }
+
+  if(listRes.error){
+    incomingTransfers.innerHTML=`<span class="warn">${esc(listRes.error.message)}</span>`;
+    transferHistory.innerHTML='';
+    return;
+  }
+
+  const rows=listRes.data||[];
+  const incoming=rows.filter(x=>x.direction==='incoming' && x.status==='pending');
+  incomingTransfers.innerHTML=incoming.length
+    ? incoming.map(x=>`
+      <div class="transfer-row">
+        <div class="transfer-main">
+          <div>
+            <div class="transfer-name">${esc(x.other_name)}さんから ${x.quantity}枚</div>
+            <div class="transfer-meta">受け取っても自分のノルマ枚数は増えません。追加券として扱われます。</div>
+          </div>
+        </div>
+        <div class="transfer-actions">
+          <button onclick="respondTransfer('${x.id}',true)">受け取る</button>
+          <button class="secondary" onclick="respondTransfer('${x.id}',false)">断る</button>
+        </div>
+      </div>`).join('')
+    : '<span class="muted">現在、届いている申請はありません。</span>';
+
+  transferHistory.innerHTML=rows.length
+    ? rows.map(x=>{
+        const dir=x.direction==='outgoing'?'→':'←';
+        const status={pending:'申請中',accepted:'成立',declined:'辞退',cancelled:'取消'}[x.status]||x.status;
+        return `<div class="transfer-row">
+          <div class="transfer-name">${dir} ${esc(x.other_name)} / ${x.quantity}枚 <span class="pill">${status}</span></div>
+          <div class="transfer-meta">${new Date(x.created_at).toLocaleString('ja-JP')}</div>
+          ${x.direction==='outgoing'&&x.status==='pending'
+            ? `<button class="secondary" style="margin-top:8px" onclick="cancelTransfer('${x.id}')">申請を取り消す</button>`
+            : ''}
+        </div>`;
+      }).join('')
+    : '<span class="muted">譲渡履歴はありません。</span>';
+}
+
+async function requestTransfer(){
+  const uid=transferTo.value;
+  const qty=Number(transferQty.value);
+  if(!uid){transferMsg.textContent='譲渡先を選択してください。';return}
+  if(!Number.isInteger(qty)||qty<1){transferMsg.textContent='1枚以上の整数を入力してください。';return}
+  if(!confirm(`${transferTo.options[transferTo.selectedIndex].text}さんへ${qty}枚の譲渡申請を送りますか？`))return;
+
+  transferMsg.textContent='送信中...';
+  const {error}=await db.rpc('request_presale_quota_transfer',{p_to_user:uid,p_quantity:qty});
+  transferMsg.textContent=error?'エラー: '+error.message:'✅ 譲渡申請を送りました';
+  if(!error)await load();
+}
+
+async function respondTransfer(id,accept){
+  if(!confirm(accept?'この譲渡を受け取りますか？':'この譲渡を断りますか？'))return;
+  const {error}=await db.rpc('respond_presale_quota_transfer',{p_transfer:id,p_accept:accept});
+  if(error){alert(error.message);return}
+  await load();
+}
+
+async function cancelTransfer(id){
+  if(!confirm('この譲渡申請を取り消しますか？'))return;
+  const {error}=await db.rpc('cancel_presale_quota_transfer',{p_transfer:id});
+  if(error){alert(error.message);return}
+  await load();
 }
 
 async function saveQuota(){

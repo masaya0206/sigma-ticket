@@ -105,6 +105,12 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 .availability-note{font-size:12px;color:#6e6e73;margin-top:3px}
 .small-delete{width:auto!important;margin:0!important;padding:8px 12px!important;font-size:12px!important;background:#fff1f2!important;color:#b5121b!important}
 .empty-day{font-size:12px;color:#9a9090;padding-top:8px}
+.role-help{display:grid;gap:8px;margin:12px 0 16px}
+.role-help>div{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:9px 10px;border-radius:12px;background:#faf7f5}
+.role-help b{color:#b5121b}
+.role-help span{font-size:12px;color:#6e6e73;line-height:1.5}
+.saved-role-summary{margin-top:12px;padding:12px;border-radius:12px;background:#fff7f7;border:1px solid #f0d6d6;font-size:13px;line-height:1.7}
+@media(max-width:380px){.role-help>div{grid-template-columns:1fr;gap:2px}}
 @media(max-width:520px){
   .time-grid{grid-template-columns:1fr}
   header{padding:26px 18px}
@@ -118,6 +124,37 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 </head><body>
 <header><h1>🗓 希望シフト</h1></header>
 <main>
+
+  <div class="card">
+    <h2>希望職種</h2>
+    <p class="small">配置の参考にします。必ず希望通りになるとは限りません。第1希望は必須、第2・第3希望は「希望なし」も選べます。</p>
+
+    <div class="role-help">
+      <div><b>売り子</b><span>テント外で声かけ・販売を担当</span></div>
+      <div><b>レジ</b><span>注文受付・現金会計・前売り券交換を担当</span></div>
+      <div><b>調理</b><span>炒飯・胡麻団子などの調理を担当</span></div>
+      <div><b>サポート</b><span>商品の受け渡し・テント内補助を担当</span></div>
+      <div><b>買い出し補助</b><span>不足した食材・備品の買い出しに同行する場合あり</span></div>
+    </div>
+
+    <div class="field">
+      <label for="role1">第1希望</label>
+      <select id="role1"></select>
+    </div>
+    <div class="field">
+      <label for="role2">第2希望</label>
+      <select id="role2"></select>
+    </div>
+    <div class="field">
+      <label for="role3">第3希望</label>
+      <select id="role3"></select>
+    </div>
+
+    <button class="primary" id="saveRoles">希望職種を保存</button>
+    <div id="roleMsg"></div>
+    <div id="savedRoles" class="saved-role-summary">未提出</div>
+  </div>
+
   <div class="card">
     <h2>参加可能時間を追加</h2>
 
@@ -191,6 +228,70 @@ function mergeIntervals(items){
   }
   return merged;
 }
+
+
+const roleOptions=[
+  ['seller','売り子'],
+  ['register','レジ'],
+  ['cook','調理'],
+  ['support','サポート'],
+  ['shopping_helper','買い出し補助']
+];
+
+function setupRoleSelects(){
+  role1.innerHTML=roleOptions.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  const optional='<option value="">希望なし</option>'+roleOptions.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  role2.innerHTML=optional;
+  role3.innerHTML=optional;
+}
+
+function roleLabel(v){
+  return roleOptions.find(x=>x[0]===v)?.[1]||'希望なし';
+}
+
+async function loadRolePreferences(){
+  const {data,error}=await sb.rpc('my_role_preferences');
+  if(error){
+    roleMsg.innerHTML='<span class="err">希望職種の取得エラー: '+error.message+'</span>';
+    return;
+  }
+  if(data){
+    role1.value=data.first_role||'seller';
+    role2.value=data.second_role||'';
+    role3.value=data.third_role||'';
+    renderSavedRoles(data);
+  }else{
+    role1.value='seller'; role2.value=''; role3.value='';
+    savedRoles.textContent='まだ希望職種を提出していません。';
+  }
+}
+
+function renderSavedRoles(data){
+  savedRoles.innerHTML=
+    `提出済み：<b>第1希望 ${roleLabel(data.first_role)}</b>`+
+    `${data.second_role?` / 第2希望 ${roleLabel(data.second_role)}`:''}`+
+    `${data.third_role?` / 第3希望 ${roleLabel(data.third_role)}`:''}`;
+}
+
+saveRoles.onclick=async()=>{
+  const vals=[role1.value,role2.value,role3.value].filter(Boolean);
+  if(new Set(vals).size!==vals.length){
+    roleMsg.innerHTML='<span class="err">同じ職種を複数の希望順位に選べません。</span>';
+    return;
+  }
+  roleMsg.textContent='保存中...';
+  const {data,error}=await sb.rpc('save_my_role_preferences',{
+    p_first_role:role1.value,
+    p_second_role:role2.value||null,
+    p_third_role:role3.value||null
+  });
+  if(error){
+    roleMsg.innerHTML='<span class="err">'+error.message+'</span>';
+    return;
+  }
+  roleMsg.innerHTML='<span class="ok">✅ 希望職種を保存しました</span>';
+  renderSavedRoles(data);
+};
 
 async function loadDays(){
   const {data,error}=await sb.from('event_days').select('*').eq('is_enabled',true).order('id');
@@ -319,6 +420,8 @@ async function loadList(){
 (async()=>{
   const {data:{user}}=await sb.auth.getUser();
   if(!user){location.href='home.html';return}
+  setupRoleSelects();
+  await loadRolePreferences();
   await loadDays();
   await loadList();
 })();
