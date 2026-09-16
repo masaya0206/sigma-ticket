@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>売上・商品集計</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --red:#b5121b;--red2:#8f0e15;--soft:#fff1f2;--ink:#1c1c1e;
+  --muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2;--surface:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;max-width:100%;overflow-x:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+  background:var(--bg);color:var(--ink);padding-bottom:70px
+}
+button,select,input{font:inherit;box-sizing:border-box;max-width:100%}
+button{cursor:pointer}
+main{max-width:760px;margin:auto;padding:18px 14px 42px}
+.back{
+  width:auto;padding:10px 14px;border:1px solid var(--red);border-radius:12px;
+  background:#fff;color:var(--red);font-weight:850
+}
+h1{font-size:27px;margin:18px 0 5px}
+.sub{font-size:13px;color:var(--muted);line-height:1.6}
+.card{
+  background:#fff;border:1px solid var(--line);border-radius:19px;
+  padding:15px;margin:12px 0;min-width:0
+}
+.card h2{font-size:18px;margin:0 0 12px}
+.refresh{
+  width:100%;padding:13px;border:0;border-radius:13px;background:var(--red);
+  color:#fff;font-weight:900;margin-top:10px
+}
+
+/* filters */
+.filter-title{font-size:13px;font-weight:900;margin-bottom:9px}
+.day-filters{display:flex;flex-wrap:wrap;gap:7px}
+.day-btn{
+  width:auto;margin:0;padding:9px 12px;border:1px solid #ded8d4;border-radius:999px;
+  background:#fff;color:#554c49;font-weight:800;font-size:12px
+}
+.day-btn.active{border-color:var(--red);background:var(--red);color:#fff}
+.day-btn.master{font-weight:950}
+.selection-note{margin-top:9px;font-size:11px;color:var(--muted);line-height:1.55}
+
+/* headline metrics */
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.metric{
+  background:#fff;border:1px solid var(--line);border-radius:17px;padding:14px;min-width:0
+}
+.metric.wide{grid-column:1/-1}
+.metric .v{
+  color:var(--red);font-size:26px;font-weight:950;line-height:1.15;
+  overflow-wrap:anywhere
+}
+.metric .l{font-size:11px;color:var(--muted);margin-top:5px}
+.metric .note{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+
+/* generic rows */
+.stat-list{display:grid;gap:1px}
+.stat-row{
+  display:grid;grid-template-columns:minmax(95px,1.05fr) minmax(0,1.6fr) auto;
+  gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #f2edeb
+}
+.stat-row:last-child{border-bottom:0}
+.stat-name{font-size:12px;font-weight:850;min-width:0}
+.track{height:8px;border-radius:999px;background:#f1e9e7;overflow:hidden}
+.fill{height:100%;border-radius:999px;background:var(--red)}
+.stat-value{font-size:12px;font-weight:900;white-space:nowrap;text-align:right}
+
+/* product cards */
+.products{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.product{
+  background:#faf7f5;border-radius:16px;padding:15px;min-width:0
+}
+.product .name{font-size:12px;color:var(--muted);font-weight:750}
+.product .qty{font-size:27px;font-weight:950;color:var(--red);margin-top:4px}
+.product .small{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* hourly */
+.hour-row{
+  display:grid;grid-template-columns:66px 1fr auto;gap:8px;
+  align-items:center;padding:10px 0;border-bottom:1px solid #f2edeb
+}
+.hour-row:last-child{border-bottom:0}
+.hour-label{font-size:12px;font-weight:900}
+.hour-main{min-width:0}
+.hour-sales{font-size:13px;font-weight:900}
+.hour-products{font-size:10px;color:var(--muted);margin-top:3px}
+.hour-count{font-size:11px;color:var(--muted);white-space:nowrap}
+
+/* tables */
+.table-wrap{overflow:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{padding:10px 8px;border-bottom:1px solid #eee;text-align:left;font-size:12px}
+th{font-size:11px;color:var(--muted);white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.empty{text-align:center;padding:25px 10px;color:var(--muted);font-size:13px}
+.status{margin:10px 2px;color:var(--muted);font-size:12px}
+.legend{
+  font-size:11px;color:var(--muted);line-height:1.6;background:#faf7f5;
+  border-radius:13px;padding:10px 12px;margin-top:10px
+}
+@media(max-width:560px){
+  .metrics{grid-template-columns:1fr 1fr}
+  .products{grid-template-columns:1fr 1fr}
+  .metric .v{font-size:22px}
+  .stat-row{grid-template-columns:88px 1fr auto;gap:7px}
+}
+@media(max-width:380px){
+  .metrics,.products{grid-template-columns:1fr}
+  .metric.wide{grid-column:auto}
+}
+</style>
+</head>
+<body>
+<main>
+<button class="back" onclick="location.href='admin-menu.html'">← 管理者メニュー</button>
+<h1>売上・商品集計</h1>
+<div class="sub">
+  前売り券・当日券・現金注文をまとめて確認します。対象日は複数選択できます。
+</div>
+
+<div class="card">
+  <div class="filter-title">集計範囲</div>
+  <div id="dayFilters" class="day-filters"></div>
+  <div id="selectionNote" class="selection-note">読み込み中...</div>
+  <button class="refresh" onclick="loadData()">最新データに更新</button>
+</div>
+
+<div class="metrics">
+  <div class="metric wide">
+    <div id="totalRevenue" class="v">-</div>
+    <div class="l">総売上</div>
+    <div class="note">券の販売額＋現金注文額。QR交換時は券売上を二重計上しません。</div>
+  </div>
+  <div class="metric">
+    <div id="ticketRevenue" class="v">-</div>
+    <div class="l">券売上</div>
+  </div>
+  <div class="metric">
+    <div id="cashRevenue" class="v">-</div>
+    <div class="l">現金売上</div>
+  </div>
+  <div class="metric">
+    <div id="ticketCount" class="v">-</div>
+    <div class="l">販売券数</div>
+  </div>
+  <div class="metric">
+    <div id="orderCount" class="v">-</div>
+    <div class="l">注文件数</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>商品数</h2>
+  <div class="products">
+    <div class="product">
+      <div class="name">チャーハン</div>
+      <div id="riceQty" class="qty">-</div>
+      <div class="small">注文・QR交換で実際に選ばれた個数</div>
+    </div>
+    <div class="product">
+      <div class="name">ゴマ団子</div>
+      <div id="sesameQty" class="qty">-</div>
+      <div class="small">個数で集計（2個交換なら2個）</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>売上内訳</h2>
+  <div id="channelBreakdown" class="stat-list"></div>
+  <div class="legend">
+    QR交換は、その場で新しい売上が発生するのではなく、前売り券・当日券を販売した時点の売上に含めています。
+    「QR＋現金」は追加した現金商品の金額だけを現金売上として加算します。
+  </div>
+</div>
+
+<div class="card">
+  <h2>時間帯別</h2>
+  <div id="hourly"></div>
+</div>
+
+<div class="card">
+  <h2>日別</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>日</th>
+          <th>売上</th>
+          <th>券</th>
+          <th>注文</th>
+          <th>炒飯</th>
+          <th>団子</th>
+        </tr>
+      </thead>
+      <tbody id="dailyRows"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>販売方法・レジ</h2>
+  <div id="orderSourceBreakdown" class="stat-list"></div>
+  <div id="registerBreakdown" class="stat-list" style="margin-top:14px"></div>
+</div>
+
+<div class="card">
+  <h2>券の発行者別</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>スタッフ</th><th>券数</th><th>券売上</th><th>前売り</th><th>当日</th><th>残券</th></tr>
+      </thead>
+      <tbody id="sellerRows"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="status" class="status"></div>
+</main>
+
+<script>
+const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let payload=null;
+let selectedKeys=new Set();
+
+const yen=n=>"¥"+Math.round(Number(n||0)).toLocaleString("ja-JP");
+const num=n=>Math.round(Number(n||0)).toLocaleString("ja-JP");
+const esc=v=>String(v??"")
+  .replaceAll("&","&amp;")
+  .replaceAll("<","&lt;")
+  .replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;");
+
+function shortDate(v){
+  const d=new Date(v);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function scopeDefs(){
+  if(!payload)return [];
+  return [
+    ...payload.days.map(d=>({
+      key:"day:"+d.id,
+      label:d.label,
+      short:`${d.label} ${shortDate(d.starts_at)}`
+    })),
+    {key:"outside",label:"開催外",short:"開催外（前売り期間など）"}
+  ];
+}
+
+function selectAll(){
+  selectedKeys=new Set(scopeDefs().map(x=>x.key));
+  renderFilters();
+  render();
+}
+
+function toggleScope(key){
+  if(selectedKeys.has(key)) selectedKeys.delete(key);
+  else selectedKeys.add(key);
+  renderFilters();
+  render();
+}
+
+function renderFilters(){
+  const defs=scopeDefs();
+  const all=defs.length>0 && selectedKeys.size===defs.length;
+
+  dayFilters.innerHTML=[
+    `<button class="day-btn master ${all?'active':''}" onclick="selectAll()">全期間</button>`,
+    ...defs.map(x=>`
+      <button class="day-btn ${selectedKeys.has(x.key)?'active':''}"
+        onclick='toggleScope(${JSON.stringify(x.key)})'>
+        ${esc(x.label)}
+      </button>`)
+  ].join("");
+
+  const chosen=defs.filter(x=>selectedKeys.has(x.key));
+  selectionNote.textContent=all
+    ? "全期間を集計中"
+    : chosen.length
+      ? chosen.map(x=>x.short).join("・")+" を集計中"
+      : "対象期間が選択されていません";
+}
+
+function selected(row){
+  return selectedKeys.has(row.scope_key);
+}
+
+function sumRows(rows,field){
+  return rows.reduce((s,r)=>s+Number(r[field]||0),0);
+}
+
+function statRows(items,valueField,formatter){
+  const valid=items.filter(x=>Number(x[valueField]||0)!==0);
+  if(!valid.length)return '<div class="empty">データはありません。</div>';
+  const max=Math.max(1,...valid.map(x=>Math.abs(Number(x[valueField]||0))));
+  return valid.map(x=>{
+    const value=Number(x[valueField]||0);
+    const pct=Math.max(2,Math.min(100,Math.abs(value)/max*100));
+    return `<div class="stat-row">
+      <div class="stat-name">${esc(x.label)}</div>
+      <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="stat-value">${esc(formatter(value,x))}</div>
+    </div>`;
+  }).join("");
+}
+
+function aggregate(){
+  const tickets=(payload.ticket_buckets||[]).filter(selected);
+  const orders=(payload.order_buckets||[]).filter(selected);
+
+  const ticketRevenueV=sumRows(tickets,"revenue");
+  const cashRevenueV=sumRows(orders,"cash_revenue");
+  const ticketCountV=sumRows(tickets,"ticket_count");
+  const orderCountV=sumRows(orders,"order_count");
+  const riceV=sumRows(orders,"fried_rice_qty");
+  const sesameV=sumRows(orders,"sesame_qty");
+
+  const channelMap={};
+  for(const r of tickets){
+    const key=r.channel||"unknown";
+    channelMap[key]??={revenue:0,count:0};
+    channelMap[key].revenue+=Number(r.revenue||0);
+    channelMap[key].count+=Number(r.ticket_count||0);
+  }
+  for(const r of orders){
+    const key="cash";
+    channelMap[key]??={revenue:0,count:0};
+    channelMap[key].revenue+=Number(r.cash_revenue||0);
+    channelMap[key].count+=Number(r.order_count||0);
+  }
+
+  const sourceMap={};
+  const registerMap={};
+  for(const r of orders){
+    const sk=r.source||"unknown";
+    sourceMap[sk]??={orders:0,cash:0,rice:0,sesame:0};
+    sourceMap[sk].orders+=Number(r.order_count||0);
+    sourceMap[sk].cash+=Number(r.cash_revenue||0);
+    sourceMap[sk].rice+=Number(r.fried_rice_qty||0);
+    sourceMap[sk].sesame+=Number(r.sesame_qty||0);
+
+    const rk=r.register_color||"未設定";
+    registerMap[rk]??={orders:0,cash:0};
+    registerMap[rk].orders+=Number(r.order_count||0);
+    registerMap[rk].cash+=Number(r.cash_revenue||0);
+  }
+
+  const hourMap={};
+  for(const r of tickets){
+    const k=r.hour_key;
+    hourMap[k]??={label:r.hour_label,revenue:0,tickets:0,orders:0,rice:0,sesame:0};
+    hourMap[k].revenue+=Number(r.revenue||0);
+    hourMap[k].tickets+=Number(r.ticket_count||0);
+  }
+  for(const r of orders){
+    const k=r.hour_key;
+    hourMap[k]??={label:r.hour_label,revenue:0,tickets:0,orders:0,rice:0,sesame:0};
+    hourMap[k].revenue+=Number(r.cash_revenue||0);
+    hourMap[k].orders+=Number(r.order_count||0);
+    hourMap[k].rice+=Number(r.fried_rice_qty||0);
+    hourMap[k].sesame+=Number(r.sesame_qty||0);
+  }
+
+  const dailyMap={};
+  for(const def of scopeDefs()){
+    if(!selectedKeys.has(def.key))continue;
+    dailyMap[def.key]={label:def.short,revenue:0,tickets:0,orders:0,rice:0,sesame:0};
+  }
+  for(const r of tickets){
+    if(!dailyMap[r.scope_key])continue;
+    dailyMap[r.scope_key].revenue+=Number(r.revenue||0);
+    dailyMap[r.scope_key].tickets+=Number(r.ticket_count||0);
+  }
+  for(const r of orders){
+    if(!dailyMap[r.scope_key])continue;
+    dailyMap[r.scope_key].revenue+=Number(r.cash_revenue||0);
+    dailyMap[r.scope_key].orders+=Number(r.order_count||0);
+    dailyMap[r.scope_key].rice+=Number(r.fried_rice_qty||0);
+    dailyMap[r.scope_key].sesame+=Number(r.sesame_qty||0);
+  }
+
+  const sellerMap={};
+  for(const r of tickets){
+    const key=r.seller_name||"不明";
+    sellerMap[key]??={name:key,count:0,revenue:0,presale:0,day:0,residual:0};
+    sellerMap[key].count+=Number(r.ticket_count||0);
+    sellerMap[key].revenue+=Number(r.revenue||0);
+    if(r.channel==="presale")sellerMap[key].presale+=Number(r.ticket_count||0);
+    if(r.channel==="day")sellerMap[key].day+=Number(r.ticket_count||0);
+    if(r.channel==="quota_residual")sellerMap[key].residual+=Number(r.ticket_count||0);
+  }
+
+  return {
+    tickets,orders,
+    totalRevenue:ticketRevenueV+cashRevenueV,
+    ticketRevenue:ticketRevenueV,
+    cashRevenue:cashRevenueV,
+    ticketCount:ticketCountV,
+    orderCount:orderCountV,
+    rice:riceV,
+    sesame:sesameV,
+    channelMap,sourceMap,registerMap,hourMap,dailyMap,sellerMap
+  };
+}
+
+function render(){
+  if(!payload)return;
+  const a=aggregate();
+
+  totalRevenue.textContent=yen(a.totalRevenue);
+  ticketRevenue.textContent=yen(a.ticketRevenue);
+  cashRevenue.textContent=yen(a.cashRevenue);
+  ticketCount.textContent=num(a.ticketCount)+"枚";
+  orderCount.textContent=num(a.orderCount)+"件";
+  riceQty.textContent=num(a.rice)+"個";
+  sesameQty.textContent=num(a.sesame)+"個";
+
+  const channelLabels={
+    presale:"前売り券",
+    day:"当日券",
+    quota_residual:"ノルマ残券",
+    cash:"現金注文"
+  };
+  const channelItems=Object.entries(a.channelMap).map(([k,v])=>({
+    label:channelLabels[k]||k,
+    revenue:v.revenue,
+    count:v.count
+  })).sort((x,y)=>y.revenue-x.revenue);
+
+  channelBreakdown.innerHTML=statRows(
+    channelItems,
+    "revenue",
+    (v,x)=>`${yen(v)} / ${num(x.count)}件`
+  );
+
+  const sourceLabels={
+    cash:"現金のみ",
+    ticket:"QR交換のみ",
+    mixed:"QR＋現金"
+  };
+  const sourceItems=Object.entries(a.sourceMap).map(([k,v])=>({
+    label:sourceLabels[k]||k,
+    orders:v.orders,
+    cash:v.cash,
+    rice:v.rice,
+    sesame:v.sesame
+  })).sort((x,y)=>y.orders-x.orders);
+
+  orderSourceBreakdown.innerHTML=statRows(
+    sourceItems,
+    "orders",
+    (v,x)=>`${num(v)}件 / 現金 ${yen(x.cash)}`
+  );
+
+  const registerLabels={red:"赤レジ",blue:"青レジ",green:"緑レジ","未設定":"レジ未設定"};
+  const registerItems=Object.entries(a.registerMap).map(([k,v])=>({
+    label:registerLabels[k]||k,
+    orders:v.orders,
+    cash:v.cash
+  })).sort((x,y)=>y.orders-x.orders);
+
+  registerBreakdown.innerHTML=
+    '<div class="filter-title" style="margin-top:4px">レジ別</div>'+
+    statRows(registerItems,"orders",(v,x)=>`${num(v)}件 / 現金 ${yen(x.cash)}`);
+
+  const hours=Object.values(a.hourMap).sort((x,y)=>String(x.label).localeCompare(String(y.label)));
+  hourly.innerHTML=hours.length?hours.map(x=>`
+    <div class="hour-row">
+      <div class="hour-label">${esc(x.label)}</div>
+      <div class="hour-main">
+        <div class="hour-sales">${esc(yen(x.revenue))}</div>
+        <div class="hour-products">炒飯 ${num(x.rice)}個 / 団子 ${num(x.sesame)}個</div>
+      </div>
+      <div class="hour-count">券 ${num(x.tickets)} / 注文 ${num(x.orders)}</div>
+    </div>
+  `).join(""):'<div class="empty">データはありません。</div>';
+
+  const daily=Object.values(a.dailyMap);
+  dailyRows.innerHTML=daily.length?daily.map(x=>`
+    <tr>
+      <td>${esc(x.label)}</td>
+      <td class="num">${esc(yen(x.revenue))}</td>
+      <td class="num">${num(x.tickets)}</td>
+      <td class="num">${num(x.orders)}</td>
+      <td class="num">${num(x.rice)}</td>
+      <td class="num">${num(x.sesame)}</td>
+    </tr>
+  `).join(""):'<tr><td colspan="6" class="empty">対象期間を選択してください。</td></tr>';
+
+  const sellers=Object.values(a.sellerMap).sort((x,y)=>y.revenue-x.revenue || y.count-x.count);
+  sellerRows.innerHTML=sellers.length?sellers.map(x=>`
+    <tr>
+      <td>${esc(x.name)}</td>
+      <td class="num">${num(x.count)}</td>
+      <td class="num">${esc(yen(x.revenue))}</td>
+      <td class="num">${num(x.presale)}</td>
+      <td class="num">${num(x.day)}</td>
+      <td class="num">${num(x.residual)}</td>
+    </tr>
+  `).join(""):'<tr><td colspan="6" class="empty">券の販売データはありません。</td></tr>';
+}
+
+async function loadData(){
+  status.textContent="読み込み中...";
+  const {data,error}=await db.rpc("admin_sales_product_summary");
+  if(error){
+    status.textContent="エラー: "+error.message;
+    return;
+  }
+
+  payload=data||{days:[],ticket_buckets:[],order_buckets:[]};
+
+  const valid=new Set(scopeDefs().map(x=>x.key));
+  if(selectedKeys.size===0){
+    selectedKeys=new Set(valid);
+  }else{
+    selectedKeys=new Set([...selectedKeys].filter(x=>valid.has(x)));
+    if(selectedKeys.size===0)selectedKeys=new Set(valid);
+  }
+
+  renderFilters();
+  render();
+  status.textContent=
+    "更新："+new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+}
+
+(async()=>{
+  const {data:{user}}=await db.auth.getUser();
+  if(!user){location.href="home.html";return}
+  await loadData();
+})();
+</script>
+</body>
+</html>
