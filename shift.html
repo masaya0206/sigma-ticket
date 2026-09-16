@@ -105,7 +105,9 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
 .availability-note{font-size:12px;color:#6e6e73;margin-top:3px}
 .small-delete{width:auto!important;margin:0!important;padding:8px 12px!important;font-size:12px!important;background:#fff1f2!important;color:#b5121b!important}
 .empty-day{font-size:12px;color:#9a9090;padding-top:8px}
-.role-help{display:grid;gap:8px;margin:12px 0 16px}
+.role-family-note{margin:12px 0 10px;padding:11px 12px;border-radius:12px;background:#fff7f7;border:1px solid #f0d6d6;font-size:12px;line-height:1.6;color:#6e6e73}
+.role-family-note b{color:#b5121b}
+.role-help{display:grid;gap:8px;margin:10px 0 16px}
 .role-help>div{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:9px 10px;border-radius:12px;background:#faf7f5}
 .role-help b{color:#b5121b}
 .role-help span{font-size:12px;color:#6e6e73;line-height:1.5}
@@ -129,12 +131,19 @@ font-weight:700!important;line-height:1.15;box-shadow:none!important}
     <h2>希望職種</h2>
     <p class="small">配置の参考にします。必ず希望通りになるとは限りません。第1希望は必須、第2・第3希望は「希望なし」も選べます。</p>
 
+    <div class="role-family-note">
+      <b>売り子系職種：</b>
+      売り子を基本とし、レジ・買い出し補助・ドライバーは売り子から派生する職種として扱います。
+    </div>
+
     <div class="role-help">
       <div><b>売り子</b><span>テント外で声かけ・販売を担当</span></div>
-      <div><b>レジ</b><span>注文受付・現金会計・前売り券交換を担当</span></div>
+      <div><b>レジ</b><span>売り子から派生。注文受付・現金会計・前売り券交換を担当</span></div>
+      <div><b>買い出し補助</b><span>売り子から派生。不足した食材・備品の買い出しに同行</span></div>
+      <div><b>ドライバー</b><span>売り子から派生。買い出し時の運転を担当</span></div>
+      <div><b>店長</b><span>店舗全体の状況を見ながら、各担当への指示・調整を担当</span></div>
       <div><b>調理</b><span>炒飯・胡麻団子などの調理を担当</span></div>
       <div><b>サポート</b><span>商品の受け渡し・テント内補助を担当</span></div>
-      <div><b>買い出し補助</b><span>不足した食材・備品の買い出しに同行する場合あり</span></div>
     </div>
 
     <div class="field">
@@ -233,9 +242,11 @@ function mergeIntervals(items){
 const roleOptions=[
   ['seller','売り子'],
   ['register','レジ'],
+  ['shopping_helper','買い出し補助'],
+  ['shopping_driver','ドライバー'],
+  ['manager','店長'],
   ['cook','調理'],
-  ['support','サポート'],
-  ['shopping_helper','買い出し補助']
+  ['support','サポート']
 ];
 
 function setupRoleSelects(){
