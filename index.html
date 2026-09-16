@@ -304,6 +304,110 @@
   }
 </style>
 
+
+<style id="responsiveOverflowFixV1">
+/* 共通：iPhone/Safariを含む横はみ出し防止 */
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
+main>*,.card>*,.panel>*,.grid>*{
+  min-width:0;
+  max-width:100%;
+}
+input,select,textarea,button{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"]{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  -webkit-appearance:none;
+  appearance:none;
+}
+img,video,canvas,svg,iframe{
+  max-width:100%;
+}
+pre,code{
+  max-width:100%;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+table{
+  max-width:100%;
+}
+@media(max-width:600px){
+  main{width:100%;max-width:100%}
+  .card,.panel{max-width:100%;min-width:0}
+  input,select,textarea{font-size:16px}
+}
+</style>
+
+
+<style id="mixedCheckoutAndPickupFixV1">
+/* 受け取り番号：iPhone Safariでもカード内に確実に収める */
+.pickup-box{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.pickup-box input{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  inline-size:100%!important;
+  max-inline-size:100%!important;
+  min-inline-size:0!important;
+  -webkit-min-logical-width:0!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+}
+
+/* 現金＋QR併用表示 */
+.checkout-hint{
+  margin:8px 0 12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#fff8e8;
+  color:#6b4a00;
+  font-size:12px;
+  line-height:1.6;
+  text-align:left;
+}
+.mixed-summary{
+  margin:10px 0 2px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#fff1f2;
+  color:#8f0e15;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.55;
+}
+.mixed-badge{
+  display:inline-block;
+  margin-left:6px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#fff1f2;
+  color:#b5121b;
+  font-size:11px;
+  font-weight:900;
+}
+</style>
+
 </head>
 
 <body>
@@ -332,8 +436,12 @@
     <div class="small">お客さんに伝える番号を入力してください。</div>
   </div>
   <div class="cash-order">
-    <h2>現金会計</h2>
+    <h2>現金会計 <span class="mixed-badge">QR併用可</span></h2>
     <div id="myRegisterLabel" class="small">レジ情報を確認中...</div>
+    <div class="checkout-hint">
+      QR券と現金商品を一緒に注文する場合は、ここで現金追加分の数量を選んでからQRを読み取ってください。
+      QR交換確定時に1つの注文として厨房へ送信されます。
+    </div>
 
     <div class="cash-grid">
       <div class="cash-item">
@@ -774,7 +882,8 @@ let scanner = null;
           </p>
 
           <div class="subcard">
-            <strong>交換する商品を選択</strong><br><br>
+            <strong>交換する商品を選択</strong><br>
+            <div id="mixedCashSummary" class="mixed-summary" style="display:none"></div>
             <button id="useRiceButton" onclick="useTicket('${data.ticket_code}','fried_rice')">
               🍚 炒飯1個と交換
             </button>
@@ -790,6 +899,7 @@ let scanner = null;
         `;
 
         await showRegisterPriceInfo();
+        updateMixedUi();
         return;
       }
 
@@ -933,11 +1043,29 @@ let scanner = null;
       resultBox.innerHTML =
         "使用処理中...";
 
-      const { data: rpcData, error } = await supabaseClient.rpc("use_ticket_and_record_order", {
-        p_ticket_code: ticketCode,
-        p_item: item,
-        p_pickup_number: pickup
-      });
+      const hasCashAddOn=(cashRice+cashSesame)>0;
+
+      const rpcName=hasCashAddOn
+        ? "use_ticket_and_record_mixed_order"
+        : "use_ticket_and_record_order";
+
+      const rpcArgs=hasCashAddOn
+        ? {
+            p_ticket_code:ticketCode,
+            p_item:item,
+            p_cash_rice:cashRice,
+            p_cash_sesame:cashSesame,
+            p_pickup_number:pickup
+          }
+        : {
+            p_ticket_code:ticketCode,
+            p_item:item,
+            p_pickup_number:pickup
+          };
+
+      const { data: rpcData, error } =
+        await supabaseClient.rpc(rpcName,rpcArgs);
+
       const data = rpcData?.[0] || null;
 
       if (error) {
@@ -1019,18 +1147,35 @@ let scanner = null;
               staffName
           });
 
+      const mixedCashAmount=Number(data.cash_amount||0);
+      const mixedCashRice=Number(data.cash_rice_qty||0);
+      const mixedCashSesame=Number(data.cash_sesame_qty||0);
+      const isMixed=(mixedCashRice+mixedCashSesame)>0;
+
       resultBox.className =
         "valid";
 
       resultBox.innerHTML = `
-        <h2>✅ 使用完了</h2>
+        <h2>✅ ${isMixed ? "併用会計完了" : "使用完了"}</h2>
 
         <p>
+          <strong>QR交換：</strong>
           ${data.redemption_item === "fried_rice" ? "炒飯1個" : "胡麻団子2個"}
         </p>
 
-        <p><strong>当日価格：</strong>${data.redemption_price}円</p>
-        ${data.cashback_amount > 0 ? `<p class="warning"><strong>💴 ${data.cashback_amount}円を購入者へ返金してください</strong></p>` : `<p>追加返金なし</p>`}
+        ${isMixed ? `
+          <p>
+            <strong>現金追加：</strong>
+            ${[
+              mixedCashRice>0 ? `炒飯 ${mixedCashRice}個` : "",
+              mixedCashSesame>0 ? `胡麻団子 ${mixedCashSesame}個` : ""
+            ].filter(Boolean).join("・")}
+          </p>
+          <p><strong>現金追加分：</strong>${mixedCashAmount.toLocaleString()}円</p>
+        ` : ""}
+
+        <p><strong>QR交換商品の当日価格：</strong>${data.redemption_price}円</p>
+        ${data.cashback_amount > 0 ? `<p class="warning"><strong>💴 QR券差額 ${data.cashback_amount}円を購入者へ返金してください</strong></p>` : `<p>QR券の追加返金なし</p>`}
 
         <p>
           ${new Date(
@@ -1063,6 +1208,12 @@ let scanner = null;
           🏠 ポータルに戻る
         </button>
       `;
+
+      if(isMixed){
+        cashRice=0;
+        cashSesame=0;
+        renderCashOrder();
+      }
     }
 
 
@@ -1088,6 +1239,42 @@ let scanner = null;
       return qty * registerMenu.sesameSingle;
     }
 
+    function updateMixedUi(){
+      const total=
+        cashRice*registerMenu.rice+
+        cashSesameAmount(cashSesame);
+
+      const summary=document.getElementById("mixedCashSummary");
+      const riceBtn=document.getElementById("useRiceButton");
+      const sesameBtn=document.getElementById("useSesameButton");
+      const hasAddon=(cashRice+cashSesame)>0;
+
+      if(summary){
+        if(hasAddon){
+          const items=[
+            cashRice>0?`炒飯 ${cashRice}個`:"",
+            cashSesame>0?`胡麻団子 ${cashSesame}個`:""
+          ].filter(Boolean).join("・");
+          summary.style.display="block";
+          summary.textContent=`現金追加：${items} ／ ${total.toLocaleString()}円`;
+        }else{
+          summary.style.display="none";
+          summary.textContent="";
+        }
+      }
+
+      if(riceBtn){
+        riceBtn.textContent=hasAddon
+          ? "🍚 炒飯1個をQR交換＋現金追加を確定"
+          : "🍚 炒飯1個と交換";
+      }
+      if(sesameBtn){
+        sesameBtn.textContent=hasAddon
+          ? "● 胡麻団子2個をQR交換＋現金追加を確定"
+          : "● 胡麻団子2個と交換";
+      }
+    }
+
     function renderCashOrder(){
       const r=document.getElementById("cashRiceQty");
       const s=document.getElementById("cashSesameQty");
@@ -1103,6 +1290,8 @@ let scanner = null;
 
       const b=document.getElementById("cashOrderButton");
       if(b) b.disabled=(cashRice+cashSesame===0);
+
+      updateMixedUi();
     }
 
     async function loadCashOrderSettings(){

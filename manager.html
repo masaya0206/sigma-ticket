@@ -17,7 +17,7 @@ main{max-width:720px;margin:auto;padding:16px}
 .card{background:#fff;border:1px solid var(--line);border-radius:19px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(55,20,20,.06)}
 .summary{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{padding:14px;border-radius:15px;background:var(--soft)}
 .stat span{display:block;color:var(--muted);font-size:12px}.stat strong{display:block;margin-top:4px;font-size:25px}
-.tools{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tools{display:grid;grid-template-columns:1fr;gap:12px}
 button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;background:var(--soft);color:var(--red)}
 .order{border-left:5px solid #ddd}.order.new{border-left-color:#b5121b}.order.cooking{border-left-color:#d98b00}.order.ready{border-left-color:#15803d}
 .order-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.order-items{font-size:20px;font-weight:900}
@@ -28,9 +28,9 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
 .global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}
 .global-bottom-nav button{margin:0;padding:7px 4px;background:transparent;color:#6e6e73;font-size:11px}.global-bottom-nav .gicon{display:block;font-size:20px;margin-bottom:4px}
 
-.tool-grid{display:grid;grid-template-columns:1fr;gap:12px}
 
-.tool-grid button{width:100%;min-height:62px;margin:0}
+
+.tools button{width:100%;min-height:64px;margin:0;padding:15px 14px;border-radius:14px}
 </style>
 </head>
 <body>
@@ -136,7 +136,7 @@ async function loadOrders(){
           <div class="order-items">${items}</div>
           <div class="meta">
             <span class="color-dot ${x.register_color||""}"></span>${colorName(x.register_color)}
-            ／ ${x.source==="cash"?"現金":"QR交換"} ／ ${time(x.ordered_at)}
+            ／ ${x.source==="cash"?"現金":x.source==="mixed"?"QR＋現金":"QR交換"} ／ ${time(x.ordered_at)}
           </div>
         </div>
         <strong>${statusName(x.order_status)}</strong>
