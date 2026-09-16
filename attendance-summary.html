@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>勤務時間集計</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;max-width:100%;overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink);padding-bottom:80px}
+main{max-width:760px;margin:auto;padding:18px 14px 42px}
+button,input,select{font:inherit;box-sizing:border-box;max-width:100%}
+.back{width:auto;padding:10px 14px;border:1px solid var(--red);border-radius:12px;background:#fff;color:var(--red);font-weight:800}
+h1{font-size:25px;margin:18px 0 4px}
+.sub{font-size:13px;color:var(--muted);line-height:1.55}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;margin:12px 0;min-width:0}
+.controls{display:grid;grid-template-columns:1fr 160px;gap:9px}
+.controls input,.controls select{width:100%;min-width:0;padding:11px;border:1px solid #ddd;border-radius:11px;background:#fff}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.metric{background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px}
+.metric .v{font-size:22px;font-weight:950;color:var(--red)}
+.metric .l{font-size:11px;color:var(--muted);margin-top:3px}
+.person{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin:10px 0}
+.person-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.person-name{font-size:17px;font-weight:900;min-width:0}
+.person-total{font-size:20px;font-weight:950;color:var(--red);white-space:nowrap}
+.total-track{height:9px;background:#f0e8e6;border-radius:999px;overflow:hidden;margin:9px 0 12px}
+.total-bar{height:100%;background:var(--red);border-radius:999px}
+.day-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.day{min-width:0;text-align:center}
+.day-label{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day-bar-wrap{height:54px;display:flex;align-items:flex-end;justify-content:center;margin:4px 0}
+.day-bar{width:70%;min-height:2px;background:#d45a61;border-radius:6px 6px 2px 2px}
+.day-time{font-size:10px;font-weight:800}
+.role-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.role{padding:5px 8px;border-radius:999px;background:var(--soft);font-size:11px;color:#861219;font-weight:800}
+details{margin-top:10px;border-top:1px solid #eee;padding-top:9px}
+summary{font-size:12px;font-weight:800;color:#5f5552;cursor:pointer}
+.session{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #f1ecea;font-size:12px}
+.empty{padding:28px 14px;text-align:center;color:var(--muted)}
+.refresh{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red);color:#fff;font-weight:900;margin-top:8px}
+@media(max-width:560px){
+  .controls{grid-template-columns:1fr}
+  .metrics{grid-template-columns:1fr 1fr}
+  .metrics .metric:last-child{grid-column:1/-1}
+  .person{padding:12px}
+  .day-grid{gap:3px}
+  .day-label,.day-time{font-size:9px}
+}
+</style>
+</head>
+<body>
+<main>
+<button class="back" onclick="location.href='admin-menu.html'">← 管理者メニュー</button>
+<h1>勤務時間集計</h1>
+<div class="sub">シグマ祭5日間の実働を、累計・日別・役割別で確認します。出勤中のスタッフは現在時刻までを暫定集計します。</div>
+
+<div class="card">
+  <div class="controls">
+    <input id="search" placeholder="名前で検索" oninput="render()">
+    <select id="sort" onchange="render()">
+      <option value="time_desc">勤務時間が長い順</option>
+      <option value="time_asc">勤務時間が短い順</option>
+      <option value="name">名前順</option>
+    </select>
+  </div>
+  <button class="refresh" onclick="loadData()">最新の勤務時間に更新</button>
+</div>
+
+<div class="metrics">
+  <div class="metric"><div class="v" id="peopleCount">-</div><div class="l">勤務記録あり</div></div>
+  <div class="metric"><div class="v" id="totalHours">-</div><div class="l">総人時</div></div>
+  <div class="metric"><div class="v" id="avgHours">-</div><div class="l">1人平均</div></div>
+</div>
+
+<div id="status" class="sub" style="margin:12px 2px"></div>
+<div id="list"></div>
+</main>
+
+<script>
+const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const roleName={
+  seller:"売り子",register:"レジ",cook:"調理",support:"サポート",
+  shopping_helper:"買い出し補助",shopping_driver:"ドライバー",manager:"店長"
+};
+
+let people=[],days=[];
+
+const esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+
+function hm(minutes){
+  const m=Math.max(0,Math.round(Number(minutes)||0));
+  const h=Math.floor(m/60), r=m%60;
+  if(h===0)return `${r}分`;
+  if(r===0)return `${h}時間`;
+  return `${h}時間${r}分`;
+}
+function shortDate(v){
+  const d=new Date(v);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function clock(v){
+  if(!v)return "出勤中";
+  return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+}
+
+async function loadData(){
+  status.textContent="読み込み中...";
+  const{data,error}=await db.rpc("manager_staff_work_summary");
+  if(error){
+    status.textContent="エラー: "+error.message;
+    list.innerHTML="";
+    return;
+  }
+  people=data?.staff||[];
+  days=data?.days||[];
+  status.textContent=`更新：${new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}`;
+  render();
+}
+
+function render(){
+  const q=search.value.trim().toLowerCase();
+  let rows=people.filter(p=>!q || String(p.staff_name||"").toLowerCase().includes(q));
+
+  if(sort.value==="time_desc") rows.sort((a,b)=>Number(b.total_minutes)-Number(a.total_minutes));
+  if(sort.value==="time_asc") rows.sort((a,b)=>Number(a.total_minutes)-Number(b.total_minutes));
+  if(sort.value==="name") rows.sort((a,b)=>String(a.staff_name).localeCompare(String(b.staff_name),"ja"));
+
+  const worked=people.filter(p=>Number(p.total_minutes)>0);
+  const total=worked.reduce((s,p)=>s+Number(p.total_minutes||0),0);
+  peopleCount.textContent=worked.length+"人";
+  totalHours.textContent=hm(total);
+  avgHours.textContent=worked.length?hm(total/worked.length):"0分";
+
+  const max=Math.max(1,...people.map(p=>Number(p.total_minutes||0)));
+
+  list.innerHTML=rows.length?rows.map(p=>{
+    const pDays=Array.isArray(p.days)?p.days:[];
+    const dayMap=Object.fromEntries(pDays.map(x=>[String(x.day_id),x]));
+    const roles=Array.isArray(p.roles)?p.roles:[];
+    const sessions=Array.isArray(p.sessions)?p.sessions:[];
+
+    const dayHtml=days.map(d=>{
+      const x=dayMap[String(d.id)]||{minutes:0};
+      const mins=Number(x.minutes||0);
+      const pct=Math.min(100,(mins/Math.max(1,Number(d.duration_minutes||1)))*100);
+      return `<div class="day">
+        <div class="day-label">${esc(d.label)}<br>${esc(shortDate(d.starts_at))}</div>
+        <div class="day-bar-wrap"><div class="day-bar" style="height:${Math.max(mins?5:2,pct)}%"></div></div>
+        <div class="day-time">${mins?esc(hm(mins)):"-"}</div>
+      </div>`;
+    }).join("");
+
+    const roleHtml=roles.filter(r=>Number(r.minutes)>0).map(r=>
+      `<span class="role">${esc(roleName[r.role]||r.role)} ${esc(hm(r.minutes))}</span>`
+    ).join("") || '<span class="role">勤務記録なし</span>';
+
+    const sessionHtml=sessions.map(s=>
+      `<div class="session"><span>${esc(s.day_label)}　${esc(clock(s.clock_in))}〜${esc(clock(s.clock_out))}</span><b>${esc(hm(s.minutes))}</b></div>`
+    ).join("");
+
+    return `<div class="person">
+      <div class="person-head">
+        <div class="person-name">${esc(p.staff_name)}</div>
+        <div class="person-total">${esc(hm(p.total_minutes))}</div>
+      </div>
+      <div class="total-track"><div class="total-bar" style="width:${Math.max(Number(p.total_minutes)>0?2:0,(Number(p.total_minutes||0)/max)*100)}%"></div></div>
+      <div class="day-grid">${dayHtml}</div>
+      <div class="role-wrap">${roleHtml}</div>
+      <details>
+        <summary>出退勤の内訳を見る</summary>
+        ${sessionHtml||'<div class="empty">勤務記録はありません。</div>'}
+      </details>
+    </div>`;
+  }).join(""):'<div class="empty">該当するスタッフはいません。</div>';
+}
+
+(async()=>{
+  const{data:{user}}=await db.auth.getUser();
+  if(!user){location.href="home.html";return}
+  await loadData();
+})();
+</script>
+</body></html>

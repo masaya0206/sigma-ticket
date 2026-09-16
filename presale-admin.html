@@ -107,31 +107,53 @@ input[type="time"]::-webkit-datetime-edit{
 .lock-note{font-size:12px;color:#7a6a64;line-height:1.55;margin-top:8px}
 </style>
 
+
+<style id="testModeQuotaResetStyleV2">
+.mode-card{border:2px solid #eadfdb}
+.mode-status{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.mode-pill{display:inline-block;padding:7px 11px;border-radius:999px;font-weight:900;font-size:13px}
+.mode-pill.test{background:#fff0c8;color:#7a4b00}
+.mode-pill.live{background:#e8f7ec;color:#14692e}
+.mode-explain{font-size:12px;color:#725b5b;line-height:1.65}
+.reset-all{background:#8a4b00!important}
+td .mini{white-space:nowrap}
+</style>
+
 </head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>前売り・券種管理</h1>
 <div class="card"><h2>販売設定</h2><div class="grid"><div><label>前売り券価格</label><input id="pp" type="number"></div><div><label>当日券価格</label><input id="dp" type="number"></div></div><label><input id="pe" type="checkbox" style="width:auto"> 前売り券を販売中</label><br><label><input id="de" type="checkbox" style="width:auto"> 当日券を販売中</label><br><label>ノルマ選択期限</label><input id="deadline" type="datetime-local"><label>前売り終了予定</label><input id="endat" type="datetime-local"><button onclick="saveSettings()">設定を保存</button><p id="setmsg"></p></div>
 
 
 </div>
 
+<div class="card mode-card">
+  <div class="mode-status">
+    <h2 style="margin:0">運用モード</h2>
+    <span id="modePill" class="mode-pill test">確認中...</span>
+  </div>
+  <div id="modeExplain" class="mode-explain"></div>
+  <button id="modeButton" class="secondary" onclick="toggleTestMode()">モードを切り替える</button>
+  <p id="modemsg"></p>
+</div>
+
 <div class="card">
   <h2>ノルマ確定</h2>
   <p class="muted">未選択者は6枚として確定します。確定した瞬間から徴収額が固定されます。</p>
   <button class="danger" onclick="confirmAll()">全スタッフのノルマを確定</button>
-  <button class="warn" onclick="unlockAll()">販売前の確定を一括解除</button>
-  <div class="lock-note">
-    解除できるのは、前売り販売実績がなく、ノルマ譲渡が進行中でないスタッフだけです。
-    前売り終了・残券確定後は解除できません。
+  <button class="reset-all" onclick="unlockAll()">全員のノルマ再設定を許可</button>
+  <div class="lock-note" id="quotaResetHelp">
+    本番モードでは販売済み・譲渡済み・前売り終了後の再設定を制限します。
+    テストモードではテストしやすいよう管理者が強制的に再設定できます。
   </div>
   <p id="cmsg"></p>
 </div>
 <div class="card"><h2>前売り終了・残券確定</h2><p class="muted">祭前販売を締め、その瞬間の残券数と売れ残り率を固定します。同時に前売り停止・当日券販売開始になります。</p><button class="danger" onclick="closePre()">前売りを締めて残券を確定</button><p id="clmsg"></p></div>
 <div class="card"><h2>ポイント変数</h2><p class="muted">ノルマ加速係数は「変数設定」に一本化しました。</p><button onclick="location.href='variables-admin.html'">変数設定を開く</button></div>
 <div class="card"><h2>最終インセンティブ</h2><p class="muted">前売り・食材保存・当日内・当日外の最終配分は専用画面で計算します。</p><button onclick="location.href='incentive-admin.html'">最終インセンティブ計算を開く</button></div>
-<div class="card"><h2>スタッフ一覧</h2><button class="secondary" onclick="loadStaff()">更新</button><div style="overflow:auto"><table><thead><tr><th>名前</th><th>希望</th><th>確定</th><th>販売</th><th>pt</th><th>残券</th><th>確定操作</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="card"><h2>スタッフ一覧</h2><button class="secondary" onclick="loadStaff()">更新</button><div style="overflow:auto"><table><thead><tr><th>名前</th><th>希望</th><th>確定</th><th>販売</th><th>pt</th><th>現在残り</th><th>ノルマ操作</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const loc=v=>v?new Date(new Date(v).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';const iso=v=>v?new Date(v).toISOString():null;
 async function ensureAdmin(){const{data:{user}}=await db.auth.getUser();if(!user)throw Error('ログインしてください');const{data}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data)throw Error('管理者のみ利用できます')}
-let keepIncentive=0,keepTotalSales=0;
+let keepIncentive=0,keepTotalSales=0,testMode=true;
 async function loadSettings(){
   await ensureAdmin();
   const{data,error}=await db.from('ticket_sales_settings').select('*').eq('id',1).single();
@@ -144,6 +166,8 @@ async function loadSettings(){
   endat.value=loc(data.presale_end_at);
   keepIncentive=Number(data.total_incentive_pool||0);
   keepTotalSales=Number(data.final_total_sales_amount||0);
+  testMode=data.test_mode!==false;
+  renderMode();
 }
 async function saveSettings(){
   setmsg.textContent='保存中...';
@@ -162,6 +186,37 @@ async function saveSettings(){
 
 
 
+
+function renderMode(){
+  if(!modePill)return;
+  modePill.textContent=testMode?'テストモード':'本番モード';
+  modePill.className='mode-pill '+(testMode?'test':'live');
+  modeButton.textContent=testMode?'本番モードに切り替える':'テストモードに戻す';
+  modeExplain.innerHTML=testMode
+    ? 'テスト中です。<b>販売実績があるスタッフでもノルマ再設定が可能</b>です。再設定時は関連するノルマ譲渡をキャンセルします。前売り締め済みの場合はテスト用に前売りを再開します。'
+    : '本番運用です。販売実績や譲渡があるスタッフ、前売り終了後の再設定は安全のため制限されます。';
+}
+
+async function toggleTestMode(){
+  const next=!testMode;
+  const text=next
+    ? 'テストモードに戻しますか？\n\nノルマ再設定などの制限が緩和されます。'
+    : '本番モードに切り替えますか？\n\n販売後のノルマ再設定などが制限されます。';
+  if(!confirm(text))return;
+
+  modemsg.textContent='変更中...';
+  const{data,error}=await db.rpc('admin_set_test_mode',{p_enabled:next});
+  if(error){
+    modemsg.textContent='エラー: '+error.message;
+    return;
+  }
+  testMode=!!data.test_mode;
+  renderMode();
+  modemsg.textContent=`✅ ${testMode?'テスト':'本番'}モードに変更しました`;
+  await loadStaff();
+}
+
+
 async function confirmAll(){
   if(!confirm('全員のノルマを確定します。確定後は徴収額が固定されます。よろしいですか？'))return;
   const{data,error}=await db.rpc('confirm_all_presale_quotas');
@@ -170,24 +225,36 @@ async function confirmAll(){
 }
 
 async function unlockOne(userId,staffName,sold){
-  if(Number(sold)>0){
-    alert('前売り販売実績があるため、このスタッフの確定は解除できません。');
-    return;
-  }
-  if(!confirm(`${staffName}さんのノルマ確定を解除しますか？\n\n解除すると、本人が再び希望ノルマを変更できる状態に戻ります。`))return;
+  const soldN=Number(sold||0);
+  const extra=testMode && soldN>0
+    ? `
 
-  cmsg.textContent='解除中...';
+※テストモードのため、販売済み ${soldN}枚のデータは残したままノルマ確定だけ解除します。`
+    : '';
+
+  if(!confirm(`${staffName}さんのノルマを再設定できる状態に戻しますか？${extra}`))return;
+
+  cmsg.textContent='再設定を許可中...';
   const{data,error}=await db.rpc('admin_unlock_presale_quota',{p_user:userId});
   cmsg.textContent=error
     ? 'エラー: '+error.message
-    : `✅ ${staffName}さんのノルマ確定を解除しました`;
+    : `✅ ${staffName}さんがノルマを再設定できる状態になりました`;
+  await loadSettings();
   await loadStaff();
 }
 
 async function unlockAll(){
-  if(!confirm('販売前のスタッフについて、ノルマ確定を一括解除しますか？\n\n販売実績がある人・譲渡中の人は解除されません。'))return;
+  const text=testMode
+    ? '全員のノルマ再設定を許可しますか？
 
-  cmsg.textContent='一括解除中...';
+テストモードでは販売済みスタッフも含めて確定を解除し、ノルマ譲渡をキャンセルします。前売り締め済みならテスト用に再開します。'
+    : '再設定可能な全スタッフのノルマ確定を解除しますか？
+
+本番モードでは販売済み・譲渡ありのスタッフはスキップされます。';
+
+  if(!confirm(text))return;
+
+  cmsg.textContent='一括で再設定を許可中...';
   const{data,error}=await db.rpc('admin_unlock_all_presale_quotas');
 
   if(error){
@@ -195,10 +262,11 @@ async function unlockAll(){
     return;
   }
 
-  cmsg.textContent=
-    `✅ ${data.unlocked}人を解除しました`+
-    ` / 販売済み ${data.skipped_sales}人`+
-    ` / 譲渡あり ${data.skipped_transfers}人`;
+  cmsg.textContent=testMode
+    ? `✅ ${data.unlocked}人を再設定可能にしました`
+    : `✅ ${data.unlocked}人を再設定可能にしました / 販売済み ${data.skipped_sales}人 / 譲渡あり ${data.skipped_transfers}人`;
+
+  await loadSettings();
   await loadStaff();
 }
 
@@ -219,9 +287,9 @@ async function loadStaff(){
     const sold=Number(x.presale_sold||0);
     const action=!confirmed
       ? '<span class="muted">未確定</span>'
-      : sold>0
-        ? '<span class="muted">販売済み</span>'
-        : `<button class="mini warn" onclick='unlockOne(${JSON.stringify(x.user_id)},${JSON.stringify(x.staff_name)},${sold})'>解除</button>`;
+      : (!testMode && sold>0)
+        ? '<span class="muted">販売済み・固定</span>'
+        : `<button class="mini warn" onclick='unlockOne(${JSON.stringify(x.user_id)},${JSON.stringify(x.staff_name)},${sold})'>ノルマを再設定</button>`;
 
     return `<tr>
       <td>${x.staff_name}</td>
