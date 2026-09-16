@@ -122,9 +122,6 @@ td .mini{white-space:nowrap}
 </head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>前売り・券種管理</h1>
 <div class="card"><h2>販売設定</h2><div class="grid"><div><label>前売り券価格</label><input id="pp" type="number"></div><div><label>当日券価格</label><input id="dp" type="number"></div></div><label><input id="pe" type="checkbox" style="width:auto"> 前売り券を販売中</label><br><label><input id="de" type="checkbox" style="width:auto"> 当日券を販売中</label><br><label>ノルマ選択期限</label><input id="deadline" type="datetime-local"><label>前売り終了予定</label><input id="endat" type="datetime-local"><button onclick="saveSettings()">設定を保存</button><p id="setmsg"></p></div>
 
-
-</div>
-
 <div class="card mode-card">
   <div class="mode-status">
     <h2 style="margin:0">運用モード</h2>
@@ -154,6 +151,20 @@ td .mini{white-space:nowrap}
 const loc=v=>v?new Date(new Date(v).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';const iso=v=>v?new Date(v).toISOString():null;
 async function ensureAdmin(){const{data:{user}}=await db.auth.getUser();if(!user)throw Error('ログインしてください');const{data}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data)throw Error('管理者のみ利用できます')}
 let keepIncentive=0,keepTotalSales=0,testMode=true;
+const pp=document.getElementById('pp');
+const dp=document.getElementById('dp');
+const pe=document.getElementById('pe');
+const de=document.getElementById('de');
+const deadline=document.getElementById('deadline');
+const endat=document.getElementById('endat');
+const setmsg=document.getElementById('setmsg');
+const modePill=document.getElementById('modePill');
+const modeExplain=document.getElementById('modeExplain');
+const modeButton=document.getElementById('modeButton');
+const modemsg=document.getElementById('modemsg');
+const cmsg=document.getElementById('cmsg');
+const clmsg=document.getElementById('clmsg');
+const rows=document.getElementById('rows');
 async function loadSettings(){
   await ensureAdmin();
   const{data,error}=await db.from('ticket_sales_settings').select('*').eq('id',1).single();
@@ -245,12 +256,12 @@ async function unlockOne(userId,staffName,sold){
 
 async function unlockAll(){
   const text=testMode
-    ? '全員のノルマ再設定を許可しますか？
+    ? `全員のノルマ再設定を許可しますか？
 
-テストモードでは販売済みスタッフも含めて確定を解除し、ノルマ譲渡をキャンセルします。前売り締め済みならテスト用に再開します。'
-    : '再設定可能な全スタッフのノルマ確定を解除しますか？
+テストモードでは販売済みスタッフも含めて確定を解除し、ノルマ譲渡をキャンセルします。前売り締め済みならテスト用に再開します。`
+    : `再設定可能な全スタッフのノルマ確定を解除しますか？
 
-本番モードでは販売済み・譲渡ありのスタッフはスキップされます。';
+本番モードでは販売済み・譲渡ありのスタッフはスキップされます。`;
 
   if(!confirm(text))return;
 
@@ -302,4 +313,4 @@ async function loadStaff(){
     </tr>`;
   }).join('');
 }
-(async()=>{try{await loadSettings();await loadStaff()}catch(e){document.body.innerHTML='<main><div class="card">'+e.message+'</div></main>'}})();</script></main></body></html>
+(async()=>{try{await loadSettings();await loadStaff()}catch(e){setmsg.textContent='読み込みエラー: '+e.message;modemsg.textContent='読み込みエラー';console.error(e)}})();</script></main></body></html>
