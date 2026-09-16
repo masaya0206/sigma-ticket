@@ -1,11 +1,11 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>シフト集計・日時設定</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
+html,body{max-width:100%;overflow-x:hidden}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
 header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
 header h1{margin:0;font-size:27px}
-main{max-width:720px;margin:auto;padding:18px}
-.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
-button,input,select,textarea{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
+main{width:100%;max-width:720px;margin:auto;padding:18px;overflow:hidden}
+.card{width:100%;max-width:100%;min-width:0;background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07);overflow:hidden}
+button,input,select,textarea{display:block;width:100%;max-width:100%;min-width:0;padding:13px;border-radius:13px;font-size:16px;margin:7px 0;box-sizing:border-box}
 input,select,textarea{border:1px solid #ddd5d1;background:#fff}
 button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 .primary{background:#b5121b;color:#fff}
@@ -37,7 +37,20 @@ button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 details.missing{margin-top:10px;background:#faf8f7;border-radius:12px;padding:10px 12px}
 details.missing summary{cursor:pointer;font-weight:800}
 .missing-list{margin-top:8px;font-size:12px;line-height:1.8;color:#6e6e73}
-@media(max-width:520px){.grid{grid-template-columns:1fr}.day-head{display:block}}
+@media(max-width:520px){
+  main{padding:12px}
+  .card{padding:14px}
+  .grid{grid-template-columns:1fr}
+  .day-head{display:block}
+  .row{min-width:0}
+  input[type="datetime-local"]{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    font-size:16px!important;
+    padding:12px 10px!important;
+  }
+}
 
 </style></head><body>
 <header><h1>📅 シフト集計・日時設定</h1></header><main>

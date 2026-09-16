@@ -326,7 +326,6 @@
 <body>
 
   <h1>シグマ祭 管理者画面</h1>
-  <button onclick="location.href='operations.html'">💴 価格・販売管理</button>
 
   <div id="loginArea" class="card">
     <h2>管理者ログイン</h2>
@@ -392,12 +391,7 @@
       <button onclick="toggleMainPanel('sellerManagementArea')">
         🎫 発行者管理
       </button>
-
-      <button onclick="toggleMainPanel('staffManagementArea')">
-        👥 スタッフ・シフト管理
-      </button>
-
-      <button onclick="location.href='points-admin.html'">
+<button onclick="location.href='points-admin.html'">
         ⭐ ポイント管理
       </button>
 
@@ -448,80 +442,6 @@
         </div>
       </div>
     </div>
-
-
-    <div id="staffManagementArea" class="card panel">
-      <h2>スタッフ・シフト管理</h2>
-
-      <div class="subcard">
-        <h3>スタッフ一覧</h3>
-
-        <p class="small">
-          チケット発行は全スタッフ共通です。
-          スキャン権限はレジ勤務中かどうかで判定します。
-        </p>
-
-        <button onclick="loadStaffMembers()">
-          スタッフ一覧を更新
-        </button>
-
-        <div id="staffMemberList">
-          未読み込み
-        </div>
-      </div>
-
-      <div class="subcard">
-        <h3>シフトを追加</h3>
-
-        <select id="assignmentStaff">
-          <option value="">スタッフを選択</option>
-        </select>
-
-        <select id="assignmentRole">
-          <option value="">役割を選択</option>
-          <option value="seller">売り子</option>
-          <option value="manager">店長</option>
-          <option value="register">レジ</option>
-          <option value="cook">調理</option>
-          <option value="support">サポート</option>
-        </select>
-
-        <input
-          id="assignmentStart"
-          type="datetime-local"
-        >
-
-        <input
-          id="assignmentEnd"
-          type="datetime-local"
-        >
-
-        <button onclick="saveAssignment()">
-          シフトを保存
-        </button>
-
-        <p id="assignmentMessage"></p>
-      </div>
-
-      <div class="subcard">
-        <h3>シフト一覧</h3>
-
-        <input
-          id="assignmentDate"
-          type="date"
-          onchange="loadAssignments()"
-        >
-
-        <button onclick="setAssignmentDateToday()">
-          今日を表示
-        </button>
-
-        <div id="assignmentList">
-          未読み込み
-        </div>
-      </div>
-    </div>
-
 
     <div id="ticketManagementArea" class="card panel">
       <h2>チケット管理</h2>
