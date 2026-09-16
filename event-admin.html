@@ -16,11 +16,40 @@ button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
 .row{padding:11px 0;border-top:1px solid #eee}
 .pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff1f2;color:#b5121b;font-size:12px;font-weight:800}
 .ok{color:#15803d;font-weight:800}.err{color:#b00020;font-weight:800}
-@media(max-width:520px){.grid{grid-template-columns:1fr}}
+
+.shift-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin}
+.shift-tab{width:auto;min-width:max-content;padding:10px 13px;margin:0;background:#f3efed;color:#5f5551;border:1px solid #e4dcd8}
+.shift-tab.active{background:#b5121b;color:#fff;border-color:#b5121b}
+.shift-summary{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px}
+.shift-summary .pill{background:#f7f4f2;color:#5f5551}
+.day-block{border:1px solid #ebe4e0;border-radius:16px;padding:14px;margin:12px 0;background:#fff}
+.day-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.day-title{font-size:19px;font-weight:900}
+.day-date{font-size:12px;color:#6e6e73;margin-top:3px}
+.staff-shift{padding:12px 0;border-top:1px solid #eee}
+.staff-shift:first-of-type{border-top:0}
+.staff-name{font-weight:900;font-size:16px}
+.time-chip{display:inline-block;margin:6px 5px 0 0;padding:7px 9px;border-radius:10px;background:#fff1f2;color:#99151c;font-weight:800;font-size:13px}
+.note-text{margin-top:5px;color:#6e6e73;font-size:12px;line-height:1.5}
+.role-line{margin-top:7px;font-size:12px;line-height:1.7;color:#4b4542}
+.role-badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#f3efed;margin:2px 4px 2px 0}
+.empty{padding:16px 0;color:#8a817d;font-size:13px}
+details.missing{margin-top:10px;background:#faf8f7;border-radius:12px;padding:10px 12px}
+details.missing summary{cursor:pointer;font-weight:800}
+.missing-list{margin-top:8px;font-size:12px;line-height:1.8;color:#6e6e73}
+@media(max-width:520px){.grid{grid-template-columns:1fr}.day-head{display:block}}
+
 </style></head><body>
 <header><h1>⚙️ 本番運用設定</h1></header><main>
 <div class="card"><h2>5日間の日時</h2><div id="days"></div><button class="primary" id="saveDays">日時を保存</button><div id="dayMsg"></div></div>
-<div class="card"><h2>希望シフト一覧</h2><button id="loadShifts">一覧を更新</button><div id="shifts"></div></div>
+<div class="card">
+  <h2>希望シフト一覧</h2>
+  <p class="small">シグマ祭の5日間だけを表示します。日付タブで切り替えるか、「全5日」でまとめて確認できます。</p>
+  <div id="shiftTabs" class="shift-tabs"></div>
+  <div id="shiftSummary" class="shift-summary"></div>
+  <button id="loadShifts">一覧を更新</button>
+  <div id="shifts"></div>
+</div>
 <div class="card"><h2>本番前テストデータ初期化</h2><p class="small">スタッフ・管理者・価格・変数設定などの設定は残し、運営テスト実績を初期化します。※新しく追加した買い出しpt・食材保存・最終インセンティブ等まで初期化対象に含まれているかは、Supabase整理時にreset_test_operational_dataを更新します。</p><input id="confirmText" placeholder="RESET と入力"><button class="danger" id="resetBtn">テスト実績を一括初期化</button><div id="resetMsg"></div></div>
 <button onclick="location.href='home.html'">ホームへ戻る</button></main>
 <script>
@@ -29,7 +58,159 @@ const lin=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffse
 async function check(){const {data:{user}}=await sb.auth.getUser();if(!user)return false;const {data}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data){document.body.innerHTML='管理者権限が必要です';return false}return true}
 async function loadDays(){const {data,error}=await sb.from('event_days').select('*').order('id');if(error){dayMsg.textContent=error.message;return}dayRows=data||[];days.innerHTML=dayRows.map(d=>`<div class="row"><b>${d.label}</b><input id="s${d.id}" type="datetime-local" value="${lin(d.starts_at)}"><input id="e${d.id}" type="datetime-local" value="${lin(d.ends_at)}"></div>`).join('')}
 saveDays.onclick=async()=>{dayMsg.textContent='保存中...';for(const d of dayRows){const {error}=await sb.from('event_days').update({starts_at:new Date(document.getElementById('s'+d.id).value).toISOString(),ends_at:new Date(document.getElementById('e'+d.id).value).toISOString(),updated_at:new Date().toISOString()}).eq('id',d.id);if(error){dayMsg.innerHTML='<span class="err">'+error.message+'</span>';return}}dayMsg.innerHTML='<span class="ok">✅ 保存しました</span>';await loadDays()};
-async function loadShiftList(){shifts.textContent='読み込み中...';const {data,error}=await sb.from('staff_availability').select('user_id,event_day_id,available_from,available_to,note').order('available_from');if(error){shifts.textContent=error.message;return}const {data:staff}=await sb.from('staff_members').select('user_id,staff_name');const names=Object.fromEntries((staff||[]).map(s=>[s.user_id,s.staff_name]));shifts.innerHTML=(data||[]).length?(data||[]).map(x=>`<div class="row"><b>${names[x.user_id]||x.user_id}</b> / ${dayRows.find(d=>d.id===x.event_day_id)?.label||''}<br>${new Date(x.available_from).toLocaleString('ja-JP')}〜${new Date(x.available_to).toLocaleTimeString('ja-JP')}<br><span class="small">${x.note||''}</span></div>`).join(''):'提出なし'}
+
+let shiftRows=[];
+let shiftStaff=[];
+let shiftRoleMap={};
+let selectedShiftDay='all';
+
+const esc=v=>String(v??'')
+  .replaceAll('&','&amp;')
+  .replaceAll('<','&lt;')
+  .replaceAll('>','&gt;')
+  .replaceAll('"','&quot;')
+  .replaceAll("'","&#039;");
+
+const fmtDate=v=>new Date(v).toLocaleDateString('ja-JP',{
+  month:'numeric',day:'numeric',weekday:'short'
+});
+const fmtTime=v=>new Date(v).toLocaleTimeString('ja-JP',{
+  hour:'2-digit',minute:'2-digit'
+});
+
+const roleLabel={
+  seller:'売り子',
+  register:'レジ',
+  shopping_helper:'買い出し補助',
+  shopping_driver:'ドライバー',
+  manager:'店長',
+  cook:'調理',
+  support:'サポート'
+};
+
+function renderShiftTabs(){
+  const tabs=[
+    {key:'all',label:'全5日'},
+    ...dayRows.map(d=>({key:String(d.id),label:d.label}))
+  ];
+  shiftTabs.innerHTML=tabs.map(t=>`
+    <button class="shift-tab ${String(selectedShiftDay)===String(t.key)?'active':''}"
+      onclick="selectShiftDay('${t.key}')">${esc(t.label)}</button>
+  `).join('');
+}
+
+function selectShiftDay(key){
+  selectedShiftDay=key;
+  renderShiftTabs();
+  renderShiftList();
+}
+
+function roleHtml(uid){
+  const r=shiftRoleMap[uid];
+  if(!r || !r.first_role)return '<span class="small">希望職種：未登録</span>';
+  const vals=[r.first_role,r.second_role,r.third_role].filter(Boolean);
+  return `<div class="role-line">希望職種：
+    ${vals.map((x,i)=>`<span class="role-badge">${i+1}. ${esc(roleLabel[x]||x)}</span>`).join('')}
+  </div>`;
+}
+
+function renderOneDay(d){
+  const rows=shiftRows.filter(x=>Number(x.event_day_id)===Number(d.id));
+  const byUser=new Map();
+  rows.forEach(x=>{
+    if(!byUser.has(x.user_id))byUser.set(x.user_id,[]);
+    byUser.get(x.user_id).push(x);
+  });
+
+  const submitted=[...byUser.keys()];
+  const missing=shiftStaff.filter(s=>!byUser.has(s.user_id));
+  const staffHtml=shiftStaff
+    .filter(s=>byUser.has(s.user_id))
+    .map(s=>{
+      const items=(byUser.get(s.user_id)||[]).sort((a,b)=>new Date(a.available_from)-new Date(b.available_from));
+      return `
+        <div class="staff-shift">
+          <div class="staff-name">${esc(s.staff_name)}</div>
+          <div>
+            ${items.map(x=>`
+              <span class="time-chip">${fmtTime(x.available_from)}〜${fmtTime(x.available_to)}</span>
+            `).join('')}
+          </div>
+          ${items.filter(x=>x.note).map(x=>`<div class="note-text">📝 ${esc(x.note)}</div>`).join('')}
+          ${roleHtml(s.user_id)}
+        </div>
+      `;
+    }).join('');
+
+  return `
+    <section class="day-block">
+      <div class="day-head">
+        <div>
+          <div class="day-title">${esc(d.label)}</div>
+          <div class="day-date">${fmtDate(d.starts_at)}　${fmtTime(d.starts_at)}〜${fmtTime(d.ends_at)}</div>
+        </div>
+        <span class="pill">${submitted.length}人提出</span>
+      </div>
+
+      ${staffHtml || '<div class="empty">この日の希望シフト提出はまだありません。</div>'}
+
+      <details class="missing">
+        <summary>未提出 ${missing.length}人</summary>
+        <div class="missing-list">
+          ${missing.length?missing.map(s=>esc(s.staff_name)).join('、'):'全員提出済みです'}
+        </div>
+      </details>
+    </section>
+  `;
+}
+
+function renderShiftList(){
+  const daysToShow=selectedShiftDay==='all'
+    ? dayRows
+    : dayRows.filter(d=>String(d.id)===String(selectedShiftDay));
+
+  const validDayIds=new Set(dayRows.map(d=>Number(d.id)));
+  const validRows=shiftRows.filter(x=>validDayIds.has(Number(x.event_day_id)));
+  const submittedUsers=new Set(validRows.map(x=>x.user_id));
+
+  shiftSummary.innerHTML=`
+    <span class="pill">対象：5日間</span>
+    <span class="pill">スタッフ ${shiftStaff.length}人</span>
+    <span class="pill">1日以上提出 ${submittedUsers.size}人</span>
+  `;
+
+  shifts.innerHTML=daysToShow.length
+    ? daysToShow.map(renderOneDay).join('')
+    : '<div class="empty">表示対象の日程がありません。</div>';
+}
+
+async function loadShiftList(){
+  shifts.textContent='読み込み中...';
+
+  const enabledIds=new Set(dayRows.map(d=>Number(d.id)));
+
+  const [{data:availability,error:availabilityError},{data:staff,error:staffError},{data:roles,error:rolesError}]
+    =await Promise.all([
+      sb.from('staff_availability')
+        .select('user_id,event_day_id,available_from,available_to,note')
+        .order('available_from'),
+      sb.from('staff_members')
+        .select('user_id,staff_name,is_active')
+        .eq('is_active',true)
+        .order('staff_name'),
+      sb.rpc('admin_staff_role_preferences')
+    ]);
+
+  if(availabilityError){shifts.textContent=availabilityError.message;return}
+  if(staffError){shifts.textContent=staffError.message;return}
+
+  shiftRows=(availability||[]).filter(x=>enabledIds.has(Number(x.event_day_id)));
+  shiftStaff=staff||[];
+  shiftRoleMap=Object.fromEntries((rolesError?[]:(roles||[])).map(r=>[r.user_id,r]));
+
+  renderShiftTabs();
+  renderShiftList();
+}
 loadShifts.onclick=loadShiftList;
 resetBtn.onclick=async()=>{if(confirmText.value!=='RESET'){resetMsg.innerHTML='<span class="err">RESET と入力してください</span>';return}if(!confirm('本当にテスト実績をすべて初期化しますか？この操作は元に戻せません。'))return;resetBtn.disabled=true;resetMsg.textContent='初期化中...';const {data,error}=await sb.rpc('reset_test_operational_data');resetMsg.innerHTML=error?'<span class="err">'+error.message+'</span>':'<span class="ok">✅ '+data.message+'</span>';resetBtn.disabled=false};
 (async()=>{if(await check()){await loadDays();await loadShiftList()}})();
