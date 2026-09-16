@@ -53,6 +53,19 @@ let overview=null;
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+function partnerInviteUrl(token){
+  return "https://masaya0206.github.io/sigma-ticket/partner-register.html?token="+encodeURIComponent(token);
+}
+
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("招待URLをコピーしました");
+  }catch(e){
+    prompt("このURLをコピーしてください",text);
+  }
+}
+
 async function load(){
   const {data,error}=await sb.rpc("admin_partner_overview");
   if(error){partners.innerHTML=`<div class="card danger">エラー：${esc(error.message)}</div>`;return;}
@@ -114,9 +127,25 @@ function render(){
 
       <div style="margin-top:16px">
         <b>未使用の招待</b>
-        ${(p.invites||[]).filter(i=>!i.revoked).map(i=>`
-          <div class="row"><div><b>${esc(i.display_name)}</b><div class="small">${esc(i.email)}</div></div></div>
-        `).join("") || '<div class="small">なし</div>'}
+        ${(p.invites||[]).filter(i=>!i.revoked).map(i=>{
+          const inviteUrl=partnerInviteUrl(i.invite_token);
+          return `
+          <div class="row" style="align-items:flex-start">
+            <div style="min-width:0;flex:1">
+              <b>${esc(i.display_name)}</b>
+              <div class="small">${esc(i.email)}</div>
+              <div class="small" style="margin-top:4px">有効期限：${new Date(i.expires_at).toLocaleString("ja-JP")}</div>
+              <pre style="margin:8px 0 0">${esc(inviteUrl)}</pre>
+            </div>
+            <button
+              style="width:auto;margin:0 0 0 10px;white-space:nowrap"
+              class="secondary"
+              onclick="copyText(partnerInviteUrl('${i.invite_token}'))"
+            >
+              URLをコピー
+            </button>
+          </div>`;
+        }).join("") || '<div class="small">なし</div>'}
       </div>
     </div>
   `).join(""):'<div class="card">提携先がありません。</div>';
@@ -163,14 +192,36 @@ async function addBenefit(pid){
 async function makeInvite(pid){
   const name=document.getElementById("in-"+pid).value.trim();
   const email=document.getElementById("ie-"+pid).value.trim();
+
   const {data,error}=await sb.rpc("admin_create_partner_invite",{
-    p_partner_id:pid,p_display_name:name,p_email:email
+    p_partner_id:pid,
+    p_display_name:name,
+    p_email:email
   });
-  if(error){alert(error.message);return;}
-  const url="https://masaya0206.github.io/sigma-ticket/partner-register.html?token="+encodeURIComponent(data);
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  const url=partnerInviteUrl(data);
+
+  // 招待一覧を最新化してから、再生成されたDOMへURLを表示する。
+  await load();
+
   const box=document.getElementById("iu-"+pid);
-  box.innerHTML=`<div class="card success"><b>招待URL</b><pre>${esc(url)}</pre><button onclick="navigator.clipboard.writeText('${url}')">URLをコピー</button></div>`;
-  load();
+  if(box){
+    box.innerHTML=`
+      <div class="card success">
+        <b>招待URLを発行しました</b>
+        <pre>${esc(url)}</pre>
+        <button onclick="copyText(partnerInviteUrl('${data}'))">URLをコピー</button>
+        <div class="small" style="margin-top:8px">
+          このURLは下の「未使用の招待」にも残るため、画面を更新しても再コピーできます。
+        </div>
+      </div>
+    `;
+  }
 }
 
 async function setStaff(uid,active){
