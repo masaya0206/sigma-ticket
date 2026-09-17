@@ -432,6 +432,26 @@ table{
 @media(max-width:520px){.payment-mode-grid{grid-template-columns:1fr}.payment-mode-btn{min-height:50px}}
 </style>
 
+
+<style id="checkoutStepFlowV1">
+.checkout-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0 16px}
+.checkout-step{padding:9px 7px;border-radius:12px;background:#eee8e5;color:#7a706b;font-size:12px;font-weight:900;text-align:center}
+.checkout-step.active{background:#b5121b;color:#fff}
+.checkout-step.done{background:#fde7e9;color:#9c1018}
+.checkout-section{margin-top:14px;padding:16px;border-radius:18px;background:#fff;border:1px solid #eadfdb}
+.checkout-section[hidden]{display:none!important}
+.checkout-section-title{font-size:18px;font-weight:950;margin-bottom:8px;text-align:left}
+.checkout-section-note{font-size:12px;color:#6e6e73;line-height:1.6;text-align:left}
+.checkout-next{background:#b5121b!important;color:#fff!important}
+.checkout-back{background:#f3efed!important;color:#4a403c!important}
+.pickup-final{border:2px solid #b5121b!important;background:#fff8f8!important}
+.pickup-final input{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;margin:0!important}
+.checkout-summary-card{margin:12px 0;padding:14px;border-radius:14px;background:#faf7f5;text-align:left;line-height:1.7;font-size:13px}
+.money-settled{display:block;margin-top:8px;padding:10px;border-radius:10px;background:#ecfdf3;color:#14532d;font-weight:850}
+.final-number{margin:12px 0;padding:16px;border-radius:16px;background:#fff1f2;color:#a90f18;font-size:30px;font-weight:1000;text-align:center}
+@media(max-width:520px){.checkout-steps{gap:5px}.checkout-step{font-size:11px;padding:8px 4px}}
+</style>
+
 </head>
 
 <body>
@@ -450,17 +470,19 @@ table{
       🏠 ポータルに戻る
     </button>
   </div>
-
-  
-  
-  <div class="pickup-box">
-    <label for="pickupNumber">受け取り番号</label>
-    <input id="pickupNumber" type="text" inputmode="numeric" maxlength="12"
-           placeholder="例：123" autocomplete="off">
-    <div class="small">お客さんに伝える番号を入力してください。</div>
+  <div class="checkout-steps">
+    <div id="stepBadge1" class="checkout-step active">① 決済選択</div>
+    <div id="stepBadge2" class="checkout-step">② 金銭・商品</div>
+    <div id="stepBadge3" class="checkout-step">③ 整理番号</div>
   </div>
+
+  <div id="paymentStep" class="checkout-section">
+    <div class="checkout-section-title">① 決済方法を選択</div>
+    <div class="checkout-section-note">最初にお客さんの決済方法を選んでください。</div>
+
   <div class="payment-mode-box">
     <div class="payment-mode-title">会計方法を選択</div>
+
     <div class="payment-mode-grid">
       <button id="modeCash" class="payment-mode-btn" type="button" onclick="setPaymentMode('cash')">💴 現金のみ</button>
       <button id="modeQr" class="payment-mode-btn" type="button" onclick="setPaymentMode('qr')">🎫 QR交換のみ</button>
@@ -468,6 +490,11 @@ table{
     </div>
     <div id="paymentModeHelp" class="payment-mode-help">最初に会計方法を選んでください。</div>
   </div>
+  </div>
+
+  <div id="transactionStep" class="checkout-section" hidden>
+    <div class="checkout-section-title">② 商品・金銭の確認</div>
+    <div id="transactionStepNote" class="checkout-section-note"></div>
 
   <div id="cashContent" hidden>
   <div class="cash-order">
@@ -501,7 +528,7 @@ table{
     </div>
 
     <div id="cashTotal" class="cash-total">合計 0円</div>
-    <button id="cashOrderButton" onclick="recordCashOrder()">現金会計を確定</button>
+    <button id="cashOrderButton" class="checkout-next" onclick="stageCashCheckout()">金銭やり取りを確認して次へ</button>
     <div class="tender-box">
       <label for="cashReceived">お預かり金額</label>
       <input id="cashReceived" type="number" min="0" step="1" inputmode="numeric"
@@ -510,7 +537,7 @@ table{
     </div>
 
     <div id="cashConfirmLock" class="cash-confirm-lock" style="display:none">
-      QR＋現金では、ここで現金会計を確定しません。QRを読み取り、交換商品を選んだ時点でまとめて確定します。
+      QR＋現金では、現金追加分のお預かり・お釣りを確認してからQR商品を選びます。注文確定は最後の整理番号入力後です。
     </div>
 
     <div id="cashOrderMessage" class="small"></div>
@@ -540,6 +567,25 @@ table{
   <div id="result">
     まだQRコードは読み取られていません。
   </div>
+  </div>
+
+    <button class="checkout-back" type="button" onclick="backToPaymentStep()">← 決済方法を選び直す</button>
+  </div>
+
+  <div id="pickupStep" class="checkout-section" hidden>
+    <div class="checkout-section-title">③ 整理番号</div>
+    <div class="checkout-section-note">金銭のやり取り・交換内容を確認したあと、最後に整理番号を入力して注文を確定します。</div>
+    <div id="pendingCheckoutSummary" class="checkout-summary-card"></div>
+
+    <div class="pickup-box pickup-final">
+      <label for="pickupNumber">整理番号</label>
+      <input id="pickupNumber" type="text" inputmode="numeric" maxlength="12" placeholder="例：123" autocomplete="off">
+      <div class="small">お客さんに伝える整理番号を入力してください。</div>
+    </div>
+
+    <button id="finalizeCheckoutButton" class="checkout-next" onclick="finalizeCheckout()">整理番号を付けて注文を確定</button>
+    <button class="checkout-back" type="button" onclick="backToTransactionStep()">← 会計内容に戻る</button>
+    <div id="finalizeMessage" class="small"></div>
   </div>
 
   <script>
@@ -904,6 +950,8 @@ let scanner = null;
         data.status === "active"
       ) {
 
+        activeTicketData = data;
+
         resultBox.className =
           "valid";
 
@@ -1049,14 +1097,131 @@ let scanner = null;
       if(sb && data.sesame_status==='sold_out'){ sb.disabled=true; sb.textContent='● 胡麻団子 売り切れ'; }
     }
 
-    async function useTicket(
-      ticketCode,
-      item
-    ) {
+    let pendingCheckout=null;
+    let activeTicketData=null;
+
+    function setCheckoutStep(step){
+      const payment=document.getElementById("paymentStep");
+      const transaction=document.getElementById("transactionStep");
+      const pickup=document.getElementById("pickupStep");
+      if(payment)payment.hidden=step!==1;
+      if(transaction)transaction.hidden=step!==2;
+      if(pickup)pickup.hidden=step!==3;
+
+      [1,2,3].forEach(n=>{
+        const b=document.getElementById("stepBadge"+n);
+        if(!b)return;
+        b.classList.toggle("active",n===step);
+        b.classList.toggle("done",n<step);
+      });
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+
+    function backToPaymentStep(){
+      pendingCheckout=null;
+      activeTicketData=null;
+      paymentMode=null;
+      resetCheckoutState();
+      setPaymentMode(null,false);
+      setCheckoutStep(1);
+    }
+
+    function backToTransactionStep(){
+      pendingCheckout=null;
+      const m=document.getElementById("finalizeMessage");
+      if(m)m.textContent="";
+      setCheckoutStep(2);
+      renderCashOrder();
+    }
+
+    function checkoutSummaryHtml(p){
+      if(!p)return "";
+      const cashItems=[
+        p.cashRice>0?`炒飯 ${p.cashRice}個`:"",
+        p.cashSesame>0?`胡麻団子 ${p.cashSesame}個`:""
+      ].filter(Boolean).join("・");
+
+      if(p.mode==="cash"){
+        return `<strong>現金のみ</strong><br>
+          商品：${cashItems}<br>
+          支払額：${p.cashTotal.toLocaleString()}円<br>
+          お預かり：${p.received.toLocaleString()}円
+          <span class="money-settled">お釣り：${p.cashChange.toLocaleString()}円</span>`;
+      }
+
+      if(p.mode==="qr"){
+        return `<strong>QR交換のみ</strong><br>
+          交換：${p.item==="fried_rice"?"炒飯1個":"胡麻団子2個"}<br>
+          QR券差額返金：${p.qrRefund.toLocaleString()}円`;
+      }
+
+      return `<strong>QR＋現金</strong><br>
+        QR交換：${p.item==="fried_rice"?"炒飯1個":"胡麻団子2個"}<br>
+        現金追加：${cashItems}<br>
+        現金支払額：${p.cashTotal.toLocaleString()}円<br>
+        お預かり：${p.received.toLocaleString()}円<br>
+        現金のお釣り：${p.cashChange.toLocaleString()}円<br>
+        QR券差額返金：${p.qrRefund.toLocaleString()}円
+        <div class="return-total">
+          <div class="label">お客さんへ返す総額</div>
+          <div class="amount">${p.totalReturn.toLocaleString()}円</div>
+        </div>`;
+    }
+
+    function moveToPickupStep(){
+      const s=document.getElementById("pendingCheckoutSummary");
+      if(s)s.innerHTML=checkoutSummaryHtml(pendingCheckout);
+      const p=document.getElementById("pickupNumber");
+      if(p)p.value="";
+      setCheckoutStep(3);
+      setTimeout(()=>p?.focus(),180);
+    }
+
+    function stageCashCheckout(){
+      const msg=document.getElementById("cashOrderMessage");
+      if(paymentMode!=="cash"){
+        if(msg)msg.textContent="現金のみを選択してください。";
+        return;
+      }
+      if(cashRice+cashSesame<=0){
+        if(msg)msg.textContent="商品数を入力してください。";
+        return;
+      }
+
+      const total=currentCashTotal();
+      const received=getCashReceived();
+      if(received<total){
+        if(msg)msg.textContent=`お預かり金額が${(total-received).toLocaleString()}円不足しています。`;
+        document.getElementById("cashReceived")?.focus();
+        return;
+      }
+
+      pendingCheckout={
+        mode:"cash",
+        cashRice,cashSesame,
+        cashTotal:total,
+        received,
+        cashChange:received-total,
+        qrRefund:0,
+        totalReturn:received-total
+      };
+      if(msg)msg.textContent="";
+      moveToPickupStep();
+    }
+
+    async function useTicket(ticketCode,item){
       if(paymentMode!=="qr" && paymentMode!=="mixed"){
         alert("会計方法で「QR交換のみ」または「QR＋現金」を選択してください。");
         return;
       }
+      if(!activeTicketData || activeTicketData.ticket_code!==ticketCode){
+        alert("QR券情報を確認できません。もう一度読み取ってください。");
+        return;
+      }
+
+      const itemPrice=item==="fried_rice"?registerMenu.rice:registerMenu.sesamePair;
+      const ticketPaid=Number(activeTicketData.presale_price||450);
+      const qrRefund=Math.max(ticketPaid-itemPrice,0);
 
       if(paymentMode==="mixed"){
         const total=currentCashTotal();
@@ -1068,241 +1233,155 @@ let scanner = null;
         }
         if(received<total){
           alert(`お預かり金額が${(total-received).toLocaleString()}円不足しています。`);
-          document.getElementById("cashReceived").focus();
+          document.getElementById("cashReceived")?.focus();
           return;
         }
+
+        pendingCheckout={
+          mode:"mixed",ticketCode,item,
+          cashRice,cashSesame,
+          cashTotal:total,received,
+          cashChange:received-total,
+          qrRefund,totalReturn:(received-total)+qrRefund
+        };
+      }else{
+        pendingCheckout={
+          mode:"qr",ticketCode,item,
+          cashRice:0,cashSesame:0,cashTotal:0,received:0,cashChange:0,
+          qrRefund,totalReturn:qrRefund
+        };
       }
 
-      const pickup=
-        document.getElementById("pickupNumber").value.trim();
+      moveToPickupStep();
+    }
 
+    async function finalizeCheckout(){
+      const pickup=document.getElementById("pickupNumber")?.value.trim();
+      const msg=document.getElementById("finalizeMessage");
+      const btn=document.getElementById("finalizeCheckoutButton");
+
+      if(!pendingCheckout){
+        if(msg)msg.textContent="会計内容がありません。最初からやり直してください。";
+        return;
+      }
       if(!pickup){
-        alert("受け取り番号を入力してください。");
-        document.getElementById("pickupNumber").focus();
+        if(msg)msg.textContent="整理番号を入力してください。";
+        document.getElementById("pickupNumber")?.focus();
         return;
       }
 
-      const resultBox =
-        document.getElementById(
-          "result"
-        );
+      btn.disabled=true;
+      if(msg)msg.textContent="注文を確定しています...";
 
-      const useButton = document.getElementById(item === "fried_rice" ? "useRiceButton" : "useSesameButton");
-      document.querySelectorAll("#useRiceButton,#useSesameButton").forEach((button) => button.disabled = true);
-
-      const allowed =
-        await checkRegisterPermission();
-
-      if (!allowed) {
-
-        resultBox.className =
-          "invalid";
-
-        resultBox.innerHTML = `
-          <h2>⛔ 使用できません</h2>
-          <p>
-            現在レジ勤務中ではありません。
-          </p>
-        `;
-
+      const allowed=await checkRegisterPermission();
+      if(!allowed){
+        if(msg)msg.textContent="現在レジ勤務中ではありません。";
+        btn.disabled=false;
         return;
       }
 
-      resultBox.className = "";
-      resultBox.innerHTML =
-        "使用処理中...";
+      if(pendingCheckout.mode==="cash"){
+        const {data,error}=await supabaseClient.rpc("record_cash_order",{
+          p_rice:pendingCheckout.cashRice,
+          p_sesame:pendingCheckout.cashSesame,
+          p_cash_amount:pendingCheckout.cashTotal,
+          p_pickup_number:pickup
+        });
 
-      const hasCashAddOn=(paymentMode==="mixed" && (cashRice+cashSesame)>0);
-
-      const rpcName=hasCashAddOn
-        ? "use_ticket_and_record_mixed_order"
-        : "use_ticket_and_record_order";
-
-      const rpcArgs=hasCashAddOn
-        ? {
-            p_ticket_code:ticketCode,
-            p_item:item,
-            p_cash_rice:cashRice,
-            p_cash_sesame:cashSesame,
-            p_pickup_number:pickup
-          }
-        : {
-            p_ticket_code:ticketCode,
-            p_item:item,
-            p_pickup_number:pickup
-          };
-
-      const { data: rpcData, error } =
-        await supabaseClient.rpc(rpcName,rpcArgs);
-
-      const data = rpcData?.[0] || null;
-
-      if (error) {
-
-        resultBox.className =
-          "invalid";
-
-        resultBox.innerHTML = `
-          <h2>⚠️ エラー</h2>
-          <p>${error.message}</p>
-          <button onclick="startScanner()">
-            次のQRを読み取る
-          </button>
-        `;
-
-        return;
-      }
-
-      if (!data) {
-
-        resultBox.className =
-          "invalid";
-
-        resultBox.innerHTML = `
-          <h2>🔴 使用できません</h2>
-
-          <p>
-            すでに使用済み、
-            または無効なチケットです。
-          </p>
-
-          <button onclick="startScanner()">
-            次のQRを読み取る
-          </button>
-        `;
-
-        return;
-      }
-
-      const user =
-        await getCurrentUser();
-
-      let staffName =
-        "受付スタッフ";
-
-      if (user) {
-
-        const {
-          data: staff
-        } =
-          await supabaseClient
-            .from("staff_members")
-            .select("staff_name")
-            .eq(
-              "user_id",
-              user.id
-            )
-            .maybeSingle();
-
-        if (staff?.staff_name) {
-          staffName =
-            staff.staff_name;
-        }
-      }
-
-      const {
-        error: logError
-      } =
-        await supabaseClient
-          .from("ticket_logs")
-          .insert({
-            ticket_code:
-              data.ticket_code,
-            action:
-              "used",
-            actor_id:
-              user?.id ?? null,
-            actor_name:
-              staffName
-          });
-
-      const mixedCashAmount=Number(data.cash_amount||0);
-      const mixedCashRice=Number(data.cash_rice_qty||0);
-      const mixedCashSesame=Number(data.cash_sesame_qty||0);
-      const isMixed=(mixedCashRice+mixedCashSesame)>0;
-      const receivedCash=isMixed?getCashReceived():0;
-      const cashChange=isMixed?Math.max(receivedCash-mixedCashAmount,0):0;
-      const qrRefund=Number(data.cashback_amount||0);
-      const totalReturn=cashChange+qrRefund;
-
-      resultBox.className =
-        "valid";
-
-      resultBox.innerHTML = `
-        <h2>✅ ${isMixed ? "併用会計完了" : "使用完了"}</h2>
-
-        <p>
-          <strong>QR交換：</strong>
-          ${data.redemption_item === "fried_rice" ? "炒飯1個" : "胡麻団子2個"}
-        </p>
-
-        ${isMixed ? `
-          <p>
-            <strong>現金追加：</strong>
-            ${[
-              mixedCashRice>0 ? `炒飯 ${mixedCashRice}個` : "",
-              mixedCashSesame>0 ? `胡麻団子 ${mixedCashSesame}個` : ""
-            ].filter(Boolean).join("・")}
-          </p>
-          <p><strong>現金追加分：</strong>${mixedCashAmount.toLocaleString()}円</p>
-        ` : ""}
-
-        <p><strong>QR交換商品の当日価格：</strong>${data.redemption_price}円</p>
-
-        ${isMixed ? `
-          <div class="return-total">
-            <div class="label">お客さんへ返す総額</div>
-            <div class="amount">${totalReturn.toLocaleString()}円</div>
-            <div class="return-breakdown">
-              現金のお釣り：${cashChange.toLocaleString()}円<br>
-              QR券の差額返金：${qrRefund.toLocaleString()}円
-            </div>
-          </div>
-        ` : (
-          qrRefund>0
-            ? `<p class="warning"><strong>💴 QR券差額 ${qrRefund.toLocaleString()}円を購入者へ返金してください</strong></p>`
-            : `<p>QR券の追加返金なし</p>`
-        )}
-
-        <p>
-          ${new Date(
-            data.used_at
-          ).toLocaleString(
-            "ja-JP"
-          )}
-        </p>
-
-        ${
-          logError
-            ? `
-              <p class="small">
-                ※使用処理は完了しましたが、
-                操作履歴の保存に失敗しました。
-              </p>
-            `
-            : ""
+        if(error){
+          if(msg)msg.textContent="エラー："+error.message;
+          btn.disabled=false;
+          return;
         }
 
-        <button onclick="startScanner()">
-          次のQRを読み取る
-        </button>
+        showCheckoutComplete(pickup,data,checkoutSummaryHtml(pendingCheckout));
+        return;
+      }
 
-        <button
-          onclick="
-            location.href='home.html'
-          "
-        >
-          🏠 ポータルに戻る
-        </button>
+      const isMixed=pendingCheckout.mode==="mixed";
+      const rpcName=isMixed?"use_ticket_and_record_mixed_order":"use_ticket_and_record_order";
+      const args=isMixed?{
+        p_ticket_code:pendingCheckout.ticketCode,
+        p_item:pendingCheckout.item,
+        p_cash_rice:pendingCheckout.cashRice,
+        p_cash_sesame:pendingCheckout.cashSesame,
+        p_pickup_number:pickup
+      }:{
+        p_ticket_code:pendingCheckout.ticketCode,
+        p_item:pendingCheckout.item,
+        p_pickup_number:pickup
+      };
+
+      const {data:rpcData,error}=await supabaseClient.rpc(rpcName,args);
+      const data=rpcData?.[0]||null;
+
+      if(error){
+        if(msg)msg.textContent="エラー："+error.message;
+        btn.disabled=false;
+        return;
+      }
+      if(!data){
+        if(msg)msg.textContent="使用済み、または無効なチケットです。";
+        btn.disabled=false;
+        return;
+      }
+
+      const user=await getCurrentUser();
+      let staffName="受付スタッフ";
+      if(user){
+        const {data:staff}=await supabaseClient
+          .from("staff_members")
+          .select("staff_name")
+          .eq("user_id",user.id)
+          .maybeSingle();
+        if(staff?.staff_name)staffName=staff.staff_name;
+      }
+
+      await supabaseClient.from("ticket_logs").insert({
+        ticket_code:data.ticket_code,
+        action:"used",
+        actor_id:user?.id??null,
+        actor_name:staffName
+      });
+
+      showCheckoutComplete(pickup,data.service_order_id,checkoutSummaryHtml(pendingCheckout));
+    }
+
+    function showCheckoutComplete(pickup,orderId,summaryHtml){
+      const step=document.getElementById("pickupStep");
+      step.innerHTML=`
+        <div class="checkout-section-title">✅ 受付完了</div>
+        <div class="checkout-section-note">お客さんへ整理番号を伝えてください。</div>
+        <div class="final-number">整理番号 ${escHtml(pickup)}</div>
+        <div class="checkout-summary-card">${summaryHtml}</div>
+        <div class="small">注文 #${escHtml(orderId??"-")}</div>
+        <button class="checkout-next" onclick="startNextCheckout()">次のお客さんへ</button>
+        <button class="checkout-back" onclick="location.href='home.html'">🏠 ポータルに戻る</button>
       `;
 
-      if(isMixed){
-        cashRice=0;
-        cashSesame=0;
-        const received=document.getElementById("cashReceived");
-        if(received) received.value="";
-        renderCashOrder();
-      }
+      cashRice=0;
+      cashSesame=0;
+      activeTicketData=null;
+      pendingCheckout=null;
+      const r=document.getElementById("cashReceived");
+      if(r)r.value="";
+      [1,2,3].forEach(n=>{
+        const b=document.getElementById("stepBadge"+n);
+        if(b){b.classList.remove("active");b.classList.add("done");}
+      });
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+
+    function startNextCheckout(){
+      location.reload();
+    }
+
+    function escHtml(v){
+      return String(v??"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;");
     }
 
 
@@ -1356,7 +1435,7 @@ let scanner = null;
       renderCashOrder();
     }
 
-    function setPaymentMode(mode){
+    function setPaymentMode(mode,advance=true){
       paymentMode=mode;
 
       ["cash","qr","mixed"].forEach(m=>{
@@ -1376,16 +1455,35 @@ let scanner = null;
           mode===null
             ? "最初に会計方法を選んでください。"
           : mode==="cash"
-            ? "現金商品の数量とお預かり金額を入力し、お釣りを確認して確定します。"
+            ? "商品とお預かり金額を確認したあと、最後に整理番号を付けます。"
           : mode==="qr"
-            ? "QRを読み取り、交換商品を選んで確定します。"
-          : "現金追加商品を選び、お預かり金額を入力してからQRを読み取ります。現金だけを先に確定することはできません。";
+            ? "QRを読み取り、交換商品を決めたあと、最後に整理番号を付けます。"
+          : "現金追加分とQR交換内容を確認したあと、最後に整理番号を付けます。";
+      }
+
+      const note=document.getElementById("transactionStepNote");
+      if(note){
+        note.textContent=
+          mode==="cash"
+            ? "商品数 → お預かり金額 → お釣りの順に確認してください。"
+          : mode==="qr"
+            ? "QRを読み取り、交換商品と差額返金を確認してください。"
+          : mode==="mixed"
+            ? "現金追加商品・お預かり・お釣りを確認し、その後QR交換商品を選んでください。"
+            : "";
       }
 
       const lock=document.getElementById("cashConfirmLock");
       if(lock) lock.style.display=mode==="mixed"?"block":"none";
 
       resetCheckoutState();
+
+      if(mode && advance){
+        setCheckoutStep(2);
+        if(mode==="qr" || mode==="mixed"){
+          setTimeout(()=>startScanner(),180);
+        }
+      }
     }
 
     function updateMixedUi(){
@@ -1422,13 +1520,13 @@ let scanner = null;
 
       if(riceBtn){
         riceBtn.textContent=hasAddon
-          ? "🍚 炒飯1個をQR交換＋現金追加を確定"
-          : "🍚 炒飯1個と交換";
+          ? "🍚 炒飯1個をQR交換に選択"
+          : "🍚 炒飯1個を交換商品に選択";
       }
       if(sesameBtn){
         sesameBtn.textContent=hasAddon
-          ? "● 胡麻団子2個をQR交換＋現金追加を確定"
-          : "● 胡麻団子2個と交換";
+          ? "● 胡麻団子2個をQR交換に選択"
+          : "● 胡麻団子2個を交換商品に選択";
       }
     }
 
@@ -1505,70 +1603,11 @@ let scanner = null;
         row ? `${row.team_name}で会計中` : "レジチーム未設定";
 
       renderCashOrder();
-      setPaymentMode(null);
+      if(paymentMode===null){
+        setPaymentMode(null,false);
+        setCheckoutStep(1);
+      }
     }
-
-    async function recordCashOrder(){
-      const msg=document.getElementById("cashOrderMessage");
-      const btn=document.getElementById("cashOrderButton");
-
-      if(paymentMode!=="cash"){
-        msg.textContent="現金のみを選択した場合だけ、ここから確定できます。";
-        return;
-      }
-
-      const pickup=document.getElementById("pickupNumber").value.trim();
-      if(!pickup){
-        msg.textContent="受け取り番号を入力してください。";
-        document.getElementById("pickupNumber").focus();
-        return;
-      }
-
-      if(cashRice+cashSesame<=0){
-        msg.textContent="商品数を入力してください。";
-        return;
-      }
-
-      const total=currentCashTotal();
-      const received=getCashReceived();
-
-      if(received<total){
-        msg.textContent=`お預かり金額が${(total-received).toLocaleString()}円不足しています。`;
-        document.getElementById("cashReceived").focus();
-        return;
-      }
-
-      const change=received-total;
-
-      btn.disabled=true;
-      msg.textContent="会計を記録しています...";
-
-      const {data,error}=await supabaseClient.rpc(
-        "record_cash_order",
-        {
-          p_rice:cashRice,
-          p_sesame:cashSesame,
-          p_cash_amount:total,
-          p_pickup_number:pickup
-        }
-      );
-
-      if(error){
-        msg.textContent="エラー："+error.message;
-        renderCashOrder();
-        return;
-      }
-
-      msg.innerHTML=`✅ 注文 #${data} を送信しました<br><strong>お釣り ${change.toLocaleString()}円</strong>`;
-      cashRice=0;
-      cashSesame=0;
-      document.getElementById("pickupNumber").value="";
-      document.getElementById("cashReceived").value="";
-      renderCashOrder();
-
-      setTimeout(()=>{msg.textContent="";},3500);
-    }
-
 
 
     let menuStateChannel = null;
