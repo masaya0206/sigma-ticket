@@ -452,6 +452,41 @@ table{
 @media(max-width:520px){.checkout-steps{gap:5px}.checkout-step{font-size:11px;padding:8px 4px}}
 </style>
 
+
+<style id="cashSuggestionStyleV1">
+.cash-suggestions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+.cash-suggestion{
+  width:auto!important;
+  margin:0!important;
+  padding:10px 13px!important;
+  border:1px solid #d9cfca!important;
+  border-radius:999px!important;
+  background:#fff!important;
+  color:#403735!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+.cash-suggestion.primary{
+  border-color:#b5121b!important;
+  background:#fff1f2!important;
+  color:#a20f17!important;
+}
+.cash-suggestion:active{
+  transform:scale(.98);
+}
+.cash-suggestion-title{
+  margin-top:12px;
+  font-size:12px;
+  font-weight:850;
+  color:#5f5552;
+}
+</style>
+
 </head>
 
 <body>
@@ -533,6 +568,9 @@ table{
       <label for="cashReceived">お預かり金額</label>
       <input id="cashReceived" type="number" min="0" step="1" inputmode="numeric"
              placeholder="例：1000" oninput="renderCashOrder()">
+      <div class="cash-suggestion-title">お預かり金額の候補</div>
+      <div id="cashSuggestions" class="cash-suggestions"></div>
+
       <div id="changePreview" class="change-card">商品を選び、お預かり金額を入力してください。</div>
     </div>
 
@@ -1433,6 +1471,8 @@ let scanner = null;
         result.textContent="まだQRコードは読み取られていません。";
       }
       renderCashOrder();
+      renderCashSuggestions();
+
     }
 
     function setPaymentMode(mode,advance=true){
@@ -1530,6 +1570,63 @@ let scanner = null;
       }
     }
 
+
+    function getSuggestedTenderAmounts(total){
+      total=Math.max(0,Math.round(Number(total)||0));
+      if(total<=0)return [];
+
+      const values=[total];
+
+      // 次の100円単位
+      const next100=Math.ceil(total/100)*100;
+      if(next100>total) values.push(next100);
+
+      // よく使う紙幣・硬貨の区切り
+      [500,1000,2000,5000,10000].forEach(v=>{
+        if(v>=total) values.push(v);
+      });
+
+      // 候補が多すぎないよう、重複除去後の先頭5件
+      return [...new Set(values)]
+        .sort((a,b)=>a-b)
+        .slice(0,5);
+    }
+
+    function setCashReceivedAmount(amount){
+      const input=document.getElementById("cashReceived");
+      if(!input)return;
+      input.value=String(amount);
+      input.dispatchEvent(new Event("input",{bubbles:true}));
+      input.focus();
+    }
+
+    function renderCashSuggestions(){
+      const box=document.getElementById("cashSuggestions");
+      if(!box)return;
+
+      const total=currentCashTotal();
+
+      if(total<=0){
+        box.innerHTML='<span class="small">商品を選ぶと候補が表示されます。</span>';
+        return;
+      }
+
+      const suggestions=getSuggestedTenderAmounts(total);
+
+      box.innerHTML=suggestions.map((amount,index)=>{
+        const exact=amount===total;
+        const label=exact
+          ? `ちょうど ${amount.toLocaleString()}円`
+          : `${amount.toLocaleString()}円`;
+
+        return `<button
+          type="button"
+          class="cash-suggestion ${exact?'primary':''}"
+          onclick="setCashReceivedAmount(${amount})"
+        >${label}</button>`;
+      }).join("");
+    }
+
     function renderCashOrder(){
       const r=document.getElementById("cashRiceQty");
       const s=document.getElementById("cashSesameQty");
@@ -1572,6 +1669,8 @@ let scanner = null;
       }
 
       updateMixedUi();
+      renderCashSuggestions();
+
     }
 
     async function loadCashOrderSettings(){
