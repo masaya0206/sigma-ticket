@@ -96,19 +96,17 @@ table{
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 
 async function login(){
-  const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});
-  if(error){msg.textContent="エラー："+error.message;return;}
-  const t=localStorage.getItem("partner_pending_invite");
-  if(t){
-    const {error:e}=await sb.rpc("claim_partner_invite",{p_token:t});
-    if(e){
-      // 使用済み・期限切れ・無効化など、再利用できない招待を端末に残さない。
-      localStorage.removeItem("partner_pending_invite");
-      msg.textContent="招待参加エラー："+e.message;
-      return;
-    }
-    localStorage.removeItem("partner_pending_invite");
+  msg.textContent="ログインしています...";
+  const {error}=await sb.auth.signInWithPassword({
+    email:email.value.trim(),
+    password:password.value
+  });
+
+  if(error){
+    msg.textContent="エラー："+error.message;
+    return;
   }
+
   location.href="partner-scanner.html";
 }
 

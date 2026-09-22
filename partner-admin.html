@@ -30,6 +30,17 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 .instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
 pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
 </style>
+
+<style id="responsiveOverflowFixV1">
+*,*::before,*::after{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere}
+main,.card,.row,main>*,.card>*{min-width:0;max-width:100%}
+input,select,textarea,button{max-width:100%;min-width:0;box-sizing:border-box}
+pre,code{max-width:100%;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+@media(max-width:600px){input,select,textarea{font-size:16px}}
+</style>
+
 </head>
 <body>
 
@@ -107,7 +118,7 @@ function render(){
       </details>
 
       <details style="margin-top:14px">
-        <summary><b>提携先スタッフを招待</b></summary>
+        <summary><b>提携先スタッフを招待</b></summary><div class="small" style="margin:8px 0 4px">発行したURLは本人専用・1回限りです。本人はURL先でパスワードを設定するだけで登録できます。</div>
         <label>名前</label><input id="in-${p.id}" placeholder="スタッフ名">
         <label>メールアドレス</label><input id="ie-${p.id}" type="email">
         <button onclick="makeInvite('${p.id}')">招待URLを発行</button>
@@ -213,11 +224,11 @@ async function makeInvite(pid){
   if(box){
     box.innerHTML=`
       <div class="card success">
-        <b>招待URLを発行しました</b>
+        <b>本人専用の招待URLを発行しました</b>
         <pre>${esc(url)}</pre>
         <button onclick="copyText(partnerInviteUrl('${data}'))">URLをコピー</button>
         <div class="small" style="margin-top:8px">
-          このURLは下の「未使用の招待」にも残るため、画面を更新しても再コピーできます。
+          このURLは1回限りです。登録完了後は再利用できません。下の「未使用の招待」から再コピーできます。
         </div>
       </div>
     `;

@@ -82,105 +82,184 @@ table{
 </head>
 <body>
 
-<header><h1>提携先スタッフ登録</h1><p>Match Point提携特典QRリーダー用アカウントを作成します。</p></header>
+<header><h1>提携先スタッフ登録</h1><p>招待されたメールアドレスに、パスワードを設定して登録します。</p></header>
 <main>
-  <div class="card">
-    <label>メールアドレス</label><input id="email" type="email" autocomplete="email">
-    <label>パスワード</label><input id="password" type="password" minlength="6" autocomplete="new-password">
-    <button id="registerBtn" onclick="signup()">登録して参加する</button>
+  <div id="loadingCard" class="card">
+    招待情報を確認しています...
+  </div>
+
+  <div id="registerCard" class="card" style="display:none">
+    <h2>パスワード設定</h2>
+
+    <div id="inviteInfo" class="small" style="margin-bottom:14px"></div>
+
+    <label>パスワード</label>
+    <input id="password" type="password" minlength="8" autocomplete="new-password"
+           placeholder="8文字以上">
+
+    <label>パスワード確認</label>
+    <input id="passwordConfirm" type="password" minlength="8" autocomplete="new-password"
+           placeholder="もう一度入力">
+
+    <button id="registerBtn" onclick="registerPartner()">パスワードを設定して登録</button>
     <div id="msg" class="small" style="margin-top:12px"></div>
   </div>
+
+  <div id="completeCard" class="card success" style="display:none">
+    <h2>登録完了</h2>
+    <div id="completeMessage" class="small"></div>
+    <a class="btn" href="partner-login.html">ログイン画面へ</a>
+  </div>
+
   <a class="btn secondary" href="partner-login.html">すでに登録済みの方</a>
 </main>
 
 <script>
-const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
 
-const urlToken=new URLSearchParams(location.search).get("token");
-let inviteToken=urlToken||localStorage.getItem("partner_pending_invite");
+const token=new URLSearchParams(location.search).get("token");
 
-function setInviteFormEnabled(enabled){
-  email.disabled=!enabled;
-  password.disabled=!enabled;
-  registerBtn.disabled=!enabled;
-  registerBtn.style.opacity=enabled?"1":"0.55";
+function esc(s){
+  return String(s??"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
 }
 
-async function validateInvite(t,{showValidMessage=false}={}){
-  if(!t){
-    setInviteFormEnabled(false);
-    msg.textContent="招待URLから開いてください。";
-    return false;
+async function functionErrorMessage(error){
+  if(!error) return "不明なエラー";
+  let text=error.message||"不明なエラー";
+  try{
+    const body=await error.context.json();
+    text=body?.error||body?.message||text;
+  }catch(_){}
+  return text;
+}
+
+async function checkInvite(){
+  if(!token){
+    loadingCard.className="card danger";
+    loadingCard.textContent="招待URLが正しくありません。";
+    return;
   }
 
-  const {data,error}=await sb.rpc("partner_invite_status",{p_token:t});
+  const {data,error}=await sb.functions.invoke("register-partner",{
+    body:{action:"check",token}
+  });
+
   if(error){
-    setInviteFormEnabled(false);
-    msg.textContent="招待URLの確認に失敗しました："+error.message;
-    return false;
+    loadingCard.className="card danger";
+    loadingCard.textContent="招待確認エラー："+await functionErrorMessage(error);
+    return;
   }
 
-  if(!data?.usable){
-    if(localStorage.getItem("partner_pending_invite")===t){
-      localStorage.removeItem("partner_pending_invite");
-    }
-    inviteToken=null;
-    setInviteFormEnabled(false);
-    msg.textContent=data?.message||"この招待URLは利用できません。";
-    return false;
+  if(data?.error || !data?.usable){
+    loadingCard.className="card danger";
+    loadingCard.textContent=data?.error||data?.message||"この招待URLは利用できません。";
+    return;
   }
 
-  inviteToken=t;
-  if(urlToken===t){
-    localStorage.setItem("partner_pending_invite",t);
+  loadingCard.style.display="none";
+  registerCard.style.display="block";
+
+  inviteInfo.innerHTML=`
+    <div style="padding:12px;border-radius:12px;background:#faf7f5">
+      <b>スタッフ名</b><br>${esc(data.display_name)}
+      <br><br>
+      <b>メールアドレス</b><br>${esc(data.email)}
+      <br><br>
+      <span class="pill">${esc(data.partner_name||"提携先")}</span>
+    </div>
+    <div style="margin-top:10px">
+      メールアドレスの入力や確認メールは不要です。<br>
+      この招待URLは登録完了後に使用できなくなります。
+    </div>
+  `;
+
+  if(data.existing_user){
+    inviteInfo.innerHTML+=`
+      <div style="margin-top:10px;padding:10px;border-radius:10px;background:#fff8e8;color:#6b4a00">
+        このメールアドレスには既存アカウントがあります。<br>
+        安全のため既存パスワードは変更せず、提携先スタッフ権限だけを追加します。
+      </div>
+    `;
+    password.disabled=true;
+    passwordConfirm.disabled=true;
+    password.placeholder="既存アカウントのため変更しません";
+    passwordConfirm.placeholder="既存アカウントのため変更しません";
+    registerBtn.textContent="既存アカウントで参加登録";
   }
-  setInviteFormEnabled(true);
-  if(showValidMessage){
-    msg.textContent="この招待URLは利用できます。";
-  }
-  return true;
 }
 
-async function signup(){
-  const t=inviteToken||localStorage.getItem("partner_pending_invite");
-  if(!await validateInvite(t)) return;
-
+async function registerPartner(){
   registerBtn.disabled=true;
   msg.textContent="登録処理中...";
 
-  const {data,error}=await sb.auth.signUp({
-    email:email.value.trim(),
-    password:password.value
+  const {data:check,error:checkError}=await sb.functions.invoke("register-partner",{
+    body:{action:"check",token}
+  });
+
+  if(checkError || !check?.usable){
+    registerBtn.disabled=false;
+    msg.textContent=check?.message||check?.error||await functionErrorMessage(checkError);
+    return;
+  }
+
+  let passwordValue=null;
+
+  if(!check.existing_user){
+    const p=password.value;
+    const pc=passwordConfirm.value;
+
+    if(p.length<8){
+      registerBtn.disabled=false;
+      msg.textContent="パスワードは8文字以上にしてください。";
+      return;
+    }
+
+    if(p!==pc){
+      registerBtn.disabled=false;
+      msg.textContent="パスワードが一致していません。";
+      return;
+    }
+
+    passwordValue=p;
+  }
+
+  const {data,error}=await sb.functions.invoke("register-partner",{
+    body:{
+      action:"register",
+      token,
+      password:passwordValue
+    }
   });
 
   if(error){
     registerBtn.disabled=false;
-    msg.textContent="エラー："+error.message;
+    msg.textContent="登録エラー："+await functionErrorMessage(error);
     return;
   }
 
-  if(data.session){
-    const {error:e}=await sb.rpc("claim_partner_invite",{p_token:t});
-    if(e){
-      localStorage.removeItem("partner_pending_invite");
-      inviteToken=null;
-      setInviteFormEnabled(false);
-      msg.textContent="参加処理エラー："+e.message;
-      return;
-    }
-
-    localStorage.removeItem("partner_pending_invite");
-    location.href="partner-scanner.html";
-  }else{
-    msg.innerHTML="アカウントを作成しました。確認メールが届く設定の場合はメール認証後、<b>ログイン画面</b>からログインしてください。";
+  if(data?.error){
+    registerBtn.disabled=false;
+    msg.textContent="登録エラー："+data.error;
+    return;
   }
+
+  registerCard.style.display="none";
+  completeCard.style.display="block";
+
+  completeMessage.innerHTML=data?.existing_user
+    ? `提携先スタッフへの参加登録が完了しました。<br><br>
+       <b>${esc(data.email)}</b> と、これまで使用していたパスワードでログインしてください。`
+    : `アカウント登録が完了しました。<br><br>
+       <b>${esc(data.email)}</b> と、今設定したパスワードでログインできます。<br>
+       確認メールを開く必要はありません。`;
 }
 
-(async()=>{
-  setInviteFormEnabled(false);
-  await validateInvite(inviteToken);
-})();
-
+checkInvite();
 </script>
 </body>
 </html>
