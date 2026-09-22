@@ -28,6 +28,10 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 .row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eee} .row:last-child{border-bottom:0}
 .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red);font-size:11px;font-weight:900}
 .instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
+.staff-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.staff-actions button{width:auto;margin:0;white-space:nowrap}
+.delete-danger{background:#7f1d1d!important;color:#fff!important}
+.delete-danger:disabled{opacity:.55;cursor:not-allowed}
 pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
 </style>
 
@@ -129,10 +133,31 @@ function render(){
         <b>参加済みスタッフ</b>
         ${(p.staff||[]).map(s=>`
           <div class="row">
-            <div><b>${esc(s.display_name)}</b><div class="small">${esc(s.email)}</div></div>
-            <button style="width:auto;margin:0" class="${s.is_active?'secondary':''}" onclick="setStaff('${s.user_id}',${!s.is_active})">
-              ${s.is_active?'停止':'再開'}
-            </button>
+            <div style="min-width:0">
+              <b>${esc(s.display_name)}</b>
+              <div class="small">${esc(s.email)}</div>
+              ${!s.is_active?'<div class="small" style="margin-top:4px;color:#9a3412">停止中：完全削除ができます</div>':''}
+            </div>
+            <div class="staff-actions">
+              <button
+                class="${s.is_active?'secondary':''}"
+                onclick="setStaff('${s.user_id}',${!s.is_active})"
+              >
+                ${s.is_active?'停止':'再開'}
+              </button>
+              ${!s.is_active?`
+                <button
+                  class="delete-danger"
+                  onclick="deletePartnerStaff(
+                    '${s.user_id}',
+                    '${esc(s.display_name)}',
+                    '${esc(s.email)}'
+                  )"
+                >
+                  完全削除
+                </button>
+              `:''}
+            </div>
           </div>`).join("") || '<div class="small">まだいません</div>'}
       </div>
 
@@ -239,6 +264,58 @@ async function setStaff(uid,active){
   const {error}=await sb.rpc("admin_set_partner_staff_active",{p_user_id:uid,p_active:active});
   if(error){alert(error.message);return;}
   load();
+}
+
+async function functionErrorMessage(error){
+  if(!error) return "不明なエラー";
+  let text=error.message||"不明なエラー";
+  try{
+    const body=await error.context.json();
+    text=body?.error||body?.message||text;
+  }catch(_){}
+  return text;
+}
+
+async function deletePartnerStaff(uid,name,email){
+  const first=confirm(
+    `「${name}」を完全削除しますか？\n\n`+
+    `メール：${email}\n\n`+
+    `削除されるもの：\n`+
+    `・提携先スタッフ登録\n`+
+    `・この提携先で発行された本人の招待情報\n`+
+    `・Supabase Auth アカウント\n\n`+
+    `削除後は同じメールアドレスを新規招待できます。\n`+
+    `この操作は元に戻せません。`
+  );
+  if(!first)return;
+
+  const typed=prompt(
+    `誤操作防止のため「削除」と入力してください。\n\n対象：${name}`
+  );
+  if(typed!=="削除"){
+    if(typed!==null) alert("「削除」と入力されなかったため中止しました。");
+    return;
+  }
+
+  const {data,error}=await sb.functions.invoke(
+    "admin-delete-partner-staff",
+    {body:{user_id:uid}}
+  );
+
+  if(error){
+    alert("削除エラー："+await functionErrorMessage(error));
+    return;
+  }
+
+  if(data?.error){
+    alert("削除エラー："+data.error);
+    return;
+  }
+
+  alert(
+    `完全削除しました。\n\n${data?.display_name||name}\n${data?.email||email}\n\n同じメールアドレスで再招待できます。`
+  );
+  await load();
 }
 
 load();
