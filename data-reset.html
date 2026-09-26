@@ -2,52 +2,184 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>データ初期化</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+:root{--red:#b5121b;--red2:#8f0d15;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2;--green:#18794e}
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
-header{background:linear-gradient(145deg,#7f1d1d,#5f1515);color:#fff;padding:34px 22px;border-radius:0 0 28px 28px}
-header h1{margin:0;font-size:27px}
-main{max-width:720px;margin:auto;padding:18px}
-.card{background:#fff;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
-button,input{width:100%;padding:13px;border-radius:13px;font-size:16px;margin:7px 0}
-input{border:1px solid #ddd5d1;background:#fff}
-button{border:0;background:#fff1f2;color:#b5121b;font-weight:800}
-.danger{background:#7f1d1d;color:#fff}
-.small{font-size:12px;color:#6e6e73;line-height:1.65}
-.warn{padding:12px;border-radius:14px;background:#fff7ed;color:#9a3412;font-size:13px;line-height:1.6;margin:12px 0}
-.ok{color:#15803d;font-weight:800}
-.err{color:#b00020;font-weight:800}
-.back{background:#fff;color:#7f1d1d}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{margin:0;padding-bottom:90px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:620px;margin:auto;padding:18px 16px 40px;min-height:100vh}
+.top{display:flex;gap:12px;align-items:center;margin:6px 0 18px}
+.back{width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--red);font-size:20px;font-weight:900}
+h1{margin:0;font-size:25px}.sub{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.5}
+.card{margin:12px 0;padding:18px;border:1px solid var(--line);border-radius:20px;background:#fff}
+.warning{background:#fff8e8;border-color:#f2d99a;color:#6a4700;line-height:1.6;font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.actions button{width:auto;margin:0;padding:9px 12px;border:0;border-radius:999px;background:var(--soft);color:var(--red);font-weight:850}
+.reset-list{display:grid;gap:10px}
+.reset-item{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff;cursor:pointer}
+.reset-item:has(input:checked){border-color:#e8aeb2;background:#fff8f8}
+.reset-item input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--red)}
+.item-title{font-weight:900;font-size:16px}.item-desc{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.55}
+.item-risk{display:inline-block;margin-top:7px;padding:3px 8px;border-radius:999px;background:#f5f1ef;color:#6e625d;font-size:11px;font-weight:800}
+.item-risk.high{background:#ffe5e7;color:#9d1119}
+.summary{margin-top:14px;padding:14px;border-radius:15px;background:#faf7f5;font-size:13px;line-height:1.7}
+.summary strong{color:var(--red)}
+.confirm-box{margin-top:14px}
+.confirm-box label{display:block;font-weight:850;margin-bottom:7px}
+.confirm-box input{width:100%;padding:13px 14px;border:1px solid #d8ceca;border-radius:13px;background:#fff;font:inherit;font-size:16px}
+.execute{width:100%;margin-top:14px;padding:15px;border:0;border-radius:15px;background:var(--red);color:#fff;font:inherit;font-weight:950;font-size:17px}
+.execute:disabled{opacity:.45}
+.msg{margin-top:12px;padding:12px;border-radius:12px;font-size:13px;line-height:1.6;display:none}
+.msg.ok{display:block;background:#eaf8ef;color:#145c37}
+.msg.err{display:block;background:#fff0f0;color:#92141c}
+.keep{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.6}
+.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08);backdrop-filter:blur(12px)}
+.global-bottom-nav button{width:100%;margin:0;padding:7px 4px;border:0;border-radius:12px;background:transparent;color:#6e6e73;font:inherit;font-size:11px;font-weight:700;line-height:1.15}
+.global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px}
+.global-bottom-nav button.active{color:var(--red);background:var(--soft)}
 </style>
 </head>
 <body>
-<header><h1>🗑️ データ初期化</h1></header>
 <main>
-  <div class="card">
-    <h2>本番前テストデータ初期化</h2>
-    <p class="small">
-      スタッフ・管理者・価格・変数設定などの設定は残し、
-      運営テストで蓄積した実績データを一括初期化します。
-    </p>
-
-    <div class="warn">
-      この操作は元に戻せません。<br>
-      本番直前など、テスト実績を消して運用をまっさらな状態にするときだけ使用してください。
+  <div class="top">
+    <button class="back" onclick="location.href='admin-menu.html'">←</button>
+    <div>
+      <h1>データ初期化</h1>
+      <div class="sub">消したいデータだけチェックして初期化できます。</div>
     </div>
-
-    <label for="confirmText"><b>確認入力</b></label>
-    <p class="small">実行する場合は <b>RESET</b> と入力してください。</p>
-    <input id="confirmText" placeholder="RESET と入力">
-
-    <button class="danger" id="resetBtn">テスト実績を一括初期化</button>
-    <div id="resetMsg"></div>
   </div>
 
-  <button class="back" onclick="location.href='admin-menu.html'">管理者メニューへ戻る</button>
+  <div class="card warning">
+    <b>注意</b><br>
+    選択したデータは元に戻せません。スタッフアカウント・提携先・現在の価格設定・基本設定は、この画面では削除しません。
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button type="button" onclick="selectAll(true)">全て選択</button>
+      <button type="button" onclick="selectAll(false)">選択解除</button>
+      <button type="button" onclick="selectLight()">当日テストだけ</button>
+    </div>
+
+    <div id="resetList" class="reset-list">
+
+      <label class="reset-item">
+        <input type="checkbox" value="attendance">
+        <div>
+          <div class="item-title">勤怠・役割・シフト</div>
+          <div class="item-desc">出退勤、勤怠QR、役割履歴、割当、希望シフト、表番の客数記録。</div>
+          <span class="item-risk">当日テスト向け</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="orders">
+        <div>
+          <div class="item-title">注文・レジ会計</div>
+          <div class="item-desc">注文、現金/QR会計記録、レジ所属・会計履歴。</div>
+          <span class="item-risk">当日テスト向け</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="tickets">
+        <div>
+          <div class="item-title">発行済みチケット・利用ログ</div>
+          <div class="item-desc">前売り券・当日券を含む発行済みチケット本体とチケットログ。</div>
+          <span class="item-risk high">本番券が消えます</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="presale">
+        <div>
+          <div class="item-title">前売りノルマ・締切情報</div>
+          <div class="item-desc">ノルマ設定、残券スナップショット、ノルマ譲渡履歴。</div>
+          <span class="item-risk high">ノルマが未設定状態に戻ります</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="seller_teams">
+        <div>
+          <div class="item-title">売り子チーム</div>
+          <div class="item-desc">チーム、メンバー、提案、投票、比率履歴。</div>
+          <span class="item-risk">チーム編成を初期化</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="points">
+        <div>
+          <div class="item-title">ポイント・食材保存ポイント</div>
+          <div class="item-desc">ポイント台帳と食材保存ポイントの入力実績。</div>
+          <span class="item-risk">計算実績を初期化</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="shopping">
+        <div>
+          <div class="item-title">買い出し関連</div>
+          <div class="item-desc">買い出し依頼、ミッション、補助、運転手関連の実績・ポイント。</div>
+          <span class="item-risk">買い出し実績を初期化</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="partner_benefits">
+        <div>
+          <div class="item-title">提携特典の利用履歴</div>
+          <div class="item-desc">提携先・特典そのものは残し、「利用した」記録だけ削除。</div>
+          <span class="item-risk high">使用済み特典が未使用扱いになります</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="incentives">
+        <div>
+          <div class="item-title">最終インセンティブ</div>
+          <div class="item-desc">最終計算の実行結果と個人配分結果。</div>
+          <span class="item-risk">確定計算を初期化</span>
+        </div>
+      </label>
+
+      <label class="reset-item">
+        <input type="checkbox" value="menu_history">
+        <div>
+          <div class="item-title">メニュー変更履歴</div>
+          <div class="item-desc">現在の価格・販売状態は残して、変更履歴だけ削除。</div>
+          <span class="item-risk">現在設定は残ります</span>
+        </div>
+      </label>
+
+    </div>
+
+    <div id="selectionSummary" class="summary">まだ選択されていません。</div>
+
+    <div class="confirm-box">
+      <label for="confirmWord">実行する場合は「初期化」と入力</label>
+      <input id="confirmWord" autocomplete="off" placeholder="初期化">
+    </div>
+
+    <button id="executeBtn" class="execute" disabled onclick="executeReset()">選択したデータを初期化</button>
+    <div id="msg" class="msg"></div>
+
+    <div class="keep">
+      残るもの：スタッフ/Authアカウント、発行者アカウント、提携先・特典、現在の商品価格、イベント日時、各種係数・基本設定。
+    </div>
+  </div>
 </main>
+
+<nav class="global-bottom-nav">
+  <button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button>
+  <button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button>
+  <button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button>
+  <button class="active" onclick="location.href='admin-menu.html'"><span class="gicon">管</span>管理</button>
+</nav>
 
 <script>
 const sb=supabase.createClient(
@@ -55,49 +187,103 @@ const sb=supabase.createClient(
   "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
 );
 
-async function check(){
-  const {data:{user}}=await sb.auth.getUser();
-  if(!user){
-    location.href='index.html';
-    return false;
-  }
-  const {data}=await sb.from('admins')
-    .select('user_id')
-    .eq('user_id',user.id)
-    .maybeSingle();
+const LABELS={
+  attendance:"勤怠・役割・シフト",
+  orders:"注文・レジ会計",
+  tickets:"発行済みチケット・利用ログ",
+  presale:"前売りノルマ・締切情報",
+  seller_teams:"売り子チーム",
+  points:"ポイント・食材保存ポイント",
+  shopping:"買い出し関連",
+  partner_benefits:"提携特典の利用履歴",
+  incentives:"最終インセンティブ",
+  menu_history:"メニュー変更履歴"
+};
 
-  if(!data){
-    document.body.innerHTML='<main><div class="card">管理者権限が必要です</div></main>';
+const boxes=()=>[...document.querySelectorAll('#resetList input[type="checkbox"]')];
+const selected=()=>boxes().filter(x=>x.checked).map(x=>x.value);
+
+function updateUi(){
+  const s=selected();
+  const summary=document.getElementById("selectionSummary");
+  const word=document.getElementById("confirmWord").value.trim();
+  const btn=document.getElementById("executeBtn");
+
+  if(!s.length){
+    summary.textContent="まだ選択されていません。";
+  }else{
+    summary.innerHTML=`<strong>${s.length}項目を初期化</strong><br>${s.map(x=>"・"+LABELS[x]).join("<br>")}`;
+  }
+  btn.disabled=!(s.length && word==="初期化");
+}
+
+function selectAll(flag){
+  boxes().forEach(x=>x.checked=flag);
+  updateUi();
+}
+
+function selectLight(){
+  const light=new Set(["attendance","orders","points","shopping","menu_history"]);
+  boxes().forEach(x=>x.checked=light.has(x.value));
+  updateUi();
+}
+
+boxes().forEach(x=>x.addEventListener("change",()=>{
+  // チケット削除時に特典利用だけ残すと整合性が分かりにくいため自動選択
+  if(x.value==="tickets" && x.checked){
+    const benefit=boxes().find(b=>b.value==="partner_benefits");
+    if(benefit) benefit.checked=true;
+  }
+  updateUi();
+}));
+document.getElementById("confirmWord").addEventListener("input",updateUi);
+
+async function guard(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href="home.html";return false;}
+  const {data,error}=await sb.rpc("is_admin");
+  if(error || !data){
+    alert("管理者のみ利用できます。");
+    location.href="home.html";
     return false;
   }
   return true;
 }
 
-resetBtn.onclick=async()=>{
-  if(confirmText.value!=='RESET'){
-    resetMsg.innerHTML='<span class="err">RESET と入力してください</span>';
+async function executeReset(){
+  const cats=selected();
+  if(!cats.length)return;
+
+  const names=cats.map(x=>LABELS[x]).join("\n・");
+  if(!confirm(`次のデータを初期化します。\n\n・${names}\n\nこの操作は元に戻せません。実行しますか？`))return;
+
+  const btn=document.getElementById("executeBtn");
+  const msg=document.getElementById("msg");
+  btn.disabled=true;
+  btn.textContent="初期化中…";
+  msg.className="msg";
+  msg.textContent="";
+
+  const {data,error}=await sb.rpc("reset_selected_operational_data",{p_categories:cats});
+
+  if(error){
+    msg.className="msg err";
+    msg.textContent="初期化エラー："+error.message;
+    btn.textContent="選択したデータを初期化";
+    updateUi();
     return;
   }
 
-  if(!confirm(
-    '本当にテスト実績をすべて初期化しますか？\n\nこの操作は元に戻せません。'
-  )) return;
+  const done=data?.categories||cats;
+  msg.className="msg ok";
+  msg.innerHTML=`初期化しました。<br>${done.map(x=>"・"+(LABELS[x]||x)).join("<br>")}`;
+  boxes().forEach(x=>x.checked=false);
+  document.getElementById("confirmWord").value="";
+  btn.textContent="選択したデータを初期化";
+  updateUi();
+}
 
-  resetBtn.disabled=true;
-  resetMsg.textContent='初期化中...';
-
-  const {data,error}=await sb.rpc('reset_test_operational_data');
-
-  resetMsg.innerHTML=error
-    ? '<span class="err">'+error.message+'</span>'
-    : '<span class="ok">✅ '+(data?.message||'初期化しました')+'</span>';
-
-  resetBtn.disabled=false;
-};
-
-(async()=>{
-  await check();
-})();
+guard().then(ok=>{if(ok)updateUi();});
 </script>
 </body>
 </html>
