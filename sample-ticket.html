@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>シグマ祭 見本券</title>
+<meta name="theme-color" content="#b5121b">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--red:#b5121b;--red2:#8f0e15;--ink:#191919;--muted:#707070;--bg:#f6f3f1;--card:#fff;--line:#eadfdb;--green:#eaf7eb;--soft:#fff1f2}
+*{box-sizing:border-box;min-width:0}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;padding-bottom:28px}
+.wrap{max-width:560px;margin:auto;padding:0 16px 36px}
+.hero{margin:0 -16px 18px;padding:28px 22px 24px;background:linear-gradient(145deg,var(--red),var(--red2));color:#fff;border-radius:0 0 28px 28px}
+.hero .eyebrow{font-size:12px;font-weight:800;opacity:.85;letter-spacing:.08em}.hero h1{margin:5px 0 0;font-size:30px}.hero p{margin:7px 0 0;font-size:13px;opacity:.9}
+.card{position:relative;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;margin:14px 0;box-shadow:0 8px 24px rgba(58,25,20,.06);overflow:hidden}
+.control h2,.status h2{margin:0 0 10px}.control label{display:block;margin-top:12px;font-size:13px;font-weight:800;color:#4e4947}.control input{width:100%;padding:13px 14px;margin-top:6px;border:1px solid #ddd2ce;border-radius:13px;background:#fff;font:inherit;font-size:16px}
+button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;background:var(--red);color:#fff;font:inherit;font-weight:900;text-decoration:none;text-align:center;margin-top:12px;cursor:pointer}.secondary{background:var(--soft);color:var(--red)}.ghost{background:#fff;color:var(--red);border:1px solid #e7bcc0}
+.notice{padding:14px 15px;border-radius:16px;background:#fff4df;border:1px solid #f0d8ab;font-size:13px;line-height:1.65;color:#624a1f;font-weight:700}
+.ticket{background:linear-gradient(180deg,#fff,#fffaf8);padding-top:26px}.ticket-title{text-align:center;font-size:14px;color:var(--muted);font-weight:800}.product{text-align:center;font-size:25px;font-weight:950;margin:6px 0 14px;line-height:1.35}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.info{background:#faf7f5;border-radius:14px;padding:12px}.info span{display:block;font-size:11px;color:var(--muted)}.info b{display:block;margin-top:3px;font-size:15px;word-break:break-word}
+.sample-ribbon{position:absolute;top:19px;right:-44px;width:180px;transform:rotate(38deg);padding:7px 0;background:#b5121b;color:#fff;text-align:center;font-size:12px;font-weight:950;letter-spacing:.16em;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.sample-watermark{pointer-events:none;position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) rotate(-18deg);font-size:70px;font-weight:950;letter-spacing:.08em;color:rgba(181,18,27,.07);white-space:nowrap}
+.badge{display:inline-block;padding:7px 11px;border-radius:999px;background:#fff0f0;color:#b5121b;font-size:12px;font-weight:900}.badge-wrap{text-align:center;margin:0 0 12px}
+#qrcode{display:flex;justify-content:center;margin:20px auto 12px;padding:14px;background:#fff;width:max-content;max-width:100%;border-radius:18px;border:1px solid #eee}.code{text-align:center;font-size:12px;color:var(--muted);word-break:break-all}.note{text-align:center;color:var(--muted);font-size:13px;line-height:1.7}
+.partner{border:2px solid #efc0c5;background:#fff7f7}.partner-head{display:flex;align-items:center;gap:9px;color:var(--red);font-size:22px;font-weight:950}.partner-name{font-size:17px;font-weight:900;margin-top:16px}.partner-title{font-size:24px;font-weight:950;margin:8px 0;line-height:1.35}.tag{display:inline-block;padding:6px 10px;background:#ffe6e8;color:var(--red);font-size:12px;font-weight:900;border-radius:999px}.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}.small{font-size:12px;color:var(--muted);line-height:1.65}
+.top-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.top-actions button{margin-top:0}
+@media(max-width:420px){.grid,.top-actions{grid-template-columns:1fr}.product{font-size:22px}.sample-watermark{font-size:52px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">MATCH POINT × 第十六回紫熊祭</div>
+    <h1>見本券発行</h1>
+    <p>提携先への説明専用。販売実績には一切入りません。</p>
+  </div>
+
+  <div id="controlArea" class="card control">
+    <h2>見本券を作る</h2>
+    <div class="notice">この見本券は実際のチケットではありません。売上・販売枚数・ポイント・ノルマ・受取処理・商品交換には一切反映されません。27日以降も見本として使用できます。</div>
+    <label>表示する販売者名</label>
+    <input id="sellerInput" value="Match Point スタッフ" maxlength="40">
+    <label>表示する購入者名</label>
+    <input id="buyerInput" value="提携先ご担当者様" maxlength="40">
+    <button onclick="generateSample()">見本券を発行</button>
+    <button class="ghost" onclick="location.href='admin-menu.html'">管理者メニューに戻る</button>
+  </div>
+
+  <div id="previewArea"></div>
+</div>
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+const params=new URLSearchParams(location.search);
+function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function sampleCode(){return "SAMPLE-"+Math.random().toString(36).slice(2,10).toUpperCase();}
+function buildShareUrl(seller,buyer,code){
+  const u=new URL(location.href);u.search="";
+  u.searchParams.set("view","1");u.searchParams.set("seller",seller);u.searchParams.set("buyer",buyer);u.searchParams.set("code",code);
+  return u.toString();
+}
+async function partnerHtml(){
+  const {data,error}=await sb.rpc("public_partner_benefits");
+  if(error||!data||data.length===0)return '<div class="card"><div class="small">現在表示できる提携特典はありません。</div></div>';
+  const groups=new Map();
+  for(const row of data){const key=String(row.partner_name||"").trim();if(!groups.has(key))groups.set(key,{partner_name:row.partner_name,instagram_url:row.instagram_url,benefits:[]});groups.get(key).benefits.push({title:row.benefit_title,description:row.description,valid_label:row.valid_label});}
+  return Array.from(groups.values()).map(group=>`<div class="card partner"><div class="partner-head">🎁 提携特典</div><div class="partner-name">${esc(group.partner_name)}</div><div style="margin-top:12px">${group.benefits.map((b,index)=>`<div style="${index>0?"border-top:1px solid #efcfd2;padding-top:16px;margin-top:16px;":""}"><div class="partner-title">${esc(b.title)}</div>${b.description?`<div class="small">${esc(b.description)}</div>`:""}<div style="margin-top:10px"><span class="tag">${esc(b.valid_label||"")}</span></div></div>`).join("")}</div>${group.instagram_url?`<a class="btn instagram" href="${esc(group.instagram_url)}" target="_blank" rel="noopener">${esc(group.partner_name)} のInstagramを見る</a>`:""}<div class="small" style="margin-top:12px">※これは見本表示です。実際の特典利用には本物の前売り券が必要です。</div></div>`).join("");
+}
+async function renderSample(seller,buyer,code){
+  const shareUrl=buildShareUrl(seller,buyer,code);
+  const partner=await partnerHtml();
+  document.getElementById("previewArea").innerHTML=`
+    <div class="card ticket">
+      <div class="sample-ribbon">SAMPLE</div><div class="sample-watermark">SAMPLE</div>
+      <div class="ticket-title">シグマ祭 前売り券</div>
+      <div class="product">前売り券（炒飯1個 / 胡麻団子2個）</div>
+      <div class="badge-wrap"><span class="badge">見本・利用不可</span></div>
+      <div class="grid"><div class="info"><span>販売者</span><b>${esc(seller)}</b></div><div class="info"><span>購入者</span><b>${esc(buyer)}</b></div></div>
+      <div id="qrcode"></div><div class="code">${esc(code)}</div>
+      <div class="top-actions"><button class="secondary" onclick="copyText('${encodeURIComponent(shareUrl)}')">見本URLをコピー</button><button class="secondary" onclick="shareSample('${encodeURIComponent(shareUrl)}')">共有</button></div>
+      <p class="note">このQRコードも見本ページに移動するだけです。<br>レジでの使用・商品交換・ポイント計上はできません。</p>
+    </div>${partner}`;
+  new QRCode(document.getElementById("qrcode"),{text:shareUrl,width:230,height:230});
+}
+async function copyText(encoded){const url=decodeURIComponent(encoded);try{await navigator.clipboard.writeText(url);alert("見本URLをコピーしました。");}catch(e){prompt("このURLをコピーしてください。",url);}}
+async function shareSample(encoded){const url=decodeURIComponent(encoded);if(navigator.share){try{await navigator.share({title:"シグマ祭 前売り券 見本",url});return;}catch(e){if(e&&e.name==="AbortError")return;}}copyText(encoded);}
+function generateSample(){const seller=document.getElementById("sellerInput").value.trim()||"Match Point スタッフ";const buyer=document.getElementById("buyerInput").value.trim()||"提携先ご担当者様";const code=sampleCode();history.replaceState(null,"",buildShareUrl(seller,buyer,code));document.getElementById("controlArea").style.display="none";renderSample(seller,buyer,code);}
+function init(){if(params.get("view")==="1"){document.getElementById("controlArea").style.display="none";renderSample(params.get("seller")||"Match Point スタッフ",params.get("buyer")||"提携先ご担当者様",params.get("code")||sampleCode());}}
+init();
+</script>
+</body>
+</html>
