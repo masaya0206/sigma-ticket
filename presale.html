@@ -124,6 +124,37 @@ table{
 </div>
 
 
+<div class="card" id="incentiveSimCard">
+  <h2>現在の位置・想定インセンティブ</h2>
+  <p class="muted">
+    他スタッフの現在のノルマ設定と比較して、上の「希望ノルマ枚数」を選んだ場合の位置と、
+    前売り券から受け取るインセンティブの目安を試算します。
+  </p>
+
+  <div class="assumption-box">
+    <div><span>仮定する総売上</span><b>1,000,000円</b></div>
+    <div><span>仮定する総インセンティブ</span><b>400,000円</b></div>
+  </div>
+
+  <div id="incentivePosition" class="incentive-result">
+    <span class="muted">計算中...</span>
+  </div>
+
+  <div class="formula-box">
+    <div><b>① 前売りインセンティブ総額</b></div>
+    <div>400,000円 ×（前売り想定売上 ÷ 1,000,000円）</div>
+    <div style="margin-top:8px"><b>② 自分の想定受取額</b></div>
+    <div>前売りインセンティブ総額 ×（自分のpt ÷ 全員のpt）</div>
+  </div>
+
+  <p class="muted" style="margin-bottom:0">
+    ※ 全員が「現在設定しているノルマ分」を販売したと仮定した比較用シミュレーションです。<br>
+    ※ 未選択スタッフは6枚として計算します。<br>
+    ※ 実際の受取額は、超過販売・譲渡・最終的な総売上・他スタッフの変更などで変動します。
+  </p>
+</div>
+
+
 <div class="card" id="transferCard">
   <h2>ノルマ譲渡</h2>
   <p class="muted">
@@ -190,7 +221,25 @@ table{
 .transfer-actions button{margin:0;padding:10px}
 .transfer-actions .secondary{background:#fff;color:#a91520;border:1px solid #a91520}
 h3{font-size:15px;margin:18px 0 6px}
+.assumption-box{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.assumption-box>div{padding:12px;border-radius:14px;background:#fff7f7;border:1px solid #f0d6d6}
+.assumption-box span{display:block;font-size:11px;color:#725b5b}
+.assumption-box b{display:block;margin-top:4px;font-size:16px}
+.incentive-result{margin-top:10px;padding:16px;border-radius:16px;background:linear-gradient(135deg,#fff8f8,#fff);border:1px solid #efcccc}
+.incentive-main{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;align-items:stretch}
+.incentive-money{padding:14px;border-radius:14px;background:#a91520;color:#fff}
+.incentive-money .label{font-size:12px;opacity:.86;font-weight:700}
+.incentive-money .value{font-size:31px;font-weight:900;margin-top:4px;line-height:1.15}
+.incentive-rank{padding:14px;border-radius:14px;background:#fff;border:1px solid #f0d6d6}
+.incentive-rank .label{font-size:12px;color:#725b5b;font-weight:700}
+.incentive-rank .value{font-size:22px;font-weight:900;margin-top:5px}
+.incentive-detail{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.incentive-detail>div{padding:10px;border-radius:12px;background:#fff;border:1px solid #f3e3e3}
+.incentive-detail span{display:block;font-size:10px;color:#725b5b}
+.incentive-detail b{display:block;margin-top:3px;font-size:14px}
+.formula-box{margin-top:12px;padding:12px;border-radius:12px;background:#f8f4f2;border:1px solid #e8dcda;font-size:12px;line-height:1.65;color:#543f3f}
 @media(max-width:480px){
+  .assumption-box,.incentive-main,.incentive-detail{grid-template-columns:1fr}
   .sim-head,.sim-row{grid-template-columns:.8fr .9fr 1fr 1.2fr;padding:9px 8px;font-size:12px}
   .sim-row strong{font-size:14px}
 }
@@ -205,6 +254,9 @@ let baseSixPoints=36;
 let simData=[];
 let presaleStatus=null;
 let transferCandidates=[];
+let incentiveContext=null;
+const INCENTIVE_SIM_TOTAL_SALES=1000000;
+const INCENTIVE_SIM_TOTAL_POOL=400000;
 
 async function pointsFor(n){
   const {data,error}=await db.rpc('presale_points_for_quota',{p_quota:n});
@@ -239,18 +291,117 @@ function renderSimulation(selected=Number(quota?.value||6)){
   `).join('');
 }
 
+
+async function loadIncentiveContext(){
+  const box=document.getElementById('incentivePosition');
+  if(box) box.innerHTML='<span class="muted">現在の設定状況を集計しています...</span>';
+
+  const {data,error}=await db.rpc('my_presale_incentive_simulation_context');
+  if(error){
+    incentiveContext=null;
+    if(box) box.innerHTML='<span class="warn">想定インセンティブ取得エラー: '+esc(error.message)+'</span>';
+    return;
+  }
+  incentiveContext=data||null;
+}
+
+function yen(v){
+  return Math.round(Number(v||0)).toLocaleString('ja-JP')+'円';
+}
+
+function pct(v){
+  return (Number(v||0)*100).toFixed(2)+'%';
+}
+
+function renderIncentiveSimulation(n,pt){
+  const box=document.getElementById('incentivePosition');
+  if(!box)return;
+
+  if(!incentiveContext){
+    box.innerHTML='<span class="muted">想定インセンティブの集計情報を取得できていません。</span>';
+    return;
+  }
+
+  const groups=Array.isArray(incentiveContext.other_quota_distribution)
+    ? incentiveContext.other_quota_distribution : [];
+  const price=Number(incentiveContext.presale_price||450);
+  const staffCount=Number(incentiveContext.staff_count||1);
+
+  let othersQuota=0;
+  let othersPoints=0;
+  let higher=0;
+  let tiedOthers=0;
+
+  for(const g of groups){
+    const count=Number(g.count||0);
+    const q=Number(g.quota||6);
+    const p=Number(g.points_each||0);
+    othersQuota+=q*count;
+    othersPoints+=p*count;
+    if(p>pt)higher+=count;
+    if(Math.abs(p-pt)<0.000001)tiedOthers+=count;
+  }
+
+  const totalQuota=othersQuota+n;
+  const totalPoints=othersPoints+pt;
+  const presaleSales=totalQuota*price;
+  const presaleRatio=presaleSales/INCENTIVE_SIM_TOTAL_SALES;
+
+  if(presaleSales>INCENTIVE_SIM_TOTAL_SALES){
+    box.innerHTML=`
+      <div class="warn">
+        この条件では前売り想定売上が ${yen(presaleSales)} となり、
+        仮定した総売上100万円を超えるため試算できません。
+      </div>`;
+    return;
+  }
+
+  const presalePool=INCENTIVE_SIM_TOTAL_POOL*presaleRatio;
+  const ownShare=totalPoints>0?pt/totalPoints:0;
+  const ownYen=presalePool*ownShare;
+  const rank=higher+1;
+  const tieCount=tiedOthers+1;
+  const rankText=tieCount>1
+    ? `${rank}位タイ / ${staffCount}人`
+    : `${rank}位 / ${staffCount}人`;
+
+  box.innerHTML=`
+    <div class="incentive-main">
+      <div class="incentive-money">
+        <div class="label">${n}枚を選んだ場合の想定受取額</div>
+        <div class="value">約 ${yen(ownYen)}</div>
+      </div>
+      <div class="incentive-rank">
+        <div class="label">現在のpt順位目安</div>
+        <div class="value">${rankText}</div>
+        <div class="choice-sub">同pt ${tieCount}人</div>
+      </div>
+    </div>
+    <div class="incentive-detail">
+      <div><span>自分の初期pt</span><b>${pt.toFixed(1)} pt</b></div>
+      <div><span>全体ptに占める割合</span><b>${pct(ownShare)}</b></div>
+      <div><span>全員の想定ノルマ合計</span><b>${totalQuota.toLocaleString('ja-JP')} 枚</b></div>
+      <div><span>前売り想定売上</span><b>${yen(presaleSales)}</b></div>
+      <div><span>前売り売上比率</span><b>${pct(presaleRatio)}</b></div>
+      <div><span>前売りインセンティブ総額</span><b>約 ${yen(presalePool)}</b></div>
+    </div>
+  `;
+}
+
 async function updatePreview(){
   const raw=quota.value.trim();
   renderSimulation(Number(raw||6));
 
   if(raw===''){
     preview.innerHTML='<span class="muted">6枚以上を入力してください。</span>';
+    if(document.getElementById('incentivePosition')) incentivePosition.innerHTML='<span class="muted">ノルマを入力すると試算します。</span>';
     return;
   }
 
   const n=Number(raw);
   if(!Number.isInteger(n)||n<6){
     preview.innerHTML='<span class="warn">最低ノルマは6枚です。</span>';
+    if(document.getElementById('incentivePosition')) incentivePosition.innerHTML='<span class="warn">6枚以上の整数を入力してください。</span>';
     return;
   }
 
@@ -263,6 +414,7 @@ async function updatePreview(){
       <div class="choice-big">${n}枚 → ${pt.toFixed(1)} pt</div>
       <div class="choice-sub">倍率 ×${mult.toFixed(1)} ／ 6枚より <b>${delta>=0?'+':''}${delta.toFixed(1)} pt</b></div>
     `;
+    renderIncentiveSimulation(n,pt);
   }catch(e){
     preview.innerHTML='<span class="warn">計算エラー: '+e.message+'</span>';
   }
@@ -274,7 +426,10 @@ async function load(){
   const {data:{user}}=await db.auth.getUser();
   if(!user){location.href='home.html';return}
 
-  await loadSimulation();
+  await Promise.all([
+    loadSimulation(),
+    loadIncentiveContext()
+  ]);
 
   const {data,error}=await db.rpc('my_presale_status');
   if(error){details.textContent='エラー: '+error.message;return}
