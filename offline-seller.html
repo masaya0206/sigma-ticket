@@ -16,9 +16,9 @@
 header{padding:28px 18px 22px;background:linear-gradient(145deg,var(--red),var(--dark));color:#fff;border-radius:0 0 26px 26px}
 header h1{margin:0;font-size:27px}header p{margin:6px 0 0;color:#ffdede}
 main{max-width:620px;margin:auto;padding:16px 16px 40px}.card{background:#fff;border:1px solid var(--line);border-radius:19px;padding:16px;margin:12px 0}
-label{display:block;font-weight:800;margin-bottom:7px}select,button{width:100%;padding:13px;border-radius:13px;font-size:16px}select{border:1px solid #ddd;background:#fff}button{border:0;font-weight:900;background:#fff1f2;color:var(--red);margin-top:10px}.primary{background:var(--red);color:#fff}.dark{background:#2c2c2e;color:#fff}.small{font-size:12px;color:var(--muted);line-height:1.55}.status{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:6px 9px;border-radius:999px;font-size:12px;font-weight:900;background:#eee}.ok{background:#ecfdf3;color:var(--green)}.warn{background:#fff7df;color:var(--amber)}
+label{display:block;font-weight:800;margin-bottom:7px}select,input,button{width:100%;padding:13px;border-radius:13px;font-size:16px}select,input{border:1px solid #ddd;background:#fff}input{margin-bottom:12px}button{border:0;font-weight:900;background:#fff1f2;color:var(--red);margin-top:10px}.primary{background:var(--red);color:#fff}.dark{background:#2c2c2e;color:#fff}.small{font-size:12px;color:var(--muted);line-height:1.55}.status{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:6px 9px;border-radius:999px;font-size:12px;font-weight:900;background:#eee}.ok{background:#ecfdf3;color:var(--green)}.warn{background:#fff7df;color:var(--amber)}
 .big{font-size:34px;font-weight:900}.qr{display:flex;justify-content:center;padding:14px;background:#fff;border-radius:16px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;word-break:break-all;text-align:center}
-.notice{background:#fff8e8;border-color:#efd39a}.success{background:#ecfdf3;border-color:#b7e7c5}.hidden{display:none}
+.notice{background:#fff8e8;border-color:#efd39a}.success{background:#ecfdf3;border-color:#b7e7c5}.hidden{display:none}.ticket-preview{display:block;width:100%;height:auto;border-radius:16px;background:#fff;border:1px solid #e5e7eb}
 </style>
 </head>
 <body>
@@ -37,6 +37,11 @@ label{display:block;font-weight:800;margin-bottom:7px}select,button{width:100%;p
   <label for="sellerSelect">発行者を選択</label>
   <select id="sellerSelect"></select>
   <p id="selectedInfo" class="small"></p>
+
+  <label for="buyerName">購入者名</label>
+  <input id="buyerName" type="text" maxlength="40" placeholder="例：田中 太郎" autocomplete="off">
+  <p class="small">この名前を当日券画像と復旧後のチケットデータに保存します。</p>
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
     <div><div class="small">発行可能</div><div id="availableCount" class="big">-</div></div>
     <div><div class="small">この端末で未同期</div><div id="pendingCount" class="big">-</div></div>
@@ -46,10 +51,11 @@ label{display:block;font-weight:800;margin-bottom:7px}select,button{width:100%;p
 
 <section id="ticketCard" class="card success hidden">
   <h2 style="margin-top:0">発行しました</h2>
-  <div id="qrCode" class="qr"></div>
+  <div id="qrCode" style="position:absolute;left:-9999px;top:-9999px"></div>
+  <canvas id="ticketCanvas" class="ticket-preview" width="800" height="1100"></canvas>
   <p id="ticketCode" class="code"></p>
   <p id="ticketMeta" class="small"></p>
-  <button class="dark" onclick="shareQr()">QR画像を共有（AirDrop等）</button>
+  <button class="dark" onclick="shareQr()">名前入り当日券画像を共有（AirDrop等）</button>
   <button onclick="issueOne()">次の当日券を1枚発行</button>
 </section>
 
@@ -114,13 +120,17 @@ async function issueOne(){
   const sel=document.getElementById("sellerSelect");
   const uid=sel.value;
   const name=sel.options[sel.selectedIndex]?.textContent||"";
+  const buyer=buyerName.value.trim();
   if(!uid)return;
-  if(!confirm(`${name}としてオフライン当日券を1枚発行しますか？`))return;
+  if(!buyer){message.textContent="購入者名を入力してください。";buyerName.focus();return;}
+  if(!confirm(`${name}として「${buyer}」さんのオフライン当日券を1枚発行しますか？`))return;
   try{
-    const x=await SigmaOfflineStore.issueOfflineDayTicket(uid,name);
+    const x=await SigmaOfflineStore.issueOfflineDayTicket(uid,name,buyer);
     currentIssue=x;
     await SigmaOfflineStore.setMeta("offline_selected_seller",{user_id:uid,staff_name:name});
-    renderTicket(x);
+    await renderTicket(x);
+    buyerName.value="";
+    message.textContent="";
     await refreshCounts();
     if(navigator.onLine) setTimeout(()=>syncIssues(false),300);
   }catch(e){
@@ -128,30 +138,74 @@ async function issueOne(){
   }
 }
 
-function renderTicket(x){
+async function renderTicket(x){
   ticketCard.classList.remove("hidden");
   qrCode.innerHTML="";
-  new QRCode(qrCode,{text:x.ticket_code,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});
+  new QRCode(qrCode,{text:x.ticket_code,width:520,height:520,correctLevel:QRCode.CorrectLevel.M});
+
+  await new Promise(resolve=>setTimeout(resolve,40));
+  const qCanvas=qrCode.querySelector("canvas");
+  const qImg=qrCode.querySelector("img");
+
+  const canvas=ticketCanvas;
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,800,1100);
+  ctx.fillStyle="#ffffff";
+  ctx.fillRect(0,0,800,1100);
+
+  ctx.fillStyle="#b5121b";
+  ctx.fillRect(0,0,800,150);
+
+  ctx.fillStyle="#ffffff";
+  ctx.textAlign="center";
+  ctx.font='900 58px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillText("シグマ祭 当日券",400,96);
+
+  ctx.fillStyle="#1c1c1e";
+  ctx.font='700 30px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillText("購入者",400,215);
+
+  ctx.font='900 52px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
+  const buyer=String(x.buyer_name||"").slice(0,40);
+  ctx.fillText(buyer,400,278);
+
+  if(qCanvas){
+    ctx.drawImage(qCanvas,140,330,520,520);
+  }else if(qImg){
+    if(!qImg.complete) await new Promise(resolve=>{qImg.onload=resolve;qImg.onerror=resolve;});
+    ctx.drawImage(qImg,140,330,520,520);
+  }
+
+  ctx.fillStyle="#1c1c1e";
+  ctx.font='800 25px ui-monospace,SFMono-Regular,Menlo,monospace';
+  ctx.fillText(x.ticket_code,400,900);
+
+  ctx.font='600 25px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillText(`発行者：${x.seller_name}`,400,955);
+  ctx.fillText(`発行：${fmt(x.issued_at)}　${Number(x.unit_price||0).toLocaleString()}円`,400,998);
+
+  ctx.fillStyle="#b5121b";
+  ctx.font='800 24px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillText("炒飯1個 または 胡麻団子2個 / 1回限り",400,1055);
+
   ticketCode.textContent=x.ticket_code;
-  ticketMeta.textContent=`発行者：${x.seller_name} / 発行時刻：${fmt(x.issued_at)} / ${Number(x.unit_price||0).toLocaleString()}円`;
+  ticketMeta.textContent=`購入者：${x.buyer_name} / 発行者：${x.seller_name} / 発行時刻：${fmt(x.issued_at)} / ${Number(x.unit_price||0).toLocaleString()}円`;
   ticketCard.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-async function qrBlob(){
-  const canvas=qrCode.querySelector("canvas");
-  if(canvas) return await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
-  const img=qrCode.querySelector("img");
-  if(img){const r=await fetch(img.src);return await r.blob();}
-  throw new Error("QR画像を作成できませんでした");
+async function ticketBlob(){
+  return await new Promise((resolve,reject)=>{
+    ticketCanvas.toBlob(blob=>blob?resolve(blob):reject(new Error("当日券画像を作成できませんでした")),"image/png");
+  });
 }
 
 async function shareQr(){
   if(!currentIssue)return;
   try{
-    const blob=await qrBlob();
+    const blob=await ticketBlob();
     const file=new File([blob],`sigma-${currentIssue.ticket_code}.png`,{type:"image/png"});
     if(navigator.share && navigator.canShare?.({files:[file]})){
-      await navigator.share({files:[file],title:"シグマ祭 当日券",text:`シグマ祭 当日券 ${currentIssue.ticket_code}`});
+      await navigator.share({files:[file],title:"シグマ祭 当日券",text:`${currentIssue.buyer_name}さんのシグマ祭 当日券`});
       return;
     }
     const url=URL.createObjectURL(blob);
@@ -189,8 +243,8 @@ async function syncIssues(manual=false){
     let ok=0,ng=0;
     for(const x of rows){
       try{
-        const {data,error}=await sb.rpc("sync_offline_day_issue",{
-          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
+        const {data,error}=await sb.rpc("sync_offline_day_issue_v2",{
+          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_buyer_name:x.buyer_name||null,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
         });
         if(error)throw error;
         await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:"synced",synced_at:new Date().toISOString(),server_result:data,sync_error:null});

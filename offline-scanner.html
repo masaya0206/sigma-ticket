@@ -144,8 +144,8 @@
     if(!user)return;
     for(const x of rows){
       try{
-        const {data,error}=await supabaseClient.rpc('sync_offline_day_issue',{
-          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
+        const {data,error}=await supabaseClient.rpc('sync_offline_day_issue_v2',{
+          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_buyer_name:x.buyer_name||null,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
         });
         if(error)throw error;
         await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,sync_error:null});

@@ -156,14 +156,16 @@
     return all.filter(x=>String(x.seller_user_id)===String(sellerUserId)).filter(x=>!x.server_issued_at&&!used.has(x.ticket_code)).sort((a,b)=>String(a.ticket_code).localeCompare(String(b.ticket_code)));
   }
 
-  async function issueOfflineDayTicket(sellerUserId,sellerName){
+  async function issueOfflineDayTicket(sellerUserId,sellerName,buyerName){
     if(!sellerUserId)throw new Error('発行者を選択してください');
+    const buyer=String(buyerName||'').trim();
+    if(!buyer)throw new Error('購入者名を入力してください');
     const reserves=await getDayReservesForSeller(sellerUserId);
     if(!reserves.length)throw new Error('この発行者のオフライン当日券残数がありません');
     let idx=0;
     if(globalThis.crypto?.getRandomValues){const a=new Uint32Array(1);crypto.getRandomValues(a);idx=a[0]%reserves.length;}else idx=Math.floor(Math.random()*reserves.length);
     const r=reserves[idx],localId=randomId(),issuedAt=new Date().toISOString();
-    const issue={local_id:localId,ticket_code:r.ticket_code,seller_user_id:sellerUserId,seller_name:sellerName||r.seller_name||'',unit_price:Number(r.unit_price||0),issued_at:issuedAt,device_id:getDeviceId(),sync_status:'pending',sync_error:null,synced_at:null,server_result:null};
+    const issue={local_id:localId,ticket_code:r.ticket_code,seller_user_id:sellerUserId,seller_name:sellerName||r.seller_name||'',buyer_name:buyer,unit_price:Number(r.unit_price||0),issued_at:issuedAt,device_id:getDeviceId(),sync_status:'pending',sync_error:null,synced_at:null,server_result:null};
     const d=await db();const tx=d.transaction([STORE_DAY_ISSUES,STORE_DAY_RESERVES],'readwrite');
     tx.objectStore(STORE_DAY_ISSUES).put(issue);
     const reserve=await reqToPromise(tx.objectStore(STORE_DAY_RESERVES).get(r.ticket_code));
