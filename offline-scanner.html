@@ -45,6 +45,7 @@
     <div class="statusrow">
       <span id="networkPill" class="pill">通信状態確認中</span>
       <span id="backupPill" class="pill">バックアップ確認中</span>
+      <span id="autoPill" class="pill online">自動保存・同期 ON</span>
     </div>
     <div class="stats">
       <div class="stat"><b id="ticketCount">0</b><span>保存済みチケット</span></div>
@@ -52,8 +53,8 @@
     </div>
     <p id="savedAt" class="small">最終保存：未保存</p>
     <p id="offlineOperator" class="small">事前認証：確認中</p>
-    <button id="refreshBackupBtn" class="secondary" onclick="refreshBackup()">最新版をこの端末に保存</button>
-    <button id="syncBtn" class="secondary" onclick="syncPending()">未同期データをオンラインへ同期</button>
+    <button id="refreshBackupBtn" class="secondary" onclick="refreshBackup({manual:true,force:true})">今すぐバックアップ更新</button>
+    <button id="syncBtn" class="secondary" onclick="syncPending({manual:true})">今すぐ未同期データを送信</button>
     <div id="syncMessage" class="sync-note"></div>
   </section>
 
@@ -83,6 +84,12 @@
   let scannerBusy=false;
   let currentTicket=null;
 
+  const AUTO_INTERVAL_MS=10*60*1000;
+  const AUTO_MIN_BACKUP_GAP_MS=90*1000;
+  let autoTimer=null;
+  let backupBusy=false;
+  let syncBusy=false;
+
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function fmtDate(v){if(!v)return '未保存';try{return new Date(v).toLocaleString('ja-JP');}catch(_){return String(v)}}
   function channelLabel(v){return v==='presale'?'前売り券':v==='quota_residual'?'ノルマ残券':v==='day'?'当日券':'チケット';}
@@ -111,24 +118,64 @@
     renderStats();
   }
 
-  async function refreshBackup(){
+  async function refreshBackup(options={}){
+    const manual=!!options.manual;
+    const force=!!options.force;
     const btn=document.getElementById('refreshBackupBtn');
     const msg=document.getElementById('syncMessage');
-    if(!navigator.onLine){msg.textContent='オフライン中は最新版を取得できません。保存済みデータはそのまま利用できます。';return;}
-    if(!supabaseClient){msg.textContent='通信ライブラリを読み込めません。オンラインでこの画面を一度開いてください。';return;}
-    btn.disabled=true;msg.textContent='非常用データを取得しています...';
+
+    if(backupBusy)return {skipped:true,reason:'busy'};
+    if(!navigator.onLine){
+      if(manual)msg.textContent='オフライン中は最新版を取得できません。保存済みデータはそのまま利用できます。';
+      return {skipped:true,reason:'offline'};
+    }
+    if(!supabaseClient){
+      if(manual)msg.textContent='通信ライブラリを読み込めません。オンラインでこの画面を一度開いてください。';
+      return {skipped:true,reason:'no_supabase'};
+    }
+
     try{
+      if(!force){
+        const s=await SigmaOfflineStore.stats();
+        if(s.savedAt){
+          const age=Date.now()-new Date(s.savedAt).getTime();
+          if(Number.isFinite(age)&&age>=0&&age<AUTO_MIN_BACKUP_GAP_MS){
+            return {skipped:true,reason:'recent'};
+          }
+        }
+      }
+
+      backupBusy=true;
+      if(manual)btn.disabled=true;
+      msg.textContent=manual?'非常用データを更新しています...':'非常用データを自動更新しています...';
+
       const {data:{user},error:userError}=await supabaseClient.auth.getUser();
-      if(userError||!user) throw new Error('ログイン情報を確認できません。通常アプリでログインしてください。');
-      const {data:staff}=await supabaseClient.from('staff_members').select('staff_name').eq('user_id',user.id).maybeSingle();
+      if(userError||!user)throw new Error('ログイン情報を確認できません。通常アプリでログインしてください。');
+
+      const {data:staff}=await supabaseClient
+        .from('staff_members')
+        .select('staff_name')
+        .eq('user_id',user.id)
+        .maybeSingle();
+
       const {data,error}=await supabaseClient.rpc('offline_ticket_backup_snapshot');
-      if(error) throw error;
-      const result=await SigmaOfflineStore.saveSnapshot(data,{user_id:user.id,staff_name:staff?.staff_name||'スタッフ'});
-      msg.textContent=`保存しました。${result.ticket_count}枚のチケットをこの端末でオフライン照合できます。`;
+      if(error)throw error;
+
+      const result=await SigmaOfflineStore.saveSnapshot(data,{
+        user_id:user.id,
+        staff_name:staff?.staff_name||'スタッフ'
+      });
+
+      msg.textContent=`自動バックアップ更新：${result.ticket_count}枚 / ${fmtDate(result.saved_at)}`;
       await renderStats();
+      return {ok:true,result};
     }catch(e){
-      msg.textContent='保存できませんでした：'+(e?.message||e);
-    }finally{btn.disabled=false;}
+      msg.textContent='バックアップ更新に失敗しました。前回保存したデータは保持されています：'+(e?.message||e);
+      return {ok:false,error:e};
+    }finally{
+      backupBusy=false;
+      if(btn)btn.disabled=false;
+    }
   }
 
   async function startScanner(){
@@ -219,51 +266,125 @@
       currentTicket=await SigmaOfflineStore.getTicket(code);
       const r=document.getElementById('result');
       r.className='card result used';
-      r.innerHTML=`<h2>✅ 端末内で使用済みにしました</h2><p><strong>${esc(itemLabel(item))}</strong></p><p class="ticketcode">${esc(code)}</p><p>使用時刻：${esc(fmtDate(use.used_at))}</p><p class="small">この履歴はまだこの端末内だけにあります。オンライン復旧後に「未同期データをオンラインへ同期」を実行してください。</p><button class="primary" onclick="startScanner()">次のQRを読み取る</button>`;
+      r.innerHTML=`<h2>✅ 端末内で使用済みにしました</h2><p><strong>${esc(itemLabel(item))}</strong></p><p class="ticketcode">${esc(code)}</p><p>使用時刻：${esc(fmtDate(use.used_at))}</p><p class="small">この履歴は端末内に保存されました。通信が戻ると自動でオンラインへ送信されます。</p><button class="primary" onclick="startScanner()">次のQRを読み取る</button>`;
       await renderStats();
     }catch(e){alert(e?.message||e);await checkCode(code);}
   }
 
-  async function syncPending(){
+  async function syncPending(options={}){
+    const manual=!!options.manual;
     const btn=document.getElementById('syncBtn');
     const msg=document.getElementById('syncMessage');
-    if(!navigator.onLine){msg.textContent='オフライン中です。通信復旧後に同期してください。';return;}
-    if(!supabaseClient){msg.textContent='通信ライブラリを読み込めません。オンラインで再度開いてください。';return;}
-    btn.disabled=true;msg.textContent='同期しています...';
+
+    if(syncBusy)return {skipped:true,reason:'busy'};
+    if(!navigator.onLine){
+      if(manual)msg.textContent='オフライン中です。通信が戻ると自動送信します。';
+      return {skipped:true,reason:'offline'};
+    }
+    if(!supabaseClient){
+      if(manual)msg.textContent='通信ライブラリを読み込めません。オンラインで再度開いてください。';
+      return {skipped:true,reason:'no_supabase'};
+    }
+
+    syncBusy=true;
+    if(manual)btn.disabled=true;
+
     let ok=0,conflict=0,failed=0;
     try{
-      const {data:{user},error:userError}=await supabaseClient.auth.getUser();
-      if(userError||!user) throw new Error('ログイン情報を確認できません。通常アプリでログインしてください。');
       const rows=await SigmaOfflineStore.listUsesByStatus(['pending']);
+      if(rows.length===0){
+        if(manual)msg.textContent='未同期データはありません。';
+        await renderStats();
+        return {ok:true,synced:0,conflict:0,failed:0};
+      }
+
+      msg.textContent=manual
+        ? `未同期 ${rows.length}件を送信しています...`
+        : `オンライン復帰を検知。未同期 ${rows.length}件を自動送信しています...`;
+
+      const {data:{user},error:userError}=await supabaseClient.auth.getUser();
+      if(userError||!user)throw new Error('ログイン情報を確認できません。通常アプリでログインしてください。');
+
       for(const u of rows){
         try{
           const {data,error}=await supabaseClient.rpc('sync_offline_ticket_use',{
             p_ticket_code:u.ticket_code,
             p_item:u.item,
             p_used_at:u.used_at,
-            p_device_id:u.device_id
+            p_device_id:u.device_id,
+            p_local_id:u.local_id
           });
-          if(error) throw error;
+          if(error)throw error;
+
           const status=data?.status||'error';
           if(status==='synced'){
-            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,sync_error:null});ok++;
-          }else if(status==='already_used'){
-            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'conflict',synced_at:new Date().toISOString(),server_result:data,sync_error:'オンライン側ですでに使用済み'});conflict++;
+            await SigmaOfflineStore.updateUse(u.local_id,{
+              sync_status:'synced',
+              synced_at:new Date().toISOString(),
+              server_result:data,
+              sync_error:null
+            });
+            ok++;
           }else{
-            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'conflict',server_result:data,sync_error:data?.message||status});conflict++;
+            await SigmaOfflineStore.updateUse(u.local_id,{
+              sync_status:'conflict',
+              synced_at:new Date().toISOString(),
+              server_result:data,
+              sync_error:data?.message||status
+            });
+            conflict++;
           }
-        }catch(e){await SigmaOfflineStore.updateUse(u.local_id,{sync_error:e?.message||String(e)});failed++;}
+        }catch(e){
+          await SigmaOfflineStore.updateUse(u.local_id,{sync_error:e?.message||String(e)});
+          failed++;
+        }
       }
-      msg.textContent=`同期結果：成功 ${ok}件 / 要確認 ${conflict}件 / 失敗 ${failed}件`;
+
+      msg.textContent=`自動同期結果：成功 ${ok}件 / 管理者確認 ${conflict}件 / 再送待ち ${failed}件`;
       await renderStats();
-    }catch(e){msg.textContent='同期できませんでした：'+(e?.message||e);}finally{btn.disabled=false;}
+      return {ok:true,synced:ok,conflict,failed};
+    }catch(e){
+      msg.textContent='同期できませんでした。未同期データは端末内に残っています：'+(e?.message||e);
+      return {ok:false,error:e};
+    }finally{
+      syncBusy=false;
+      if(btn)btn.disabled=false;
+    }
   }
 
-  window.addEventListener('online',renderNetwork);
+  async function runAutomaticMaintenance(reason='timer'){
+    if(!navigator.onLine)return;
+    // 先に使用履歴を中央DBへ反映し、その後で最新チケット一覧を取り直す。
+    await syncPending({manual:false});
+    await refreshBackup({manual:false,force:false});
+  }
+
+  function startAutomaticMaintenance(){
+    if(autoTimer)clearInterval(autoTimer);
+    autoTimer=setInterval(()=>runAutomaticMaintenance('interval'),AUTO_INTERVAL_MS);
+  }
+
+  window.addEventListener('online',()=>{
+    renderNetwork();
+    setTimeout(()=>runAutomaticMaintenance('online'),1200);
+  });
   window.addEventListener('offline',renderNetwork);
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&navigator.onLine){
+      setTimeout(()=>runAutomaticMaintenance('visible'),500);
+    }
+  });
+
   window.addEventListener('load',async()=>{
     renderNetwork();
-    if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(()=>{});}
+    startAutomaticMaintenance();
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(()=>{});
+    }
+    if(navigator.onLine){
+      setTimeout(()=>runAutomaticMaintenance('load'),900);
+    }
   });
 </script>
 </body>

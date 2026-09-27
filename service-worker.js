@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-offline-autobackup-v4";
+const CACHE_NAME = "sigma-ticket-offline-autosync-v5";
 
 const CORE_ASSETS = [
   "./home.html",

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>オフライン同期確認</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4}
+*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:680px;margin:auto;padding:18px 16px 40px}.top{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+.back{width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--red);font-size:20px;font-weight:900}
+h1{margin:0;font-size:24px}.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.summary,.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+.summary b{font-size:28px;color:var(--red)}.small{font-size:12px;color:var(--muted);line-height:1.55}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;word-break:break-all}
+.tag{background:#fff1f2;color:var(--red);font-size:12px;font-weight:900;border-radius:999px;padding:6px 9px;white-space:nowrap}
+button.resolve{width:100%;border:0;border-radius:12px;background:#2c2c2e;color:#fff;padding:12px;font-weight:900;margin-top:12px}
+.empty{text-align:center;color:var(--muted);padding:28px 12px}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><button class="back" onclick="location.href='admin-menu.html'">←</button><div><h1>オフライン同期確認</h1><div class="sub">非常用QR受付でオンライン側と食い違った履歴</div></div></div>
+<section class="summary"><div class="small">未確認</div><b id="count">-</b><div id="msg" class="small">読み込み中...</div></section>
+<div id="list"></div>
+</main>
+<script>
+const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function dt(v){return v?new Date(v).toLocaleString('ja-JP'):'-';}
+function typeLabel(v){
+  return ({already_used:'二重使用',not_found:'オンライン側に券なし',pending:'受取未完了',invalid:'無効券',conflict:'状態競合'})[v]||v||'要確認';
+}
+async function load(){
+  const msg=document.getElementById('msg'),list=document.getElementById('list');
+  msg.textContent='読み込み中...';
+  const {data,error}=await sb.rpc('admin_offline_sync_conflicts');
+  if(error){msg.textContent='読み込み失敗：'+error.message;return;}
+  const rows=data||[];
+  document.getElementById('count').textContent=rows.length;
+  msg.textContent=rows.length?'管理者の確認が必要な履歴があります。':'未確認の競合はありません。';
+  if(!rows.length){list.innerHTML='<div class="card empty">現在、確認が必要な競合はありません。</div>';return;}
+  list.innerHTML=rows.map(r=>`
+    <section class="card">
+      <div class="row">
+        <div>
+          <div class="code">${esc(r.ticket_code)}</div>
+          <div class="small">オフライン使用：${esc(dt(r.offline_used_at))}</div>
+        </div>
+        <span class="tag">${esc(typeLabel(r.conflict_type))}</span>
+      </div>
+      <p><strong>${esc(r.message||'オンライン側の状態と一致しません')}</strong></p>
+      <div class="small">
+        報告者：${esc(r.reported_by_name||'-')}<br>
+        端末ID：${esc(r.device_id||'-')}<br>
+        オンライン側使用：${esc(dt(r.server_used_at))}<br>
+        オンライン状態：${esc(r.server_status||'-')}<br>
+        オフライン交換：${esc(r.offline_item||'-')} / オンライン交換：${esc(r.server_item||'-')}
+      </div>
+      <button class="resolve" onclick="resolveOne(${Number(r.id)})">確認済みにする</button>
+    </section>
+  `).join('');
+}
+async function resolveOne(id){
+  const note=prompt('確認メモ（任意）','');
+  if(note===null)return;
+  const {error}=await sb.rpc('admin_resolve_offline_sync_conflict',{p_id:id,p_note:note});
+  if(error){alert(error.message);return;}
+  await load();
+}
+load();
+</script>
+</body>
+</html>
