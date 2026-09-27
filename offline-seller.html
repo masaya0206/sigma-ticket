@@ -66,6 +66,7 @@ const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
 const sb=(typeof supabase!=="undefined")?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
 let currentIssue=null;
 let syncBusy=false;
+let backupBusy=false;
 
 function fmt(v){return v?new Date(v).toLocaleString("ja-JP"):"-";}
 function renderNet(){
@@ -160,6 +161,23 @@ async function shareQr(){
   }catch(e){message.textContent="共有できませんでした："+(e?.message||e);}
 }
 
+async function refreshOfflinePool(){
+  if(backupBusy||!navigator.onLine||!sb)return;
+  backupBusy=true;
+  try{
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user)return;
+    const {data,error}=await sb.rpc('offline_ticket_backup_snapshot');
+    if(error)throw error;
+    await SigmaOfflineStore.saveSnapshot(data,{user_id:user.id,source:'offline-seller-auto'});
+    await refreshCounts();
+  }catch(e){
+    // 既存のオフラインデータは消さず、次回オンライン時に再試行
+  }finally{
+    backupBusy=false;
+  }
+}
+
 async function syncIssues(manual=false){
   if(syncBusy||!navigator.onLine||!sb)return;
   syncBusy=true;
@@ -183,20 +201,22 @@ async function syncIssues(manual=false){
       }
     }
     message.textContent=`発行履歴の同期：成功 ${ok}件 / 再送待ち ${ng}件`;
+    if(ok>0) await refreshOfflinePool();
   }finally{
     syncBusy=false;
     await refreshCounts();
   }
 }
 
-window.addEventListener("online",()=>{renderNet();setTimeout(()=>syncIssues(false),1000);});
+window.addEventListener("online",()=>{renderNet();setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();},1000);});
 window.addEventListener("offline",renderNet);
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&navigator.onLine)syncIssues(false);});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&navigator.onLine)setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();},200);});
 window.addEventListener("load",async()=>{
   renderNet();
   if("serviceWorker" in navigator)navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(()=>{});
   await loadStaff();
-  if(navigator.onLine)setTimeout(()=>syncIssues(false),700);
+  if(navigator.onLine)setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();},700);
+  setInterval(async()=>{if(navigator.onLine){await syncIssues(false);await refreshOfflinePool();}},10*60*1000);
 });
 </script>
 </body>

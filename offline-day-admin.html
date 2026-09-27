@@ -3,49 +3,122 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>オフライン当日券準備</title>
+<title>オフライン当日券設定</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--red:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4}
+:root{--red:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--green:#15803d;--amber:#9a6700}
 *{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
-main{max-width:720px;margin:auto;padding:18px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+main{max-width:780px;margin:auto;padding:18px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
 button,input{width:100%;padding:13px;border-radius:13px;font-size:16px}button{border:0;background:var(--red);color:#fff;font-weight:900;margin-top:10px}input{border:1px solid #ddd;background:#fff}
-.row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #eee}.small{font-size:12px;color:var(--muted)}.num{font-weight:900;text-align:right}
+label{display:block;font-weight:800;margin:12px 0 6px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row{display:grid;grid-template-columns:minmax(130px,1fr) 80px 90px 80px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid #eee}
+.small{font-size:12px;color:var(--muted);line-height:1.55}.num{font-weight:900;text-align:right}.pill{display:inline-block;padding:5px 8px;border-radius:999px;font-size:12px;font-weight:900}.ok{background:#ecfdf3;color:var(--green)}.warn{background:#fff7df;color:var(--amber)}
+.switch{display:flex;gap:8px;align-items:center;margin-top:12px}.switch input{width:auto}.summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.row{grid-template-columns:minmax(110px,1fr) 65px 70px 65px;font-size:13px}}
 </style>
 </head>
 <body><main>
 <button onclick="location.href='admin-menu.html'" style="background:#fff1f2;color:#b5121b">← 管理者メニュー</button>
+
 <section class="card">
-<h1 style="margin-top:0">オフライン当日券準備</h1>
-<p class="small">各有効売り子に、未使用の非常用当日券コードを事前予約します。通常は1人100枚で十分です。QR画像を事前配布する必要はありません。</p>
-<label>1人あたり確保する未使用枚数</label>
-<input id="target" type="number" min="1" max="500" value="100">
-<button onclick="prepare()">不足分を準備する</button>
+<h1 style="margin-top:0">オフライン当日券設定</h1>
+<p class="small">スタッフ端末に持たせる枚数と、自動補充を開始する残数を管理できます。初期設定は「30枚保持・15枚以下で補充」です。</p>
+
+<div class="grid">
+  <div>
+    <label for="target">端末に保持する枚数</label>
+    <input id="target" type="number" min="2" max="500" value="30">
+  </div>
+  <div>
+    <label for="threshold">自動補充を始める残数</label>
+    <input id="threshold" type="number" min="0" max="499" value="15">
+  </div>
+</div>
+
+<label class="switch">
+  <input id="autoRefill" type="checkbox" checked>
+  <span>自動補充を有効にする</span>
+</label>
+
+<button onclick="saveSettings()">設定を保存</button>
 <p id="msg" class="small"></p>
+
+<div class="summary">
+  <span id="settingPill" class="pill ok">設定読込中</span>
+  <span class="pill" style="background:#eef2ff;color:#3730a3">一覧は3秒ごとに自動更新</span>
+</div>
 </section>
+
 <section class="card">
-<h2 style="margin-top:0">現在の予約状況</h2>
-<div class="row" style="font-size:12px;color:#6e6e73"><div>売り子</div><div>未使用</div><div>発行済み</div></div>
+<h2 style="margin-top:0">スタッフ別 オフライン券残数</h2>
+<p class="small">「端末用」は次回同期で各端末へ保存される枚数です。「予備」はサーバー上にまだ未使用で残っている事前券です。</p>
+<div class="row" style="font-size:12px;color:#6e6e73"><div>売り子</div><div>端末用</div><div>予備</div><div>発行済</div></div>
 <div id="list">読み込み中...</div>
+<p id="updated" class="small"></p>
 </section>
 </main>
+
 <script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
-async function load(){
-  const {data,error}=await sb.rpc('admin_offline_day_reserve_status');
-  if(error){list.textContent='エラー：'+error.message;return;}
-  list.innerHTML=(data||[]).map(x=>`<div class="row"><div><b>${x.staff_name}</b></div><div class="num">${x.available_count}</div><div class="num">${x.issued_count}</div></div>`).join('')||'<div class="small">対象売り子がいません。</div>';
+let loading=false;
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));}
+
+async function loadSettings(){
+  const {data,error}=await sb.rpc('admin_get_offline_day_settings');
+  if(error){msg.textContent='設定取得エラー：'+error.message;return;}
+  if(data){
+    target.value=data.target_count??30;
+    threshold.value=data.refill_threshold??15;
+    autoRefill.checked=data.auto_refill!==false;
+    settingPill.textContent=`${data.target_count}枚保持 / ${data.refill_threshold}枚以下で補充 / ${data.auto_refill?'ON':'OFF'}`;
+    settingPill.className='pill '+(data.auto_refill?'ok':'warn');
+  }
 }
-async function prepare(){
-  const n=Math.max(1,Math.min(500,Number(target.value||100)));
-  if(!confirm(`各売り子の未使用予約券を${n}枚まで補充しますか？`))return;
-  msg.textContent='準備中...';
-  const {data,error}=await sb.rpc('admin_prepare_offline_day_reserves',{p_per_seller:n});
-  msg.textContent=error?'エラー：'+error.message:`準備完了：追加 ${data?.created_count??0}枚`;
-  if(!error)await load();
+
+async function loadStatus(){
+  if(loading)return;
+  loading=true;
+  try{
+    const {data,error}=await sb.rpc('admin_offline_day_reserve_status_v2');
+    if(error){list.textContent='エラー：'+error.message;return;}
+    list.innerHTML=(data||[]).map(x=>{
+      const low=Number(x.server_stock_count||0)<=Number(x.refill_threshold||0);
+      return `<div class="row">
+        <div><b>${esc(x.staff_name)}</b>${low?'<br><span class="pill warn">補充ライン</span>':''}</div>
+        <div class="num">${Number(x.device_pool_count||0)}</div>
+        <div class="num">${Number(x.server_stock_count||0)}</div>
+        <div class="num">${Number(x.issued_count||0)}</div>
+      </div>`;
+    }).join('')||'<div class="small">対象売り子がいません。</div>';
+    updated.textContent='最終更新：'+new Date().toLocaleTimeString('ja-JP');
+  }finally{loading=false;}
 }
-load();
+
+async function saveSettings(){
+  const t=Math.max(2,Math.min(500,Number(target.value||30)));
+  const th=Math.max(0,Math.min(499,Number(threshold.value||15)));
+  if(th>=t){msg.textContent='補充開始残数は、保持枚数より小さくしてください。';return;}
+  if(!confirm(`保持 ${t}枚 / 残り${th}枚以下で自動補充 に変更しますか？`))return;
+
+  msg.textContent='保存中...';
+  const {data,error}=await sb.rpc('admin_set_offline_day_settings',{
+    p_target_count:t,
+    p_refill_threshold:th,
+    p_auto_refill:autoRefill.checked
+  });
+  if(error){msg.textContent='エラー：'+error.message;return;}
+  msg.textContent=`保存しました。保持${data.target_count}枚 / 補充ライン${data.refill_threshold}枚`;
+  await loadSettings();
+  await loadStatus();
+}
+
+(async()=>{
+  await loadSettings();
+  await loadStatus();
+  setInterval(loadStatus,3000);
+})();
 </script>
 </body>
 </html>
