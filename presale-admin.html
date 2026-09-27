@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>前売り・券種管理</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700} table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px;border-bottom:1px solid #edd;text-align:left}</style>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>前売り・券種管理</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700} table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px;border-bottom:1px solid #edd;text-align:left}.staff-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:10px 0 12px}.staff-toolbar .tool-grow{flex:1 1 220px}.staff-toolbar .tool-fixed{flex:0 0 220px}.staff-toolbar label{display:block;font-size:13px;margin-bottom:4px}.staff-toolbar select{margin:0}.staff-toolbar .secondary{width:auto;padding:12px 18px;margin:0}@media(max-width:600px){.staff-toolbar{align-items:stretch}.staff-toolbar .tool-grow,.staff-toolbar .tool-fixed{flex:1 1 100%}.staff-toolbar .secondary{width:100%}}</style>
 <style id="responsiveOverflowFixV1">
 /* 共通：iPhone/Safariを含む横はみ出し防止 */
 *,*::before,*::after{box-sizing:border-box}
@@ -122,6 +122,9 @@ td .mini{white-space:nowrap}
 </head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>前売り・券種管理</h1>
 <div class="card"><h2>販売設定</h2><div class="grid"><div><label>前売り券価格</label><input id="pp" type="number"></div><div><label>当日券価格</label><input id="dp" type="number"></div></div><label><input id="pe" type="checkbox" style="width:auto"> 前売り券を販売中</label><br><label><input id="de" type="checkbox" style="width:auto"> 当日券を販売中</label><br><label>ノルマ選択期限</label><input id="deadline" type="datetime-local"><label>前売り終了予定</label><input id="endat" type="datetime-local"><button onclick="saveSettings()">設定を保存</button><p id="setmsg"></p></div>
 
+
+</div>
+
 <div class="card mode-card">
   <div class="mode-status">
     <h2 style="margin:0">運用モード</h2>
@@ -146,25 +149,95 @@ td .mini{white-space:nowrap}
 <div class="card"><h2>前売り終了・残券確定</h2><p class="muted">祭前販売を締め、その瞬間の残券数と売れ残り率を固定します。同時に前売り停止・当日券販売開始になります。</p><button class="danger" onclick="closePre()">前売りを締めて残券を確定</button><p id="clmsg"></p></div>
 <div class="card"><h2>ポイント変数</h2><p class="muted">ノルマ加速係数は「変数設定」に一本化しました。</p><button onclick="location.href='variables-admin.html'">変数設定を開く</button></div>
 <div class="card"><h2>最終インセンティブ</h2><p class="muted">前売り・食材保存・当日内・当日外の最終配分は専用画面で計算します。</p><button onclick="location.href='incentive-admin.html'">最終インセンティブ計算を開く</button></div>
-<div class="card"><h2>スタッフ一覧</h2><button class="secondary" onclick="loadStaff()">更新</button><div style="overflow:auto"><table><thead><tr><th>名前</th><th>希望</th><th>確定</th><th>販売</th><th>pt</th><th>現在残り</th><th>ノルマ操作</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="card"><h2>スタッフ一覧</h2><div class="staff-toolbar"><div class="tool-fixed"><label for="staffSort">並び順</label><select id="staffSort" onchange="renderStaffRows()"><option value="name_asc">名前順（あ→ん）</option><option value="name_desc">名前順（ん→あ）</option><option value="requested_desc">希望ノルマが多い順</option><option value="requested_asc">希望ノルマが少ない順</option><option value="confirmed_desc">確定ノルマが多い順</option><option value="confirmed_asc">確定ノルマが少ない順</option><option value="sold_desc">販売枚数が多い順</option><option value="sold_asc">販売枚数が少ない順</option><option value="pt_desc">ptが多い順</option><option value="pt_asc">ptが少ない順</option><option value="residual_desc">現在残りが多い順</option><option value="residual_asc">現在残りが少ない順</option></select></div><div class="tool-grow"></div><button class="secondary" onclick="loadStaff()">更新</button></div><div style="overflow:auto"><table><thead><tr><th>名前</th><th>希望</th><th>確定</th><th>販売</th><th>pt</th><th>現在残り</th><th>ノルマ操作</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <script>const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const loc=v=>v?new Date(new Date(v).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';const iso=v=>v?new Date(v).toISOString():null;
 async function ensureAdmin(){const{data:{user}}=await db.auth.getUser();if(!user)throw Error('ログインしてください');const{data}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data)throw Error('管理者のみ利用できます')}
 let keepIncentive=0,keepTotalSales=0,testMode=true;
-const pp=document.getElementById('pp');
-const dp=document.getElementById('dp');
-const pe=document.getElementById('pe');
-const de=document.getElementById('de');
-const deadline=document.getElementById('deadline');
-const endat=document.getElementById('endat');
-const setmsg=document.getElementById('setmsg');
-const modePill=document.getElementById('modePill');
-const modeExplain=document.getElementById('modeExplain');
-const modeButton=document.getElementById('modeButton');
-const modemsg=document.getElementById('modemsg');
-const cmsg=document.getElementById('cmsg');
-const clmsg=document.getElementById('clmsg');
-const rows=document.getElementById('rows');
+let staffListCache=[];
+
+function toNum(value,fallback=0){
+  const n=Number(value);
+  return Number.isFinite(n)?n:fallback;
+}
+
+function compareJa(a,b){
+  return String(a||'').localeCompare(String(b||''),'ja');
+}
+
+function sortStaffList(list,sortKey){
+  const copied=[...list];
+  copied.sort((a,b)=>{
+    let diff=0;
+    switch(sortKey){
+      case 'name_desc':
+        diff=compareJa(b.staff_name,a.staff_name);
+        break;
+      case 'requested_desc':
+        diff=toNum(b.requested_quota)-toNum(a.requested_quota);
+        break;
+      case 'requested_asc':
+        diff=toNum(a.requested_quota)-toNum(b.requested_quota);
+        break;
+      case 'confirmed_desc':
+        diff=toNum(b.confirmed_quota,-1)-toNum(a.confirmed_quota,-1);
+        break;
+      case 'confirmed_asc':
+        diff=toNum(a.confirmed_quota,999999)-toNum(b.confirmed_quota,999999);
+        break;
+      case 'sold_desc':
+        diff=toNum(b.presale_sold)-toNum(a.presale_sold);
+        break;
+      case 'sold_asc':
+        diff=toNum(a.presale_sold)-toNum(b.presale_sold);
+        break;
+      case 'pt_desc':
+        diff=toNum(b.presale_points)-toNum(a.presale_points);
+        break;
+      case 'pt_asc':
+        diff=toNum(a.presale_points)-toNum(b.presale_points);
+        break;
+      case 'residual_desc':
+        diff=toNum(b.residual_remaining)-toNum(a.residual_remaining);
+        break;
+      case 'residual_asc':
+        diff=toNum(a.residual_remaining)-toNum(b.residual_remaining);
+        break;
+      case 'name_asc':
+      default:
+        diff=compareJa(a.staff_name,b.staff_name);
+        break;
+    }
+    if(diff!==0) return diff;
+    return compareJa(a.staff_name,b.staff_name);
+  });
+  return copied;
+}
+
+function renderStaffRows(){
+  const sortKey=(document.getElementById('staffSort')?.value)||'name_asc';
+  const data=sortStaffList(staffListCache,sortKey);
+
+  rows.innerHTML=data.map(x=>{
+    const confirmed=x.confirmed_quota!=null;
+    const sold=Number(x.presale_sold||0);
+    const action=!confirmed
+      ? '<span class="muted">未確定</span>'
+      : (!testMode && sold>0)
+        ? '<span class="muted">販売済み・固定</span>'
+        : `<button class="mini warn" onclick='unlockOne(${JSON.stringify(x.user_id)},${JSON.stringify(x.staff_name)},${sold})'>ノルマを再設定</button>`;
+
+    return `<tr>
+      <td>${x.staff_name}</td>
+      <td>${x.requested_quota}</td>
+      <td>${x.confirmed_quota??'-'}</td>
+      <td>${x.presale_sold}</td>
+      <td>${Number(x.presale_points||0).toFixed(1)}</td>
+      <td>${x.residual_remaining}</td>
+      <td>${action}</td>
+    </tr>`;
+  }).join('');
+}
 async function loadSettings(){
   await ensureAdmin();
   const{data,error}=await db.from('ticket_sales_settings').select('*').eq('id',1).single();
@@ -256,12 +329,12 @@ async function unlockOne(userId,staffName,sold){
 
 async function unlockAll(){
   const text=testMode
-    ? `全員のノルマ再設定を許可しますか？
+    ? '全員のノルマ再設定を許可しますか？
 
-テストモードでは販売済みスタッフも含めて確定を解除し、ノルマ譲渡をキャンセルします。前売り締め済みならテスト用に再開します。`
-    : `再設定可能な全スタッフのノルマ確定を解除しますか？
+テストモードでは販売済みスタッフも含めて確定を解除し、ノルマ譲渡をキャンセルします。前売り締め済みならテスト用に再開します。'
+    : '再設定可能な全スタッフのノルマ確定を解除しますか？
 
-本番モードでは販売済み・譲渡ありのスタッフはスキップされます。`;
+本番モードでは販売済み・譲渡ありのスタッフはスキップされます。';
 
   if(!confirm(text))return;
 
@@ -291,26 +364,12 @@ async function closePre(){
 
 async function loadStaff(){
   const{data,error}=await db.rpc('admin_presale_staff_status');
-  if(error){rows.innerHTML='<tr><td>'+error.message+'</td></tr>';return}
-
-  rows.innerHTML=data.map(x=>{
-    const confirmed=x.confirmed_quota!=null;
-    const sold=Number(x.presale_sold||0);
-    const action=!confirmed
-      ? '<span class="muted">未確定</span>'
-      : (!testMode && sold>0)
-        ? '<span class="muted">販売済み・固定</span>'
-        : `<button class="mini warn" onclick='unlockOne(${JSON.stringify(x.user_id)},${JSON.stringify(x.staff_name)},${sold})'>ノルマを再設定</button>`;
-
-    return `<tr>
-      <td>${x.staff_name}</td>
-      <td>${x.requested_quota}</td>
-      <td>${x.confirmed_quota??'-'}</td>
-      <td>${x.presale_sold}</td>
-      <td>${Number(x.presale_points||0).toFixed(1)}</td>
-      <td>${x.residual_remaining}</td>
-      <td>${action}</td>
-    </tr>`;
-  }).join('');
+  if(error){
+    staffListCache=[];
+    rows.innerHTML='<tr><td colspan="7">'+error.message+'</td></tr>';
+    return;
+  }
+  staffListCache=data||[];
+  renderStaffRows();
 }
-(async()=>{try{await loadSettings();await loadStaff()}catch(e){setmsg.textContent='読み込みエラー: '+e.message;modemsg.textContent='読み込みエラー';console.error(e)}})();</script></main></body></html>
+(async()=>{try{await loadSettings();await loadStaff()}catch(e){document.body.innerHTML='<main><div class="card">'+e.message+'</div></main>'}})();</script></main></body></html>
