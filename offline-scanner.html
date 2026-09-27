@@ -38,7 +38,7 @@
 <main>
   <section class="card emergency">
     <strong>⚠️ 非常用モード</strong>
-    <p>この画面は、事前に端末へ保存したチケット情報だけで判定します。通常時は通常レジを使用してください。</p>
+    <p>この画面は、事前に端末へ保存したチケット情報だけで判定します。オフライン時はSupabaseへ再ログインせず使用できます。通常時は通常レジを使用してください。</p>
   </section>
 
   <section class="card">
@@ -51,6 +51,7 @@
       <div class="stat"><b id="pendingCount">0</b><span>未同期の使用履歴</span></div>
     </div>
     <p id="savedAt" class="small">最終保存：未保存</p>
+    <p id="offlineOperator" class="small">事前認証：確認中</p>
     <button id="refreshBackupBtn" class="secondary" onclick="refreshBackup()">最新版をこの端末に保存</button>
     <button id="syncBtn" class="secondary" onclick="syncPending()">未同期データをオンラインへ同期</button>
     <div id="syncMessage" class="sync-note"></div>
@@ -92,6 +93,10 @@
     document.getElementById('ticketCount').textContent=s.ticketCount.toLocaleString();
     document.getElementById('pendingCount').textContent=(s.pending+s.conflicts).toLocaleString();
     document.getElementById('savedAt').textContent='最終保存：'+fmtDate(s.savedAt)+(s.snapshotAt?' / データ時点：'+fmtDate(s.snapshotAt):'');
+    const operator=await SigmaOfflineStore.getMeta('operator',null);
+    document.getElementById('offlineOperator').textContent=operator?.staff_name
+      ? '事前認証済み端末：'+operator.staff_name+' / オフライン時は再ログイン不要'
+      : '事前認証情報：未保存';
     const bp=document.getElementById('backupPill');
     bp.textContent=s.ticketCount>0?'バックアップ保存済み':'バックアップ未保存';
     bp.className='pill '+(s.ticketCount>0?'online':'offline');

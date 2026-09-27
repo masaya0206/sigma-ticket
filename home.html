@@ -655,6 +655,44 @@ table{
           id="loginMessage"
           class="message"
         ></p>
+
+        <div id="offlineEmergencyLogin" style="
+          display:none;
+          margin-top:16px;
+          padding:14px;
+          border-radius:16px;
+          background:#fff8e8;
+          border:1px solid #efd39a;
+        ">
+          <div style="font-weight:900;font-size:16px;color:#6f4b00;">
+            非常用オフライン受付
+          </div>
+          <div id="offlineEmergencyLoginText" style="
+            margin-top:6px;
+            color:#6e5b34;
+            font-size:13px;
+            line-height:1.55;
+          ">
+            この端末に保存済みの非常用データを確認しています。
+          </div>
+          <button
+            type="button"
+            onclick="location.href='offline-scanner.html'"
+            style="
+              width:100%;
+              margin-top:12px;
+              border:0;
+              border-radius:13px;
+              padding:13px 14px;
+              background:#2c2c2e;
+              color:#fff;
+              font-weight:900;
+              font-size:15px;
+            "
+          >
+            ログインせず非常用QR受付を開く
+          </button>
+        </div>
       </section>
 
 
@@ -847,10 +885,12 @@ table{
       "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
 
     const supabaseClient =
-      supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-      );
+      (typeof supabase !== "undefined")
+        ? supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+          )
+        : null;
 
 
     function formatOfflineBackupDate(value) {
@@ -930,7 +970,56 @@ table{
     }
 
 
+    async function refreshOfflineEmergencyLogin() {
+      const box = document.getElementById("offlineEmergencyLogin");
+      const text = document.getElementById("offlineEmergencyLoginText");
+      if (!box || !window.SigmaOfflineStore) return false;
+
+      try {
+        const s = await SigmaOfflineStore.stats();
+        const operator = await SigmaOfflineStore.getMeta("operator", null);
+
+        if (s.ticketCount > 0) {
+          box.style.display = "block";
+          const who = operator?.staff_name ? ` / 保存者 ${operator.staff_name}` : "";
+          const net = navigator.onLine
+            ? "通常ログインが使えない場合も、この端末の保存データだけで非常用受付を開けます。"
+            : "現在オフラインです。Supabaseへのログインなしで、この端末の保存データだけを使えます。";
+          if (text) {
+            text.textContent =
+              `保存済み ${s.ticketCount}枚 / 最終保存 ${formatOfflineBackupDate(s.savedAt)}${who}。${net}`;
+          }
+          return true;
+        }
+
+        box.style.display = "none";
+        return false;
+      } catch (_) {
+        box.style.display = "none";
+        return false;
+      }
+    }
+
+
     async function login() {
+
+      if (!navigator.onLine) {
+        const available = await refreshOfflineEmergencyLogin();
+        const message = document.getElementById("loginMessage");
+        message.textContent = available
+          ? "現在オフラインです。下の「ログインせず非常用QR受付を開く」を使用してください。"
+          : "現在オフラインです。この端末には非常用データが保存されていません。";
+        return;
+      }
+
+      if (!supabaseClient) {
+        const available = await refreshOfflineEmergencyLogin();
+        const message = document.getElementById("loginMessage");
+        message.textContent = available
+          ? "通信機能を読み込めません。下の非常用QR受付は利用できます。"
+          : "通信機能を読み込めません。オンラインで再読み込みしてください。";
+        return;
+      }
 
       const email =
         document.getElementById(
@@ -1017,32 +1106,34 @@ table{
     }
 
 
-    supabaseClient.auth
-      .onAuthStateChange(
-        async (event) => {
+    if (supabaseClient) {
+      supabaseClient.auth
+        .onAuthStateChange(
+          async (event) => {
 
-          if (
-            event ===
-            "PASSWORD_RECOVERY"
-          ) {
+            if (
+              event ===
+              "PASSWORD_RECOVERY"
+            ) {
 
-            document.getElementById(
-              "loginArea"
-            ).style.display =
-              "none";
+              document.getElementById(
+                "loginArea"
+              ).style.display =
+                "none";
 
-            document.getElementById(
-              "portalArea"
-            ).style.display =
-              "none";
+              document.getElementById(
+                "portalArea"
+              ).style.display =
+                "none";
 
-            document.getElementById(
-              "newPasswordArea"
-            ).style.display =
-              "block";
+              document.getElementById(
+                "newPasswordArea"
+              ).style.display =
+                "block";
+            }
           }
-        }
-      );
+        );
+    }
 
 
     async function showPortal() {
@@ -1491,14 +1582,24 @@ table{
 
     async function checkLogin() {
 
-      const {
-        data: { session }
-      } =
-        await supabaseClient.auth
-          .getSession();
+      await refreshOfflineEmergencyLogin();
 
-      if (session) {
-        await showPortal();
+      if (!navigator.onLine || !supabaseClient) {
+        return;
+      }
+
+      try {
+        const {
+          data: { session }
+        } =
+          await supabaseClient.auth
+            .getSession();
+
+        if (session) {
+          await showPortal();
+        }
+      } catch (_) {
+        await refreshOfflineEmergencyLogin();
       }
     }
 
@@ -1532,6 +1633,9 @@ table{
       );
     }
 
+
+    window.addEventListener("online", refreshOfflineEmergencyLogin);
+    window.addEventListener("offline", refreshOfflineEmergencyLogin);
 
     checkLogin();
   </script>

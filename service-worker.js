@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-offline-scanner-v1";
+const CACHE_NAME = "sigma-ticket-offline-auth-v2";
 
 const CORE_ASSETS = [
   "./home.html",
