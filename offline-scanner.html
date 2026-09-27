@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>非常用オフラインQR受付</title>
+  <meta name="theme-color" content="#8f0e15">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./offline-store.js"></script>
+  <style>
+    :root{--red:#b5121b;--dark:#8f0e15;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#e8e2de;--green:#15803d;--greenbg:#ecfdf3;--amber:#9a6700;--amberbg:#fff8dd;--gray:#f2f2f2}
+    *{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}button,input{font:inherit}button{cursor:pointer}
+    header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 16px calc(12px + env(safe-area-inset-top))}
+    .head{max-width:760px;margin:auto;display:flex;align-items:center;gap:12px}.back{border:0;background:#f1eeee;border-radius:12px;padding:10px 12px;font-weight:800}.head h1{font-size:18px;margin:0}.head small{display:block;color:var(--muted);margin-top:2px}
+    main{max-width:760px;margin:auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 8px 24px rgba(74,25,25,.05)}
+    .emergency{border:2px solid #d97706;background:#fffaf0}.emergency strong{display:block;font-size:18px}.emergency p{margin:8px 0 0;color:#715014;font-size:14px;line-height:1.55}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{padding:12px;border-radius:14px;background:#f7f7f7}.stat b{display:block;font-size:19px}.stat span{font-size:12px;color:var(--muted)}
+    .statusrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.pill{font-size:12px;font-weight:800;padding:7px 10px;border-radius:999px;background:#eee}.pill.online{background:var(--greenbg);color:var(--green)}.pill.offline{background:#fff0f0;color:var(--red)}
+    .primary,.secondary,.danger{width:100%;border:0;border-radius:14px;padding:14px 16px;font-weight:900;margin-top:10px}.primary{background:var(--red);color:#fff}.secondary{background:#f0eeee;color:#2c2c2e}.danger{background:#fff0f0;color:var(--red);border:1px solid #f1c7c9}
+    .primary:disabled,.secondary:disabled{opacity:.45;cursor:not-allowed}.small{font-size:12px;color:var(--muted);line-height:1.55}.label{font-size:13px;font-weight:800;margin-bottom:6px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1;border:1px solid var(--line);border-radius:12px;padding:12px}.manual button{border:0;border-radius:12px;background:#262626;color:#fff;padding:0 14px;font-weight:800}
+    #reader{width:100%;overflow:hidden;border-radius:16px;margin-top:12px}.hidden{display:none!important}
+    .result h2{margin:0 0 10px}.result p{margin:7px 0;line-height:1.5}.result.valid{background:var(--greenbg);border-color:#b7e7c5}.result.used{background:#fff0f0;border-color:#efc1c5}.result.warning{background:var(--amberbg);border-color:#f0dd99}.result.invalid{background:#f4f4f4;border-color:#ddd}
+    .ticketcode{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:800;word-break:break-all}.itemgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.itemgrid button{border:0;border-radius:14px;padding:15px 10px;font-weight:900;background:#fff;box-shadow:inset 0 0 0 1px #cfd8d2}.sync-note{font-size:13px;line-height:1.55;color:var(--muted);margin-top:10px}
+    @media(max-width:460px){.itemgrid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <button class="back" onclick="location.href='home.html'">←</button>
+    <div><h1>非常用オフラインQR受付</h1><small>通信障害・Supabase障害時の予備受付</small></div>
+  </div>
+</header>
+<main>
+  <section class="card emergency">
+    <strong>⚠️ 非常用モード</strong>
+    <p>この画面は、事前に端末へ保存したチケット情報だけで判定します。通常時は通常レジを使用してください。</p>
+  </section>
+
+  <section class="card">
+    <div class="statusrow">
+      <span id="networkPill" class="pill">通信状態確認中</span>
+      <span id="backupPill" class="pill">バックアップ確認中</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="ticketCount">0</b><span>保存済みチケット</span></div>
+      <div class="stat"><b id="pendingCount">0</b><span>未同期の使用履歴</span></div>
+    </div>
+    <p id="savedAt" class="small">最終保存：未保存</p>
+    <button id="refreshBackupBtn" class="secondary" onclick="refreshBackup()">最新版をこの端末に保存</button>
+    <button id="syncBtn" class="secondary" onclick="syncPending()">未同期データをオンラインへ同期</button>
+    <div id="syncMessage" class="sync-note"></div>
+  </section>
+
+  <section class="card">
+    <div class="label">QR読み取り</div>
+    <button id="scanButton" class="primary" onclick="startScanner()">カメラでQRを読み取る</button>
+    <button id="stopButton" class="danger hidden" onclick="stopScanner()">カメラを停止</button>
+    <div id="reader"></div>
+    <div style="height:12px"></div>
+    <div class="label">QRが読めない場合</div>
+    <div class="manual">
+      <input id="manualCode" type="text" autocomplete="off" placeholder="SGM-... またはチケットURL">
+      <button onclick="manualCheck()">確認</button>
+    </div>
+  </section>
+
+  <section id="result" class="card result">
+    <h2>待機中</h2>
+    <p>QRコードを読み取ってください。</p>
+  </section>
+</main>
+<script>
+  const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+  const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+  const supabaseClient=(typeof supabase!=='undefined')?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+  let scanner=null;
+  let scannerBusy=false;
+  let currentTicket=null;
+
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function fmtDate(v){if(!v)return '未保存';try{return new Date(v).toLocaleString('ja-JP');}catch(_){return String(v)}}
+  function channelLabel(v){return v==='presale'?'前売り券':v==='quota_residual'?'ノルマ残券':v==='day'?'当日券':'チケット';}
+  function itemLabel(v){return v==='fried_rice'?'炒飯1個':v==='sesame_pair'?'胡麻団子2個':v||'';}
+
+  async function renderStats(){
+    const s=await SigmaOfflineStore.stats();
+    document.getElementById('ticketCount').textContent=s.ticketCount.toLocaleString();
+    document.getElementById('pendingCount').textContent=(s.pending+s.conflicts).toLocaleString();
+    document.getElementById('savedAt').textContent='最終保存：'+fmtDate(s.savedAt)+(s.snapshotAt?' / データ時点：'+fmtDate(s.snapshotAt):'');
+    const bp=document.getElementById('backupPill');
+    bp.textContent=s.ticketCount>0?'バックアップ保存済み':'バックアップ未保存';
+    bp.className='pill '+(s.ticketCount>0?'online':'offline');
+    document.getElementById('syncBtn').disabled=(s.pending===0 || !navigator.onLine || !supabaseClient);
+    return s;
+  }
+
+  function renderNetwork(){
+    const p=document.getElementById('networkPill');
+    p.textContent=navigator.onLine?'端末はオンライン':'端末はオフライン';
+    p.className='pill '+(navigator.onLine?'online':'offline');
+    renderStats();
+  }
+
+  async function refreshBackup(){
+    const btn=document.getElementById('refreshBackupBtn');
+    const msg=document.getElementById('syncMessage');
+    if(!navigator.onLine){msg.textContent='オフライン中は最新版を取得できません。保存済みデータはそのまま利用できます。';return;}
+    if(!supabaseClient){msg.textContent='通信ライブラリを読み込めません。オンラインでこの画面を一度開いてください。';return;}
+    btn.disabled=true;msg.textContent='非常用データを取得しています...';
+    try{
+      const {data:{user},error:userError}=await supabaseClient.auth.getUser();
+      if(userError||!user) throw new Error('ログイン情報を確認できません。通常アプリでログインしてください。');
+      const {data:staff}=await supabaseClient.from('staff_members').select('staff_name').eq('user_id',user.id).maybeSingle();
+      const {data,error}=await supabaseClient.rpc('offline_ticket_backup_snapshot');
+      if(error) throw error;
+      const result=await SigmaOfflineStore.saveSnapshot(data,{user_id:user.id,staff_name:staff?.staff_name||'スタッフ'});
+      msg.textContent=`保存しました。${result.ticket_count}枚のチケットをこの端末でオフライン照合できます。`;
+      await renderStats();
+    }catch(e){
+      msg.textContent='保存できませんでした：'+(e?.message||e);
+    }finally{btn.disabled=false;}
+  }
+
+  async function startScanner(){
+    const result=document.getElementById('result');
+    if(typeof Html5Qrcode==='undefined'){
+      result.className='card result invalid';
+      result.innerHTML='<h2>QR機能を開けません</h2><p>オンライン時に一度この画面を開いて、非常用QR機能を端末へ保存してください。手入力での照合は利用できます。</p>';
+      return;
+    }
+    if((await SigmaOfflineStore.stats()).ticketCount<=0){
+      result.className='card result warning';
+      result.innerHTML='<h2>バックアップ未保存</h2><p>オンラインのうちに「最新版をこの端末に保存」を実行してください。</p>';
+      return;
+    }
+    try{
+      if(scanner) await stopScanner();
+      scanner=new Html5Qrcode('reader');
+      document.getElementById('scanButton').classList.add('hidden');
+      document.getElementById('stopButton').classList.remove('hidden');
+      result.className='card result';
+      result.innerHTML='<h2>読み取り中</h2><p>QRコードをカメラにかざしてください。</p>';
+      await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:250}},async decodedText=>{
+        if(scannerBusy)return;
+        scannerBusy=true;
+        try{await stopScanner(false);await checkCode(decodedText);}finally{scannerBusy=false;}
+      },()=>{});
+    }catch(e){
+      scanner=null;
+      document.getElementById('scanButton').classList.remove('hidden');
+      document.getElementById('stopButton').classList.add('hidden');
+      result.className='card result invalid';
+      result.innerHTML=`<h2>カメラを起動できません</h2><p>${esc(e?.message||e)}</p><p class="small">手入力でも照合できます。</p>`;
+    }
+  }
+
+  async function stopScanner(showReady=true){
+    const s=scanner;scanner=null;
+    if(s){try{await s.stop();}catch(_){}try{await s.clear();}catch(_){}}
+    document.getElementById('scanButton').classList.remove('hidden');
+    document.getElementById('stopButton').classList.add('hidden');
+    if(showReady){const r=document.getElementById('result');r.className='card result';r.innerHTML='<h2>待機中</h2><p>QRコードを読み取ってください。</p>';}
+  }
+
+  async function manualCheck(){
+    const v=document.getElementById('manualCode').value.trim();
+    if(!v)return;
+    await stopScanner(false);
+    await checkCode(v);
+  }
+
+  async function checkCode(raw){
+    const code=SigmaOfflineStore.normalizeTicketCode(raw);
+    const r=document.getElementById('result');
+    currentTicket=null;
+    if(!code){r.className='card result invalid';r.innerHTML='<h2>無効</h2><p>チケットコードを読み取れませんでした。</p>';return;}
+    const t=await SigmaOfflineStore.getTicket(code);
+    if(!t){
+      r.className='card result invalid';
+      r.innerHTML=`<h2>❌ 登録なし</h2><p>この端末の非常用データに存在しないチケットです。</p><p class="ticketcode">${esc(code)}</p><p class="small">バックアップ取得後に発行された券の場合は、最新版を保存し直す必要があります。</p><button class="secondary" onclick="startScanner()">次を読み取る</button>`;
+      return;
+    }
+    currentTicket=t;
+    if(t.status==='active'){
+      r.className='card result valid';
+      r.innerHTML=`<h2>🟢 有効</h2><p><strong>${esc(channelLabel(t.sales_channel_v2))}</strong></p><p class="ticketcode">${esc(t.ticket_code)}</p><p>券面金額：${Number(t.presale_price||0).toLocaleString()}円</p><div class="itemgrid"><button onclick="localUse('fried_rice')">🍚 炒飯1個と交換</button><button onclick="localUse('sesame_pair')">● 胡麻団子2個と交換</button></div><button class="secondary" onclick="startScanner()">キャンセルして次を読む</button>`;
+      return;
+    }
+    if(t.status==='used'){
+      r.className='card result used';
+      r.innerHTML=`<h2>🔴 使用済み</h2><p><strong>${esc(channelLabel(t.sales_channel_v2))}</strong></p><p class="ticketcode">${esc(t.ticket_code)}</p><p>${t.redemption_item?'交換：'+esc(itemLabel(t.redemption_item))+'<br>':''}${t.used_at?'使用時刻：'+esc(fmtDate(t.used_at)):''}</p><button class="secondary" onclick="startScanner()">次を読み取る</button>`;
+      return;
+    }
+    if(t.status==='pending'){
+      r.className='card result warning';
+      r.innerHTML=`<h2>🟡 受け取り未完了</h2><p>バックアップ取得時点では有効化されていません。</p><p class="ticketcode">${esc(t.ticket_code)}</p><p class="small">オンライン復旧後に通常システムで確認してください。</p><button class="secondary" onclick="startScanner()">次を読み取る</button>`;
+      return;
+    }
+    r.className='card result invalid';
+    r.innerHTML=`<h2>使用不可</h2><p>状態：${esc(t.status)}</p><p class="ticketcode">${esc(t.ticket_code)}</p><button class="secondary" onclick="startScanner()">次を読み取る</button>`;
+  }
+
+  async function localUse(item){
+    if(!currentTicket)return;
+    const code=currentTicket.ticket_code;
+    if(!confirm(`${itemLabel(item)}として、このチケットを端末内で使用済みにしますか？`))return;
+    try{
+      const use=await SigmaOfflineStore.markUsed(code,item);
+      currentTicket=await SigmaOfflineStore.getTicket(code);
+      const r=document.getElementById('result');
+      r.className='card result used';
+      r.innerHTML=`<h2>✅ 端末内で使用済みにしました</h2><p><strong>${esc(itemLabel(item))}</strong></p><p class="ticketcode">${esc(code)}</p><p>使用時刻：${esc(fmtDate(use.used_at))}</p><p class="small">この履歴はまだこの端末内だけにあります。オンライン復旧後に「未同期データをオンラインへ同期」を実行してください。</p><button class="primary" onclick="startScanner()">次のQRを読み取る</button>`;
+      await renderStats();
+    }catch(e){alert(e?.message||e);await checkCode(code);}
+  }
+
+  async function syncPending(){
+    const btn=document.getElementById('syncBtn');
+    const msg=document.getElementById('syncMessage');
+    if(!navigator.onLine){msg.textContent='オフライン中です。通信復旧後に同期してください。';return;}
+    if(!supabaseClient){msg.textContent='通信ライブラリを読み込めません。オンラインで再度開いてください。';return;}
+    btn.disabled=true;msg.textContent='同期しています...';
+    let ok=0,conflict=0,failed=0;
+    try{
+      const {data:{user},error:userError}=await supabaseClient.auth.getUser();
+      if(userError||!user) throw new Error('ログイン情報を確認できません。通常アプリでログインしてください。');
+      const rows=await SigmaOfflineStore.listUsesByStatus(['pending']);
+      for(const u of rows){
+        try{
+          const {data,error}=await supabaseClient.rpc('sync_offline_ticket_use',{
+            p_ticket_code:u.ticket_code,
+            p_item:u.item,
+            p_used_at:u.used_at,
+            p_device_id:u.device_id
+          });
+          if(error) throw error;
+          const status=data?.status||'error';
+          if(status==='synced'){
+            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,sync_error:null});ok++;
+          }else if(status==='already_used'){
+            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'conflict',synced_at:new Date().toISOString(),server_result:data,sync_error:'オンライン側ですでに使用済み'});conflict++;
+          }else{
+            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'conflict',server_result:data,sync_error:data?.message||status});conflict++;
+          }
+        }catch(e){await SigmaOfflineStore.updateUse(u.local_id,{sync_error:e?.message||String(e)});failed++;}
+      }
+      msg.textContent=`同期結果：成功 ${ok}件 / 要確認 ${conflict}件 / 失敗 ${failed}件`;
+      await renderStats();
+    }catch(e){msg.textContent='同期できませんでした：'+(e?.message||e);}finally{btn.disabled=false;}
+  }
+
+  window.addEventListener('online',renderNetwork);
+  window.addEventListener('offline',renderNetwork);
+  window.addEventListener('load',async()=>{
+    renderNetwork();
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(()=>{});}
+  });
+</script>
+</body>
+</html>

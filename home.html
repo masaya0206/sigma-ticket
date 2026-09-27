@@ -7,6 +7,7 @@
   <title>シグマ祭 ポータル</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./offline-store.js"></script>
 
   <meta name="theme-color" content="#b5121b">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -795,6 +796,21 @@ table{
             </button>
           </div>
 
+          <div id="offlineBackupCard" style="margin-top:14px;background:#fffaf0;border:1px solid #f0d7a5;border-radius:18px;padding:15px;">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+              <div style="min-width:0;">
+                <div style="font-weight:900;font-size:16px;">非常用オフラインバックアップ</div>
+                <div id="offlineBackupStatus" style="margin-top:5px;color:#6e5b34;font-size:13px;line-height:1.5;">保存状況を確認しています...</div>
+              </div>
+              <span id="offlineBackupBadge" style="font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eee;color:#555;white-space:nowrap;">確認中</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+              <button id="saveOfflineBackupBtn" onclick="saveOfflineBackup()" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">この端末に保存</button>
+              <button onclick="location.href='offline-scanner.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#2c2c2e;color:#fff;">非常用QR受付</button>
+            </div>
+            <div id="offlineBackupMessage" style="font-size:12px;color:#6e6e73;line-height:1.5;margin-top:9px;"></div>
+          </div>
+
           <div id="roleSection" class="role-section">
             <div class="section-title" style="margin-top:0;">
               <h2>勤務中の機能</h2>
@@ -836,6 +852,67 @@ table{
         SUPABASE_KEY
       );
 
+
+    function formatOfflineBackupDate(value) {
+      if (!value) return "未保存";
+      try { return new Date(value).toLocaleString("ja-JP"); } catch (_) { return String(value); }
+    }
+
+    async function refreshOfflineBackupStatus() {
+      if (!window.SigmaOfflineStore) return;
+      const status = document.getElementById("offlineBackupStatus");
+      const badge = document.getElementById("offlineBackupBadge");
+      const msg = document.getElementById("offlineBackupMessage");
+      if (!status || !badge) return;
+      try {
+        const s = await SigmaOfflineStore.stats();
+        if (s.ticketCount > 0) {
+          status.textContent = `保存済み ${s.ticketCount}枚 / 最終保存 ${formatOfflineBackupDate(s.savedAt)}`;
+          badge.textContent = s.pending > 0 || s.conflicts > 0 ? `未同期 ${s.pending + s.conflicts}件` : "保存済み";
+          badge.style.background = s.pending > 0 || s.conflicts > 0 ? "#fff0d6" : "#ecfdf3";
+          badge.style.color = s.pending > 0 || s.conflicts > 0 ? "#8a5a00" : "#15803d";
+          if (msg) msg.textContent = s.pending > 0 ? "オフラインで使用した履歴があります。通信復旧後に非常用QR受付から同期してください。" : "通信障害時は「非常用QR受付」を開いてください。";
+        } else {
+          status.textContent = "この端末には非常用チケットデータが保存されていません。";
+          badge.textContent = "未保存";
+          badge.style.background = "#fff0f0";
+          badge.style.color = "#b5121b";
+          if (msg) msg.textContent = "前売り終了後〜イベント開始前に、全スタッフが一度保存してください。";
+        }
+      } catch (e) {
+        status.textContent = "保存状況を確認できませんでした。";
+        badge.textContent = "確認失敗";
+      }
+    }
+
+    async function saveOfflineBackup() {
+      const btn = document.getElementById("saveOfflineBackupBtn");
+      const msg = document.getElementById("offlineBackupMessage");
+      if (!navigator.onLine) {
+        if (msg) msg.textContent = "オフライン中は最新版を取得できません。すでに保存済みのデータは非常用QR受付で利用できます。";
+        return;
+      }
+      if (!window.SigmaOfflineStore) {
+        if (msg) msg.textContent = "非常用保存機能を読み込めませんでした。ページを再読み込みしてください。";
+        return;
+      }
+      if (btn) btn.disabled = true;
+      if (msg) msg.textContent = "非常用データを取得しています...";
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error("ログイン情報を確認できません");
+        const { data: staff } = await supabaseClient.from("staff_members").select("staff_name").eq("user_id", user.id).maybeSingle();
+        const { data, error } = await supabaseClient.rpc("offline_ticket_backup_snapshot");
+        if (error) throw error;
+        const saved = await SigmaOfflineStore.saveSnapshot(data, { user_id: user.id, staff_name: staff?.staff_name || "スタッフ" });
+        if (msg) msg.textContent = `${saved.ticket_count}枚をこの端末へ保存しました。`;
+        await refreshOfflineBackupStatus();
+      } catch (e) {
+        if (msg) msg.textContent = "保存できませんでした：" + (e?.message || e);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
 
     function roleText(role) {
       // 旧 front/back/tent は過去データ互換として manager に正規化。
@@ -1045,6 +1122,7 @@ table{
         "block";
 
       await refreshPortal();
+      await refreshOfflineBackupStatus();
     }
 
 
