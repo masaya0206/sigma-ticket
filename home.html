@@ -840,10 +840,13 @@ table{
                 <div style="font-weight:900;font-size:16px;">非常用オフラインバックアップ</div>
                 <div id="offlineBackupStatus" style="margin-top:5px;color:#6e5b34;font-size:13px;line-height:1.5;">保存状況を確認しています...</div>
               </div>
-              <span id="offlineBackupBadge" style="font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eee;color:#555;white-space:nowrap;">確認中</span>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                <span id="offlineAutoBackupBadge" style="font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#ecfdf3;color:#15803d;white-space:nowrap;">自動バックアップ ON</span>
+                <span id="offlineBackupBadge" style="font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eee;color:#555;white-space:nowrap;">確認中</span>
+              </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-              <button id="saveOfflineBackupBtn" onclick="saveOfflineBackup()" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">この端末に保存</button>
+              <button id="saveOfflineBackupBtn" onclick="saveOfflineBackup()" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">今すぐ更新</button>
               <button onclick="location.href='offline-scanner.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#2c2c2e;color:#fff;">非常用QR受付</button>
             </div>
             <div id="offlineBackupMessage" style="font-size:12px;color:#6e6e73;line-height:1.5;margin-top:9px;"></div>
@@ -925,33 +928,119 @@ table{
       }
     }
 
-    async function saveOfflineBackup() {
+    const OFFLINE_AUTO_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
+    const OFFLINE_AUTO_BACKUP_MIN_GAP_MS = 90 * 1000;
+    let offlineAutoBackupTimer = null;
+    let offlineBackupInProgress = false;
+
+    async function performOfflineBackup(options = {}) {
+      const manual = !!options.manual;
+      const force = !!options.force;
       const btn = document.getElementById("saveOfflineBackupBtn");
       const msg = document.getElementById("offlineBackupMessage");
+
+      if (offlineBackupInProgress) return { skipped: true, reason: "busy" };
+
       if (!navigator.onLine) {
-        if (msg) msg.textContent = "オフライン中は最新版を取得できません。すでに保存済みのデータは非常用QR受付で利用できます。";
-        return;
+        if (manual && msg) {
+          msg.textContent = "オフライン中は最新版を取得できません。保存済みデータは非常用QR受付で利用できます。";
+        }
+        return { skipped: true, reason: "offline" };
       }
-      if (!window.SigmaOfflineStore) {
-        if (msg) msg.textContent = "非常用保存機能を読み込めませんでした。ページを再読み込みしてください。";
-        return;
+
+      if (!supabaseClient || !window.SigmaOfflineStore) {
+        if (manual && msg) {
+          msg.textContent = "非常用保存機能を読み込めませんでした。ページを再読み込みしてください。";
+        }
+        return { skipped: true, reason: "unavailable" };
       }
-      if (btn) btn.disabled = true;
-      if (msg) msg.textContent = "非常用データを取得しています...";
+
       try {
+        if (!force) {
+          const current = await SigmaOfflineStore.stats();
+          if (current.savedAt) {
+            const age = Date.now() - new Date(current.savedAt).getTime();
+            if (Number.isFinite(age) && age >= 0 && age < OFFLINE_AUTO_BACKUP_MIN_GAP_MS) {
+              return { skipped: true, reason: "recent" };
+            }
+          }
+        }
+
+        offlineBackupInProgress = true;
+        if (manual && btn) btn.disabled = true;
+        if (msg) msg.textContent = manual
+          ? "非常用データを更新しています..."
+          : "非常用データを自動更新しています...";
+
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) throw new Error("ログイン情報を確認できません");
-        const { data: staff } = await supabaseClient.from("staff_members").select("staff_name").eq("user_id", user.id).maybeSingle();
+        if (!user) {
+          if (manual && msg) msg.textContent = "ログイン情報を確認できません。";
+          return { skipped: true, reason: "no_user" };
+        }
+
+        const { data: staff } = await supabaseClient
+          .from("staff_members")
+          .select("staff_name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
         const { data, error } = await supabaseClient.rpc("offline_ticket_backup_snapshot");
         if (error) throw error;
-        const saved = await SigmaOfflineStore.saveSnapshot(data, { user_id: user.id, staff_name: staff?.staff_name || "スタッフ" });
-        if (msg) msg.textContent = `${saved.ticket_count}枚をこの端末へ保存しました。`;
+
+        const saved = await SigmaOfflineStore.saveSnapshot(data, {
+          user_id: user.id,
+          staff_name: staff?.staff_name || "スタッフ"
+        });
+
+        if (msg) {
+          msg.textContent = `${saved.ticket_count}枚を更新しました。自動バックアップは10分おきに行われます。`;
+        }
         await refreshOfflineBackupStatus();
+        await refreshOfflineEmergencyLogin();
+        return { ok: true, saved };
       } catch (e) {
-        if (msg) msg.textContent = "保存できませんでした：" + (e?.message || e);
+        // 更新失敗時も既存IndexedDBは消さない
+        if (msg) {
+          msg.textContent = `自動更新に失敗しました。前回の保存データは保持されています：${e?.message || e}`;
+        }
+        return { ok: false, error: e };
       } finally {
+        offlineBackupInProgress = false;
         if (btn) btn.disabled = false;
       }
+    }
+
+    async function saveOfflineBackup() {
+      return performOfflineBackup({ manual: true, force: true });
+    }
+
+    function stopOfflineAutoBackup() {
+      if (offlineAutoBackupTimer) {
+        clearInterval(offlineAutoBackupTimer);
+        offlineAutoBackupTimer = null;
+      }
+    }
+
+    function startOfflineAutoBackup() {
+      stopOfflineAutoBackup();
+
+      // ホーム表示直後に一度自動更新
+      setTimeout(() => {
+        performOfflineBackup({ manual: false, force: false });
+      }, 700);
+
+      // アプリを開いている間は10分ごと
+      offlineAutoBackupTimer = setInterval(() => {
+        performOfflineBackup({ manual: false, force: false });
+      }, OFFLINE_AUTO_BACKUP_INTERVAL_MS);
+    }
+
+    async function autoBackupWhenOnline() {
+      if (!navigator.onLine) return;
+      // 回線復帰直後の不安定さを避けて少し待つ
+      setTimeout(() => {
+        performOfflineBackup({ manual: false, force: false });
+      }, 1200);
     }
 
     function roleText(role) {
@@ -1214,6 +1303,7 @@ table{
 
       await refreshPortal();
       await refreshOfflineBackupStatus();
+      startOfflineAutoBackup();
     }
 
 
@@ -1561,6 +1651,8 @@ table{
 
           async function logout() {
 
+      stopOfflineAutoBackup();
+
       await supabaseClient.auth
         .signOut();
 
@@ -1634,8 +1726,17 @@ table{
     }
 
 
-    window.addEventListener("online", refreshOfflineEmergencyLogin);
+    window.addEventListener("online", () => {
+      refreshOfflineEmergencyLogin();
+      autoBackupWhenOnline();
+    });
     window.addEventListener("offline", refreshOfflineEmergencyLogin);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        performOfflineBackup({ manual: false, force: false });
+      }
+    });
 
     checkLogin();
   </script>
