@@ -55,7 +55,7 @@
   async function saveSnapshot(snapshot,operator){
     const tickets=Array.isArray(snapshot?.tickets)?snapshot.tickets:[];
     const reserves=Array.isArray(snapshot?.offline_day_reserves)?snapshot.offline_day_reserves:[];
-    const staff=Array.isArray(snapshot?.staff)?snapshot.staff:[];
+    const staff=Array.isArray(snapshot?.staff)?snapshot.staff:null;
     const managerOrders=Array.isArray(snapshot?.manager_orders)?snapshot.manager_orders:[];
     const [uses,issues]=await Promise.all([getAllUses(),getAllDayIssues()]);
     const usedMap=new Map();
@@ -115,7 +115,12 @@
     ms.put({key:'ticket_count',value:tickets.length+reserves.length});
     ms.put({key:'normal_ticket_count',value:tickets.length});
     ms.put({key:'offline_reserve_count',value:reserves.length});
-    ms.put({key:'offline_staff',value:staff});
+    // 一時的な取得失敗や古いRPC応答で発行者一覧を空にしない。
+    // 正常に一覧が届いたときだけ置き換える。
+    if(Array.isArray(staff) && staff.length>0){
+      ms.put({key:'offline_staff',value:staff});
+      ms.put({key:'offline_staff_saved_at',value:savedAt});
+    }
     ms.put({key:'offline_day_price',value:Number(snapshot?.day_price||0)});
     ms.put({key:'manager_order_snapshot',value:{saved_at:savedAt,source:'general_backup',orders:managerOrders}});
     if(operator)ms.put({key:'operator',value:operator});

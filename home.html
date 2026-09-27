@@ -953,6 +953,7 @@ table{
             const { data, error } = await supabaseClient.rpc("sync_offline_day_issue_v2", {
               p_ticket_code: x.ticket_code,
               p_seller_user_id: x.seller_user_id,
+              p_buyer_name: x.buyer_name || null,
               p_issued_at: x.issued_at,
               p_device_id: x.device_id,
               p_local_id: x.local_id
@@ -1024,10 +1025,21 @@ table{
           .eq("user_id", user.id)
           .maybeSingle();
 
-        const { data, error } = await supabaseClient.rpc("offline_ticket_backup_snapshot");
+        const [{ data, error }, { data: offlineStaff, error: offlineStaffError }] = await Promise.all([
+          supabaseClient.rpc("offline_ticket_backup_snapshot"),
+          supabaseClient.rpc("offline_staff_backup_list")
+        ]);
         if (error) throw error;
+        if (offlineStaffError) throw offlineStaffError;
 
-        const saved = await SigmaOfflineStore.saveSnapshot(data, {
+        // 非常用当日券画面を事前に開かなくても、
+        // ホームの自動バックアップだけで発行者一覧を端末へ保存する。
+        const snapshot = {
+          ...(data || {}),
+          staff: Array.isArray(offlineStaff) ? offlineStaff : []
+        };
+
+        const saved = await SigmaOfflineStore.saveSnapshot(snapshot, {
           user_id: user.id,
           staff_name: staff?.staff_name || "スタッフ"
         });
