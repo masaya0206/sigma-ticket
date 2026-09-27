@@ -148,9 +148,24 @@ table{
   </div>
 
   <p class="muted" style="margin-bottom:0">
-    ※ 全員が「現在設定しているノルマ分」を販売したと仮定した比較用シミュレーションです。<br>
+    ※ 全員が「現在設定しているノルマを前売り終了までに達成した」と仮定した比較用シミュレーションです。<br>
     ※ 未選択スタッフは6枚として計算します。<br>
+    ※ 前売り終了時点で未達の場合、pt用ノルマは実績まで下がります。<br>
     ※ 実際の受取額は、超過販売・譲渡・最終的な総売上・他スタッフの変更などで変動します。
+  </p>
+</div>
+
+
+<div class="card cutoff-rule-card">
+  <h2>前売りptの確定ルール</h2>
+  <div class="cutoff-rule">
+    <b>前売り販売終了時刻を過ぎた瞬間、未達ノルマは前日までの販売実績に合わせてpt用ノルマを再計算します。</b>
+  </div>
+  <p class="muted" style="margin-bottom:0">
+    例：100枚ノルマを選んでも、前売り終了までに20枚しか販売していない場合、
+    前売りptは「20枚ノルマ」として再計算されます。残り80枚は当日にノルマ残券として販売できますが、
+    その80枚は前売りptには加算されません。<br>
+    ※ 徴収額・当日販売義務の基準になる「設定ノルマ」と、インセンティブ計算に使う「pt確定ノルマ」は別です。
   </p>
 </div>
 
@@ -158,8 +173,9 @@ table{
 <div class="card" id="transferCard">
   <h2>ノルマ譲渡</h2>
   <p class="muted">
-    締切・ノルマ確定後、まだ売っていない自分のノルマ券だけを他スタッフへ譲渡できます。
+    ノルマ選択締切後から前売り販売終了まで、まだ売っていない自分のノルマ券だけを他スタッフへ譲渡できます。
     譲渡元は現在ノルマとポイントを再計算します。受取側は追加券扱いで、本人のノルマ枚数自体は増えません。
+    前売り販売終了後は、新しい譲渡・譲渡承認はできません。
   </p>
 
   <div class="grid">
@@ -238,6 +254,10 @@ h3{font-size:15px;margin:18px 0 6px}
 .incentive-detail span{display:block;font-size:10px;color:#725b5b}
 .incentive-detail b{display:block;margin-top:3px;font-size:14px}
 .formula-box{margin-top:12px;padding:12px;border-radius:12px;background:#f8f4f2;border:1px solid #e8dcda;font-size:12px;line-height:1.65;color:#543f3f}
+.cutoff-rule-card{border-color:#e8c49b;background:#fffdf8}
+.cutoff-rule{padding:13px;border-radius:13px;background:#fff4df;border:1px solid #efcf9f;color:#6d4510;line-height:1.65;margin:8px 0 10px}
+.cutoff-chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#fff0d8;color:#8b5608;font-size:12px;font-weight:800}
+
 @media(max-width:480px){
   .assumption-box,.incentive-main,.incentive-detail{grid-template-columns:1fr}
   .sim-head,.sim-row{grid-template-columns:.8fr .9fr 1fr 1.2fr;padding:9px 8px;font-size:12px}
@@ -443,19 +463,33 @@ async function load(){
   save.disabled=confirmed;
   quota.disabled=confirmed;
 
-  const overflowPt=Number(data.overflow_points_per_sale||1);
+  const overflowPt=Number(data.overflow_points_per_sale||0);
+  const cutoffReached=!!data.cutoff_reached;
+  const pointQuota=Number(data.point_quota??data.current_quota??0);
+  const cutoffLabel=cutoffReached
+    ? '<span class="cutoff-chip">前売りpt確定済み</span>'
+    : '<span class="pill">前売り期間中</span>';
   details.innerHTML=`
+    ${cutoffLabel}<br><br>
     希望: <b>${data.requested_quota}枚</b><br>
     確定ノルマ: <b>${confirmed?data.confirmed_quota+'枚':'未確定'}</b><br>
-    現在ノルマ: <b>${confirmed?Number(data.current_quota??data.confirmed_quota)+'枚':'--'}</b><br>
+    設定上の現在ノルマ: <b>${confirmed?Number(data.current_quota??data.confirmed_quota)+'枚':'--'}</b><br>
+    ${cutoffReached
+      ? `pt確定ノルマ: <b>${pointQuota}枚</b><br>`
+      : `現在のpt計算ノルマ: <b>${pointQuota}枚</b><br>`}
     受取追加券: <b>${Number(data.transferred_in||0)}枚</b><br>
     譲渡済み: <b>${Number(data.transferred_out||0)}枚</b><br>
+    前売り終了までの販売: <b>${Number(data.pre_cutoff_sold??data.presale_sold??0)}枚</b><br>
     現在倍率: <b>×${Number(data.current_multiplier||0).toFixed(2)}</b><br>
     現在前売りpt: <b>${Number(data.presale_points||0).toFixed(2)}pt</b><br>
     確定時徴収額: <b>${data.collected_amount==null?'--':Number(data.collected_amount).toLocaleString()+'円'}</b><br>
-    祭前販売: <b>${data.presale_sold}枚</b><br>
     追加販売扱い: <b>${data.overflow_sold}枚</b><br>
-    <span class="muted">ノルマ超過後の追加販売は、1枚につき現在倍率分（${overflowPt.toFixed(2)}pt）が加算されます。受取追加券ではノルマ倍率は上がりません。</span>
+    当日ノルマ残券: <b>${Number(data.residual_remaining||0)}枚</b><br>
+    <span class="muted">
+      ${cutoffReached
+        ? `前売り終了後のノルマ残券販売は前売りptに加算されません。`
+        : `ノルマ超過後の追加販売は、1枚につき現在倍率分（${overflowPt.toFixed(2)}pt）が加算されます。受取追加券ではノルマ倍率は上がりません。`}
+    </span>
   `;
 }
 
@@ -471,7 +505,8 @@ async function loadTransferArea(){
   if(!presaleStatus){card.style.display='none';return}
 
   const confirmed=!!presaleStatus.confirmed_at;
-  const deadlinePassed=!!presaleStatus.transfer_open;
+  const transferOpen=!!presaleStatus.transfer_open;
+  const cutoffReached=!!presaleStatus.cutoff_reached;
 
   currentQuota.textContent=confirmed?`${Number(presaleStatus.current_quota??0)} 枚`:'--';
   transferableQuota.textContent=confirmed?`${Number(presaleStatus.transferable_quota??0)} 枚`:'--';
@@ -480,14 +515,17 @@ async function loadTransferArea(){
   if(!confirmed){
     transferRule.textContent='ノルマ確定後に利用できます。';
     transferSend.disabled=true;
-  }else if(!deadlinePassed){
+  }else if(cutoffReached){
+    transferRule.textContent='前売り販売期間が終了したため、譲渡は締め切りました。';
+    transferSend.disabled=true;
+  }else if(!transferOpen){
     transferRule.textContent='ノルマ選択締切後に利用できます。';
     transferSend.disabled=true;
   }else{
     transferRule.textContent=
       `現在ノルマ ${Number(presaleStatus.current_quota??0)}枚。`+
       `譲渡すると譲渡元のポイントは新しい現在ノルマで再計算されます。`+
-      `すでに販売済みの券は譲渡できません。`;
+      `すでに販売済みの券は譲渡できません。前売り販売終了後は譲渡できません。`;
     transferSend.disabled=Number(presaleStatus.transferable_quota??0)<=0;
   }
 
