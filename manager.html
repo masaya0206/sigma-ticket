@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>店長 | シグマ祭</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./offline-store.js"></script>
 <meta name="theme-color" content="#b5121b">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-180.png">
@@ -39,6 +40,11 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
   <p>注文・人員・レジ・買い出しをここで管理</p>
 </header>
 <main>
+  <section id="offlineManagerBanner" class="card" style="display:none;background:#fff8e8;border-color:#efd39a">
+    <strong>非常用・店長バックアップ</strong>
+    <p id="offlineManagerText" class="small">オフライン直前までの未提供注文を表示します。障害後の新規注文は紙伝票で運用し、この画面へ打ち直す必要はありません。</p>
+  </section>
+
   <section class="card">
     <h2 style="margin-top:0">現在の注文</h2>
     <div class="summary">
@@ -93,6 +99,55 @@ function statusName(s){
 function time(v){
   return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
 }
+async function saveManagerBackup(rows){
+  try{
+    if(window.SigmaOfflineStore){
+      const active=(rows||[]).filter(x=>x.order_status!=="served"&&x.order_status!=="void");
+      await SigmaOfflineStore.setManagerOrders(active,'manager_live');
+    }
+  }catch(_){}
+}
+
+async function showOfflineOrders(){
+  offlineManagerBanner.style.display='block';
+  let snap={saved_at:null,orders:[]};
+  try{snap=await SigmaOfflineStore.getManagerOrders();}catch(_){}
+  const rows=Array.isArray(snap?.orders)?snap.orders:[];
+  offlineManagerText.textContent=`最終バックアップ：${snap?.saved_at?new Date(snap.saved_at).toLocaleString('ja-JP'):'未保存'}。障害後の新規注文は紙伝票で運用し、この画面への再入力は不要です。`;
+
+  const active=rows.filter(x=>x.order_status!=="served"&&x.order_status!=="void");
+  pendingRice.textContent=active.reduce((a,x)=>a+Number(x.fried_rice_qty||0),0);
+  pendingSesame.textContent=active.reduce((a,x)=>a+Number(x.sesame_qty||0),0);
+  newCount.textContent=active.filter(x=>x.order_status==="new").length;
+  readyCount.textContent=active.filter(x=>x.order_status==="ready").length;
+
+  if(!active.length){
+    orders.innerHTML='<div class="card">バックアップ時点で未提供の注文はありません。</div>';
+    return;
+  }
+
+  orders.innerHTML=active
+    .sort((a,b)=>new Date(a.ordered_at)-new Date(b.ordered_at))
+    .slice(0,100)
+    .map(x=>{
+      const items=[
+        Number(x.fried_rice_qty||0)>0?`炒飯 ${x.fried_rice_qty}`:"",
+        Number(x.sesame_qty||0)>0?`胡麻団子 ${x.sesame_qty}`:""
+      ].filter(Boolean).join("・");
+      return `<div class="card order ${x.order_status}">
+        <div class="pickup-number ${x.register_color||""}">受取 ${x.pickup_number||"—"}</div>
+        <div class="order-top">
+          <div>
+            <div class="order-items">${items}</div>
+            <div class="meta"><span class="color-dot ${x.register_color||""}"></span>${colorName(x.register_color)} ／ ${x.source==="cash"?"現金":x.source==="mixed"?"QR＋現金":"QR交換"} ／ ${time(x.ordered_at)}</div>
+          </div>
+          <strong>${statusName(x.order_status)}</strong>
+        </div>
+        <div class="small" style="margin-top:10px">オフラインバックアップ表示。障害後の注文は紙伝票を使用してください。</div>
+      </div>`;
+    }).join("");
+}
+
 async function setStatus(id,status){
   const {error}=await sb.rpc("manager_set_order_status",{p_order_id:id,p_status:status});
   if(error){alert(error.message);return;}
@@ -101,11 +156,13 @@ async function setStatus(id,status){
 async function loadOrders(){
   const {data,error}=await sb.rpc("manager_order_board_v3",{p_include_served:false});
   if(error){
-    orders.innerHTML=`<div class="card">エラー：${error.message}</div>`;
+    await showOfflineOrders();
     return;
   }
 
   const rows=data||[];
+  offlineManagerBanner.style.display='none';
+  await saveManagerBackup(rows);
   const active=rows.filter(x=>x.order_status!=="served");
   pendingRice.textContent=active.reduce((a,x)=>a+Number(x.fried_rice_qty||0),0);
   pendingSesame.textContent=active.reduce((a,x)=>a+Number(x.sesame_qty||0),0);
@@ -219,6 +276,8 @@ async function guard(){
 }
 
 (async()=>{
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(()=>{});}
+  if(!navigator.onLine){await showOfflineOrders();return;}
   if(!await guard()) return;
   await loadOrders();
 
@@ -226,8 +285,10 @@ async function guard(){
     .on("postgres_changes",{event:"*",schema:"public",table:"service_orders"},async()=>{await loadOrders();if(historyOpen)await loadHistory();})
     .subscribe();
 
-  setInterval(loadOrders,5000);
+  setInterval(async()=>{if(navigator.onLine)await loadOrders();else await showOfflineOrders();},5000);
 })();
+window.addEventListener('offline',()=>showOfflineOrders());
+window.addEventListener('online',()=>setTimeout(async()=>{if(await guard())await loadOrders();},1000));
 </script>
 </body>
 </html>

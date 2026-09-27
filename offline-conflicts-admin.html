@@ -25,6 +25,12 @@ button.resolve{width:100%;border:0;border-radius:12px;background:#2c2c2e;color:#
 <div class="top"><button class="back" onclick="location.href='admin-menu.html'">←</button><div><h1>オフライン同期確認</h1><div class="sub">非常用QR受付でオンライン側と食い違った履歴</div></div></div>
 <section class="summary"><div class="small">未確認</div><b id="count">-</b><div id="msg" class="small">読み込み中...</div></section>
 <div id="list"></div>
+<section class="summary" style="margin-top:22px">
+  <div class="small">同期済みオフライン使用履歴</div>
+  <b id="auditCount" style="color:#1c1c1e">-</b>
+  <div class="small">どのレジで・何時に・誰が処理したかを確認できます。</div>
+</section>
+<div id="auditList"></div>
 </main>
 <script>
 const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
@@ -70,7 +76,35 @@ async function resolveOne(id){
   if(note===null)return;
   const {error}=await sb.rpc('admin_resolve_offline_sync_conflict',{p_id:id,p_note:note});
   if(error){alert(error.message);return;}
-  await load();
+  await 
+async function loadAudit(){
+  const area=document.getElementById('auditList');
+  const {data,error}=await sb.rpc('admin_offline_sync_audit',{p_limit:200});
+  if(error){area.innerHTML='<div class="card">履歴取得エラー：'+esc(error.message)+'</div>';return;}
+  const rows=data||[];
+  document.getElementById('auditCount').textContent=rows.length;
+  if(!rows.length){area.innerHTML='<div class="card empty">同期済み履歴はありません。</div>';return;}
+  area.innerHTML=rows.map(r=>`
+    <section class="card">
+      <div class="row">
+        <div>
+          <div class="code">${esc(r.ticket_code)}</div>
+          <div class="small">オフライン使用：${esc(dt(r.used_at))}</div>
+        </div>
+        <span class="tag" style="background:#ecfdf3;color:#15803d">${esc(r.register_label||'レジ未設定')}</span>
+      </div>
+      <div class="small" style="margin-top:10px">
+        処理スタッフ：${esc(r.operator_name||'-')}<br>
+        交換：${esc(r.item==='fried_rice'?'炒飯1個':r.item==='sesame_pair'?'胡麻団子2個':r.item||'-')}<br>
+        端末ID：${esc(r.device_id||'-')}<br>
+        サーバー同期：${esc(dt(r.synced_at))}
+      </div>
+    </section>
+  `).join('');
+}
+
+load();
+loadAudit();
 }
 load();
 </script>

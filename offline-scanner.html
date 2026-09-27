@@ -59,6 +59,19 @@
   </section>
 
   <section class="card">
+    <h2 style="margin-top:0">使用するレジ</h2>
+    <p class="small">オフライン使用履歴にレジ名と処理時刻を残します。</p>
+    <select id="registerSelect" onchange="onRegisterChange()" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:16px;background:#fff;">
+      <option value="赤レジ">🔴 赤レジ</option>
+      <option value="青レジ">🔵 青レジ</option>
+      <option value="緑レジ">🟢 緑レジ</option>
+      <option value="その他">その他</option>
+    </select>
+    <input id="registerCustom" placeholder="その他のレジ名" oninput="saveRegister()" style="display:none;width:100%;margin-top:8px;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:16px;">
+    <p id="registerCurrent" class="small"></p>
+  </section>
+
+  <section class="card">
     <div class="label">QR読み取り</div>
     <button id="scanButton" class="primary" onclick="startScanner()">カメラでQRを読み取る</button>
     <button id="stopButton" class="danger hidden" onclick="stopScanner()">カメラを停止</button>
@@ -109,6 +122,35 @@
     bp.className='pill '+(s.ticketCount>0?'online':'offline');
     document.getElementById('syncBtn').disabled=(s.pending===0 || !navigator.onLine || !supabaseClient);
     return s;
+  }
+
+  async function loadRegister(){
+    const saved=await SigmaOfflineStore.getMeta('offline_register_label','赤レジ');
+    const known=['赤レジ','青レジ','緑レジ'];
+    if(known.includes(saved)){registerSelect.value=saved;registerCustom.style.display='none';}
+    else{registerSelect.value='その他';registerCustom.style.display='block';registerCustom.value=saved||'';}
+    registerCurrent.textContent='記録するレジ：'+(saved||'赤レジ');
+  }
+  async function onRegisterChange(){registerCustom.style.display=registerSelect.value==='その他'?'block':'none';await saveRegister();}
+  async function saveRegister(){
+    const label=registerSelect.value==='その他'?registerCustom.value.trim():registerSelect.value;
+    if(label){await SigmaOfflineStore.setMeta('offline_register_label',label);registerCurrent.textContent='記録するレジ：'+label;}
+  }
+  async function syncPendingDayIssues(){
+    if(!navigator.onLine||!supabaseClient||!SigmaOfflineStore.listDayIssuesByStatus)return;
+    const rows=await SigmaOfflineStore.listDayIssuesByStatus(['pending']);
+    if(!rows.length)return;
+    const {data:{user}}=await supabaseClient.auth.getUser();
+    if(!user)return;
+    for(const x of rows){
+      try{
+        const {data,error}=await supabaseClient.rpc('sync_offline_day_issue',{
+          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
+        });
+        if(error)throw error;
+        await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,sync_error:null});
+      }catch(e){await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_error:e?.message||String(e)});}
+    }
   }
 
   function renderNetwork(){
@@ -312,26 +354,20 @@
             p_item:u.item,
             p_used_at:u.used_at,
             p_device_id:u.device_id,
-            p_local_id:u.local_id
+            p_local_id:u.local_id,
+            p_register_label:u.register_label
           });
           if(error)throw error;
 
           const status=data?.status||'error';
           if(status==='synced'){
-            await SigmaOfflineStore.updateUse(u.local_id,{
-              sync_status:'synced',
-              synced_at:new Date().toISOString(),
-              server_result:data,
-              sync_error:null
-            });
+            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,sync_error:null});
             ok++;
+          }else if(status==='awaiting_issue'){
+            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'pending',server_result:data,sync_error:'売り子側の発行履歴同期待ち'});
+            failed++;
           }else{
-            await SigmaOfflineStore.updateUse(u.local_id,{
-              sync_status:'conflict',
-              synced_at:new Date().toISOString(),
-              server_result:data,
-              sync_error:data?.message||status
-            });
+            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'conflict',synced_at:new Date().toISOString(),server_result:data,sync_error:data?.message||status});
             conflict++;
           }
         }catch(e){
@@ -355,6 +391,7 @@
   async function runAutomaticMaintenance(reason='timer'){
     if(!navigator.onLine)return;
     // 先に使用履歴を中央DBへ反映し、その後で最新チケット一覧を取り直す。
+    await syncPendingDayIssues();
     await syncPending({manual:false});
     await refreshBackup({manual:false,force:false});
   }
@@ -378,6 +415,7 @@
 
   window.addEventListener('load',async()=>{
     renderNetwork();
+    await loadRegister();
     startAutomaticMaintenance();
     if('serviceWorker' in navigator){
       navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(()=>{});

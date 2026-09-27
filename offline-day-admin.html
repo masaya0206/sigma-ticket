@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>オフライン当日券準備</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4}
+*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:720px;margin:auto;padding:18px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+button,input{width:100%;padding:13px;border-radius:13px;font-size:16px}button{border:0;background:var(--red);color:#fff;font-weight:900;margin-top:10px}input{border:1px solid #ddd;background:#fff}
+.row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #eee}.small{font-size:12px;color:var(--muted)}.num{font-weight:900;text-align:right}
+</style>
+</head>
+<body><main>
+<button onclick="location.href='admin-menu.html'" style="background:#fff1f2;color:#b5121b">← 管理者メニュー</button>
+<section class="card">
+<h1 style="margin-top:0">オフライン当日券準備</h1>
+<p class="small">各有効売り子に、未使用の非常用当日券コードを事前予約します。通常は1人100枚で十分です。QR画像を事前配布する必要はありません。</p>
+<label>1人あたり確保する未使用枚数</label>
+<input id="target" type="number" min="1" max="500" value="100">
+<button onclick="prepare()">不足分を準備する</button>
+<p id="msg" class="small"></p>
+</section>
+<section class="card">
+<h2 style="margin-top:0">現在の予約状況</h2>
+<div class="row" style="font-size:12px;color:#6e6e73"><div>売り子</div><div>未使用</div><div>発行済み</div></div>
+<div id="list">読み込み中...</div>
+</section>
+</main>
+<script>
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+async function load(){
+  const {data,error}=await sb.rpc('admin_offline_day_reserve_status');
+  if(error){list.textContent='エラー：'+error.message;return;}
+  list.innerHTML=(data||[]).map(x=>`<div class="row"><div><b>${x.staff_name}</b></div><div class="num">${x.available_count}</div><div class="num">${x.issued_count}</div></div>`).join('')||'<div class="small">対象売り子がいません。</div>';
+}
+async function prepare(){
+  const n=Math.max(1,Math.min(500,Number(target.value||100)));
+  if(!confirm(`各売り子の未使用予約券を${n}枚まで補充しますか？`))return;
+  msg.textContent='準備中...';
+  const {data,error}=await sb.rpc('admin_prepare_offline_day_reserves',{p_per_seller:n});
+  msg.textContent=error?'エラー：'+error.message:`準備完了：追加 ${data?.created_count??0}枚`;
+  if(!error)await load();
+}
+load();
+</script>
+</body>
+</html>

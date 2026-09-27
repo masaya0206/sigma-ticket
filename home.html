@@ -692,6 +692,13 @@ table{
           >
             ログインせず非常用QR受付を開く
           </button>
+          <button
+            type="button"
+            onclick="location.href='offline-seller.html'"
+            style="width:100%;margin-top:8px;border:0;border-radius:13px;padding:13px 14px;background:#fff1f2;color:#b5121b;font-weight:900;font-size:15px;"
+          >
+            非常用当日券を発行
+          </button>
         </div>
       </section>
 
@@ -848,6 +855,7 @@ table{
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
               <button id="saveOfflineBackupBtn" onclick="saveOfflineBackup()" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">今すぐ更新</button>
               <button onclick="location.href='offline-scanner.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#2c2c2e;color:#fff;">非常用QR受付</button>
+              <button onclick="location.href='offline-seller.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#fff1f2;color:#b5121b;">非常用当日券発行</button>
             </div>
             <div id="offlineBackupMessage" style="font-size:12px;color:#6e6e73;line-height:1.5;margin-top:9px;"></div>
           </div>
@@ -933,6 +941,36 @@ table{
     let offlineAutoBackupTimer = null;
     let offlineBackupInProgress = false;
 
+    async function syncPendingOfflineDayIssues() {
+      if (!navigator.onLine || !supabaseClient || !window.SigmaOfflineStore?.listDayIssuesByStatus) return;
+      try {
+        const rows = await SigmaOfflineStore.listDayIssuesByStatus(["pending"]);
+        if (!rows.length) return;
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        for (const x of rows) {
+          try {
+            const { data, error } = await supabaseClient.rpc("sync_offline_day_issue", {
+              p_ticket_code: x.ticket_code,
+              p_seller_user_id: x.seller_user_id,
+              p_issued_at: x.issued_at,
+              p_device_id: x.device_id,
+              p_local_id: x.local_id
+            });
+            if (error) throw error;
+            await SigmaOfflineStore.updateDayIssue(x.local_id, {
+              sync_status: "synced",
+              synced_at: new Date().toISOString(),
+              server_result: data,
+              sync_error: null
+            });
+          } catch (e) {
+            await SigmaOfflineStore.updateDayIssue(x.local_id, { sync_error: e?.message || String(e) });
+          }
+        }
+      } catch (_) {}
+    }
+
     async function performOfflineBackup(options = {}) {
       const manual = !!options.manual;
       const force = !!options.force;
@@ -977,6 +1015,8 @@ table{
           if (manual && msg) msg.textContent = "ログイン情報を確認できません。";
           return { skipped: true, reason: "no_user" };
         }
+
+        await syncPendingOfflineDayIssues();
 
         const { data: staff } = await supabaseClient
           .from("staff_members")

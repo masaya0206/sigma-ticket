@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>非常用当日券発行 | シグマ祭</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="./offline-store.js"></script>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<style>
+:root{--red:#b5121b;--dark:#8f0e15;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--green:#15803d;--amber:#9a6700}
+*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:28px 18px 22px;background:linear-gradient(145deg,var(--red),var(--dark));color:#fff;border-radius:0 0 26px 26px}
+header h1{margin:0;font-size:27px}header p{margin:6px 0 0;color:#ffdede}
+main{max-width:620px;margin:auto;padding:16px 16px 40px}.card{background:#fff;border:1px solid var(--line);border-radius:19px;padding:16px;margin:12px 0}
+label{display:block;font-weight:800;margin-bottom:7px}select,button{width:100%;padding:13px;border-radius:13px;font-size:16px}select{border:1px solid #ddd;background:#fff}button{border:0;font-weight:900;background:#fff1f2;color:var(--red);margin-top:10px}.primary{background:var(--red);color:#fff}.dark{background:#2c2c2e;color:#fff}.small{font-size:12px;color:var(--muted);line-height:1.55}.status{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:6px 9px;border-radius:999px;font-size:12px;font-weight:900;background:#eee}.ok{background:#ecfdf3;color:var(--green)}.warn{background:#fff7df;color:var(--amber)}
+.big{font-size:34px;font-weight:900}.qr{display:flex;justify-content:center;padding:14px;background:#fff;border-radius:16px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;word-break:break-all;text-align:center}
+.notice{background:#fff8e8;border-color:#efd39a}.success{background:#ecfdf3;border-color:#b7e7c5}.hidden{display:none}
+</style>
+</head>
+<body>
+<header><h1>非常用当日券発行</h1><p>通信障害時に、事前予約データから1枚ずつ発行</p></header>
+<main>
+<section class="card notice">
+  <strong>ログイン不要の非常用機能です</strong>
+  <p class="small">オンライン時に非常用バックアップを保存してある端末で使えます。発行者はスタッフ一覧から選択します。同じ名前を複数端末で同時に使わないでください。</p>
+  <div class="status">
+    <span id="netPill" class="pill">通信確認中</span>
+    <span id="syncPill" class="pill">未同期確認中</span>
+  </div>
+</section>
+
+<section class="card">
+  <label for="sellerSelect">発行者を選択</label>
+  <select id="sellerSelect"></select>
+  <p id="selectedInfo" class="small"></p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+    <div><div class="small">発行可能</div><div id="availableCount" class="big">-</div></div>
+    <div><div class="small">この端末で未同期</div><div id="pendingCount" class="big">-</div></div>
+  </div>
+  <button id="issueBtn" class="primary" onclick="issueOne()">当日券を1枚発行</button>
+</section>
+
+<section id="ticketCard" class="card success hidden">
+  <h2 style="margin-top:0">発行しました</h2>
+  <div id="qrCode" class="qr"></div>
+  <p id="ticketCode" class="code"></p>
+  <p id="ticketMeta" class="small"></p>
+  <button class="dark" onclick="shareQr()">QR画像を共有（AirDrop等）</button>
+  <button onclick="issueOne()">次の当日券を1枚発行</button>
+</section>
+
+<section class="card">
+  <button onclick="location.href='offline-scanner.html'">非常用QR受付へ</button>
+  <button onclick="location.href='home.html'">ホームへ戻る</button>
+  <p id="message" class="small"></p>
+</section>
+</main>
+
+<script>
+const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+const sb=(typeof supabase!=="undefined")?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+let currentIssue=null;
+let syncBusy=false;
+
+function fmt(v){return v?new Date(v).toLocaleString("ja-JP"):"-";}
+function renderNet(){
+  const p=document.getElementById("netPill");
+  p.textContent=navigator.onLine?"オンライン":"オフライン";
+  p.className="pill "+(navigator.onLine?"ok":"warn");
+}
+
+async function loadStaff(){
+  const list=await SigmaOfflineStore.getStaffList();
+  const sel=document.getElementById("sellerSelect");
+  sel.innerHTML=(list||[]).map(x=>`<option value="${x.user_id}">${x.staff_name}</option>`).join("");
+  const saved=await SigmaOfflineStore.getMeta("offline_selected_seller",null);
+  if(saved && (list||[]).some(x=>x.user_id===saved.user_id)) sel.value=saved.user_id;
+  if(!sel.options.length){
+    sel.innerHTML='<option value="">スタッフ一覧が保存されていません</option>';
+    issueBtn.disabled=true;
+  }
+  sel.onchange=async()=>{await rememberSeller();await refreshCounts();};
+  await rememberSeller(false);
+  await refreshCounts();
+}
+
+async function rememberSeller(write=true){
+  const sel=document.getElementById("sellerSelect");
+  const user_id=sel.value;
+  const staff_name=sel.options[sel.selectedIndex]?.textContent||"";
+  if(write && user_id) await SigmaOfflineStore.setMeta("offline_selected_seller",{user_id,staff_name});
+  selectedInfo.textContent=user_id?`発行者：${staff_name}`:"オンライン時にバックアップを更新してください。";
+}
+
+async function refreshCounts(){
+  const sel=document.getElementById("sellerSelect");
+  const uid=sel.value;
+  const reserves=uid?await SigmaOfflineStore.getDayReservesForSeller(uid):[];
+  const pending=await SigmaOfflineStore.listDayIssuesByStatus(["pending"]);
+  availableCount.textContent=reserves.length;
+  pendingCount.textContent=pending.length;
+  issueBtn.disabled=!uid || reserves.length===0;
+  syncPill.textContent=`未同期 ${pending.length}件`;
+  syncPill.className="pill "+(pending.length?"warn":"ok");
+}
+
+async function issueOne(){
+  const sel=document.getElementById("sellerSelect");
+  const uid=sel.value;
+  const name=sel.options[sel.selectedIndex]?.textContent||"";
+  if(!uid)return;
+  if(!confirm(`${name}としてオフライン当日券を1枚発行しますか？`))return;
+  try{
+    const x=await SigmaOfflineStore.issueOfflineDayTicket(uid,name);
+    currentIssue=x;
+    await SigmaOfflineStore.setMeta("offline_selected_seller",{user_id:uid,staff_name:name});
+    renderTicket(x);
+    await refreshCounts();
+    if(navigator.onLine) setTimeout(()=>syncIssues(false),300);
+  }catch(e){
+    message.textContent=e?.message||e;
+  }
+}
+
+function renderTicket(x){
+  ticketCard.classList.remove("hidden");
+  qrCode.innerHTML="";
+  new QRCode(qrCode,{text:x.ticket_code,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});
+  ticketCode.textContent=x.ticket_code;
+  ticketMeta.textContent=`発行者：${x.seller_name} / 発行時刻：${fmt(x.issued_at)} / ${Number(x.unit_price||0).toLocaleString()}円`;
+  ticketCard.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+async function qrBlob(){
+  const canvas=qrCode.querySelector("canvas");
+  if(canvas) return await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+  const img=qrCode.querySelector("img");
+  if(img){const r=await fetch(img.src);return await r.blob();}
+  throw new Error("QR画像を作成できませんでした");
+}
+
+async function shareQr(){
+  if(!currentIssue)return;
+  try{
+    const blob=await qrBlob();
+    const file=new File([blob],`sigma-${currentIssue.ticket_code}.png`,{type:"image/png"});
+    if(navigator.share && navigator.canShare?.({files:[file]})){
+      await navigator.share({files:[file],title:"シグマ祭 当日券",text:`シグマ祭 当日券 ${currentIssue.ticket_code}`});
+      return;
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=file.name;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+    message.textContent="共有シートが使えないため画像ファイルとして保存しました。";
+  }catch(e){message.textContent="共有できませんでした："+(e?.message||e);}
+}
+
+async function syncIssues(manual=false){
+  if(syncBusy||!navigator.onLine||!sb)return;
+  syncBusy=true;
+  try{
+    const rows=await SigmaOfflineStore.listDayIssuesByStatus(["pending"]);
+    if(!rows.length){if(manual)message.textContent="未同期の発行履歴はありません。";return;}
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user){if(manual)message.textContent="オンライン復旧後、通常アプリへログインすると自動同期されます。";return;}
+    let ok=0,ng=0;
+    for(const x of rows){
+      try{
+        const {data,error}=await sb.rpc("sync_offline_day_issue",{
+          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
+        });
+        if(error)throw error;
+        await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:"synced",synced_at:new Date().toISOString(),server_result:data,sync_error:null});
+        ok++;
+      }catch(e){
+        await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_error:e?.message||String(e)});
+        ng++;
+      }
+    }
+    message.textContent=`発行履歴の同期：成功 ${ok}件 / 再送待ち ${ng}件`;
+  }finally{
+    syncBusy=false;
+    await refreshCounts();
+  }
+}
+
+window.addEventListener("online",()=>{renderNet();setTimeout(()=>syncIssues(false),1000);});
+window.addEventListener("offline",renderNet);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&navigator.onLine)syncIssues(false);});
+window.addEventListener("load",async()=>{
+  renderNet();
+  if("serviceWorker" in navigator)navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(()=>{});
+  await loadStaff();
+  if(navigator.onLine)setTimeout(()=>syncIssues(false),700);
+});
+</script>
+</body>
+</html>

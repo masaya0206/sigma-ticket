@@ -1,8 +1,10 @@
-const CACHE_NAME = "sigma-ticket-offline-autosync-v5";
+const CACHE_NAME = "sigma-ticket-offline-full-v6";
 
 const CORE_ASSETS = [
   "./home.html",
   "./offline-scanner.html",
+  "./offline-seller.html",
+  "./manager.html",
   "./offline-store.js",
   "./manifest.webmanifest",
   "./icon-180.png",
@@ -12,7 +14,8 @@ const CORE_ASSETS = [
 
 const EXTERNAL_ASSETS = [
   "https://unpkg.com/html5-qrcode",
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+  "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
 ];
 
 self.addEventListener("install", event => {
