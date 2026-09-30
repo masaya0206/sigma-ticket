@@ -208,7 +208,7 @@ async function copyTicketUrl(encodedCode){
 
 async function renderTicket(t){
   const ticketKind=t.sale_type==="same_day" ? "当日券" : "前売り券";
-  document.title=`シグマ祭 ${ticketKind}`;
+  document.title=`第15回シグマ祭 ${ticketKind}`;
   const heroTitle=document.getElementById("heroTitle");
   const heroSub=document.getElementById("heroSub");
   if(heroTitle) heroTitle.textContent=ticketKind;
@@ -218,7 +218,7 @@ async function renderTicket(t){
   const used=t.status==="used";
   main.innerHTML=`
     <div class="card ticket">
-      <div class="ticket-title">シグマ祭 ${esc(ticketKind)}</div>
+      <div class="ticket-title">第15回シグマ祭 ${esc(ticketKind)}</div>
       <div class="product">${esc(t.product_name)}</div>
 
       <div style="text-align:center;margin-bottom:14px">
@@ -275,6 +275,11 @@ async function init(){
 
   if(!t){
     showError("この券は現在表示できません。");
+    return;
+  }
+
+  if(t.status==="invalid"){
+    showError("このチケットは無効です。");
     return;
   }
 

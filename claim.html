@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>シグマ祭 券情報</title>
+<title>第15回シグマ祭 券情報</title>
 <meta name="theme-color" content="#b5121b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -218,7 +218,7 @@ async function renderTicket(t){
   const used=t.status==="used";
   main.innerHTML=`
     <div class="card ticket">
-      <div class="ticket-title">シグマ祭 ${esc(ticketKind)}</div>
+      <div class="ticket-title">第15回シグマ祭 ${esc(ticketKind)}</div>
       <div class="product">${esc(t.product_name)}</div>
 
       <div style="text-align:center;margin-bottom:14px">

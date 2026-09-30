@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>前売り・券種管理</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700} table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px;border-bottom:1px solid #edd;text-align:left}.staff-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:10px 0 12px}.staff-toolbar .tool-grow{flex:1 1 220px}.staff-toolbar .tool-fixed{flex:0 0 220px}.staff-toolbar label{display:block;font-size:13px;margin-bottom:4px}.staff-toolbar select{margin:0}.staff-toolbar .secondary{width:auto;padding:12px 18px;margin:0}@media(max-width:600px){.staff-toolbar{align-items:stretch}.staff-toolbar .tool-grow,.staff-toolbar .tool-fixed{flex:1 1 100%}.staff-toolbar .secondary{width:100%}}</style>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>第15回シグマ祭 前売り・券種管理</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700} table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px;border-bottom:1px solid #edd;text-align:left}.staff-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:10px 0 12px}.staff-toolbar .tool-grow{flex:1 1 220px}.staff-toolbar .tool-fixed{flex:0 0 220px}.staff-toolbar label{display:block;font-size:13px;margin-bottom:4px}.staff-toolbar select{margin:0}.staff-toolbar .secondary{width:auto;padding:12px 18px;margin:0}@media(max-width:600px){.staff-toolbar{align-items:stretch}.staff-toolbar .tool-grow,.staff-toolbar .tool-fixed{flex:1 1 100%}.staff-toolbar .secondary{width:100%}}</style>
 <style id="responsiveOverflowFixV1">
 /* 共通：iPhone/Safariを含む横はみ出し防止 */
 *,*::before,*::after{box-sizing:border-box}
@@ -119,7 +119,7 @@ input[type="time"]::-webkit-datetime-edit{
 td .mini{white-space:nowrap}
 </style>
 
-</head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>前売り・券種管理</h1>
+</head><body><main><button class="secondary" onclick="location.href='home.html'">← ホーム</button><h1>第15回シグマ祭 前売り・券種管理</h1>
 <div class="card"><h2>販売設定</h2><div class="grid"><div><label>前売り券価格</label><input id="pp" type="number"></div><div><label>当日券価格</label><input id="dp" type="number"></div></div><label><input id="pe" type="checkbox" style="width:auto"> 前売り券を販売中</label><br><label><input id="de" type="checkbox" style="width:auto"> 当日券を販売中</label><br><label>ノルマ選択期限</label><input id="deadline" type="datetime-local"><label>前売り終了予定</label><input id="endat" type="datetime-local"><button onclick="saveSettings()">設定を保存</button><p id="setmsg"></p></div>
 
 
@@ -136,9 +136,14 @@ td .mini{white-space:nowrap}
 </div>
 
 <div class="card">
-  <h2>ノルマ確定</h2>
-  <p class="muted">未選択者は6枚として確定します。確定した瞬間から徴収額が固定されます。</p>
-  <button class="danger" onclick="confirmAll()">全スタッフのノルマを確定</button>
+  <h2>ノルマ締切・確定</h2>
+  <p class="muted">
+    未選択者は6枚として確定します。<br>
+    同時に、締切より前に発行された券は
+    <strong>受取済み・未受取・使用済みを含めてすべて無効化</strong>します。<br>
+    無効化した券はDB上の履歴には残りますが、利用・販売実績・ポイント集計の対象外になります。
+  </p>
+  <button class="danger" onclick="confirmAll()">ノルマを締め切って確定する</button>
   <button class="reset-all" onclick="unlockAll()">全員のノルマ再設定を許可</button>
   <div class="lock-note" id="quotaResetHelp">
     本番モードでは販売済み・譲渡済み・前売り終了後の再設定を制限します。
@@ -302,10 +307,38 @@ async function toggleTestMode(){
 
 
 async function confirmAll(){
-  if(!confirm('全員のノルマを確定します。確定後は徴収額が固定されます。よろしいですか？'))return;
-  const{data,error}=await db.rpc('confirm_all_presale_quotas');
-  cmsg.textContent=error?'エラー: '+error.message:`✅ ${data.confirmed}人を確定しました`;
-  loadStaff();
+  const ok=confirm(
+`ノルマを締め切って全員分を確定します。
+
+この操作と同時に、現在までに発行された券を
+・受取済み
+・未受取
+・使用済み
+を含めてすべて無効化します。
+
+無効化した券は元に戻さず、締切後に新しく発行した券から正式な販売実績として扱います。
+
+実行しますか？`
+  );
+  if(!ok)return;
+
+  cmsg.textContent='ノルマ確定・過去券無効化を実行中...';
+
+  const{data,error}=await db.rpc(
+    'confirm_presale_quotas_and_invalidate_old_tickets'
+  );
+
+  if(error){
+    cmsg.textContent='エラー: '+error.message;
+    return;
+  }
+
+  cmsg.textContent=
+    `✅ ノルマ ${Number(data.confirmed||0)}人を確定 / `+
+    `過去券 ${Number(data.invalidated||0)}枚を無効化しました`;
+
+  await loadSettings();
+  await loadStaff();
 }
 
 async function unlockOne(userId,staffName,sold){
