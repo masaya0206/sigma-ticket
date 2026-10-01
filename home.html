@@ -660,8 +660,8 @@ table{
           ノルマ集金（オフライン対応）
         </button>
 
-        <div id="loginOfflineTools" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #ece7e4;">
-          <div style="font-size:13px;font-weight:800;color:#6e5b34;margin-bottom:8px;">通信障害時の非常用機能</div>
+        <div id="loginOfflineTools" style="display:block;margin-top:12px;padding-top:12px;border-top:1px solid #ece7e4;">
+          <div style="font-size:13px;font-weight:800;color:#6e5b34;margin-bottom:8px;">非常用・通信トラブル時</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <button
               type="button"
@@ -680,6 +680,7 @@ table{
               非常用当日券発行
             </button>
           </div>
+          <div style="margin-top:8px;font-size:12px;line-height:1.5;color:#8a6b3f;">通常時はログインを推奨します。ログインが遅い・通信が不安定な場合は、スタッフ判断で非常用機能へ切り替えてください。</div>
         </div>
 
         <p
@@ -1142,8 +1143,9 @@ table{
     function refreshLoginOfflineTools() {
       const tools = document.getElementById("loginOfflineTools");
       if (!tools) return;
-      // QR受付・当日券発行は通信障害時にログイン画面から直接開ける。
-      tools.style.display = navigator.onLine ? "none" : "block";
+      // 非常用QR受付・当日券発行は常時表示。
+      // ログイン遅延や通信不安定時に、スタッフ自身の判断で非常用へ切り替えられるようにする。
+      tools.style.display = "block";
     }
 
     async function refreshCollectionAccess() {
