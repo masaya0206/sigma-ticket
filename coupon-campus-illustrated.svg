@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1120" viewBox="0 0 900 1120">
+<defs>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.13"/></filter>
+  <style>
+    .title{font-family:"Noto Sans CJK JP",sans-serif;fill:#27313c;font-weight:900}
+    .sub{font-family:"Noto Sans CJK JP",sans-serif;fill:#6f6f72;font-size:18px}
+    .road-major{fill:none;stroke:#e7e0da;stroke-width:34;stroke-linecap:round;stroke-linejoin:round}
+    .road-minor{fill:none;stroke:#efe9e4;stroke-width:18;stroke-linecap:round;stroke-linejoin:round}
+    .road-mini{fill:none;stroke:#f5f1ed;stroke-width:10;stroke-linecap:round;stroke-linejoin:round}
+    .bld{fill:#f6f2ee;stroke:#cfc6bf;stroke-width:3}
+    .bldText{font-family:"Noto Sans CJK JP",sans-serif;fill:#27313c;font-weight:800;font-size:24px}
+    .bubbleText{font-family:"Noto Sans CJK JP",sans-serif;fill:#17212b;font-weight:900;font-size:22px}
+    .bubbleSub{font-family:"Noto Sans CJK JP",sans-serif;fill:#5d6570;font-weight:700;font-size:14px}
+    .legend{font-family:"Noto Sans CJK JP",sans-serif;fill:#4b535c;font-size:18px;font-weight:700}
+    .tree{fill:#dcebd9}
+  </style>
+</defs>
+<rect width="900" height="1120" rx="36" fill="#fbfaf8"/>
+<text x="54" y="62" class="title" font-size="30">熊大 黒髪北キャンパス｜クーポン店舗マップ</text>
+<text x="54" y="94" class="sub">建物と通路の位置関係をもとにした案内用マップ</text>
+
+<!-- green zone -->
+<path d="M72 122 C210 78 365 120 463 214 C522 271 520 359 454 412 C386 468 255 458 156 398 C87 356 42 257 72 122Z" fill="#edf4e9"/>
+<g opacity=".84">
+  <circle cx="118" cy="156" r="18" class="tree"/><circle cx="160" cy="133" r="14" class="tree"/><circle cx="205" cy="159" r="18" class="tree"/><circle cx="273" cy="145" r="16" class="tree"/><circle cx="336" cy="174" r="15" class="tree"/><circle cx="388" cy="205" r="17" class="tree"/>
+</g>
+
+<!-- detailed paths -->
+<path class="road-major" d="M352 108 C410 176 425 244 397 316 C370 385 377 446 430 516 C480 584 490 648 454 719 C419 788 378 865 331 1013"/>
+<path class="road-major" d="M687 127 C638 202 620 292 626 384 C632 470 653 564 646 650 C639 738 622 856 635 1010"/>
+<path class="road-major" d="M132 528 C270 520 388 520 657 500"/>
+<path class="road-major" d="M267 768 C396 742 514 741 651 760"/>
+
+<path class="road-minor" d="M384 325 C509 304 599 330 674 373"/>
+<path class="road-minor" d="M438 551 C546 565 604 614 646 682"/>
+<path class="road-minor" d="M323 902 C430 886 541 888 632 925"/>
+<path class="road-minor" d="M604 520 C652 560 676 598 698 660"/>
+<path class="road-minor" d="M514 742 C566 720 611 707 664 707"/>
+<path class="road-minor" d="M250 736 C292 705 327 691 372 686"/>
+<path class="road-minor" d="M199 547 C244 566 284 592 316 628"/>
+<path class="road-minor" d="M593 284 C596 352 598 420 604 486"/>
+
+<path class="road-mini" d="M448 694 C488 675 523 661 564 655"/>
+<path class="road-mini" d="M464 666 C470 620 470 589 466 548"/>
+<path class="road-mini" d="M350 833 C395 818 440 808 486 806"/>
+<path class="road-mini" d="M292 868 C315 840 338 816 364 793"/>
+<path class="road-mini" d="M525 834 C548 809 570 789 596 772"/>
+<path class="road-mini" d="M338 297 C320 344 319 388 334 433"/>
+<path class="road-mini" d="M182 390 C230 421 274 445 325 461"/>
+<path class="road-mini" d="M708 415 C729 439 746 461 760 488"/>
+<path class="road-mini" d="M710 742 C724 780 734 817 739 853"/>
+
+<!-- landmark buildings -->
+<rect x="110" y="500" width="210" height="122" rx="16" class="bld"/>
+<text x="215" y="551" text-anchor="middle" class="title" font-size="26">メインステージ</text>
+<text x="215" y="582" text-anchor="middle" class="sub">イベントエリア</text>
+
+<rect x="370" y="295" width="194" height="96" rx="16" class="bld"/>
+<text x="467" y="341" text-anchor="middle" class="title" font-size="24">サブステージ</text>
+
+<rect x="664" y="488" width="178" height="238" rx="18" class="bld"/>
+<text x="753" y="590" text-anchor="middle" class="title" font-size="22">ひご未来図書館</text>
+<text x="753" y="622" text-anchor="middle" class="sub">中央館</text>
+
+<rect x="455" y="826" width="210" height="152" rx="18" class="bld"/>
+<text x="560" y="930" text-anchor="middle" class="title" font-size="24">保健センター</text>
+
+<rect x="640" y="246" width="174" height="122" rx="18" class="bld"/>
+<text x="727" y="292" text-anchor="middle" class="title" font-size="22">学生会館周辺</text>
+<text x="727" y="322" text-anchor="middle" class="sub">北地区</text>
+
+<!-- extra context buildings -->
+<rect x="520" y="430" width="86" height="54" rx="12" class="bld" opacity=".9"/>
+<rect x="580" y="854" width="48" height="60" rx="10" class="bld" opacity=".9"/>
+<rect x="255" y="642" width="72" height="50" rx="10" class="bld" opacity=".9"/>
+<rect x="574" y="618" width="52" height="44" rx="10" class="bld" opacity=".9"/>
+
+<!-- pins without numbers -->
+<g filter="url(#shadow)">
+  <circle cx="287" cy="258" r="20" fill="#1f5a99"/>
+  <rect x="320" y="226" width="180" height="64" rx="30" fill="#fff" stroke="#d6dde5" stroke-width="2"/>
+  <text x="345" y="265" class="bubbleText">組織部</text>
+</g>
+
+<g filter="url(#shadow)">
+  <circle cx="417" cy="575" r="20" fill="#1f5a99"/>
+  <rect x="450" y="543" width="190" height="64" rx="30" fill="#fff" stroke="#d6dde5" stroke-width="2"/>
+  <text x="475" y="582" class="bubbleText">セピア</text>
+</g>
+
+<g filter="url(#shadow)">
+  <circle cx="382" cy="724" r="22" fill="#b5121b"/>
+  <rect x="418" y="691" width="258" height="68" rx="32" fill="#fff" stroke="#e7b9bd" stroke-width="3"/>
+  <text x="444" y="733" class="bubbleText" fill="#9a1620">Match Point</text>
+</g>
+
+<g filter="url(#shadow)">
+  <circle cx="317" cy="849" r="20" fill="#1f5a99"/>
+  <rect x="350" y="817" width="180" height="64" rx="30" fill="#fff" stroke="#d6dde5" stroke-width="2"/>
+  <text x="375" y="856" class="bubbleText">書道部</text>
+</g>
+
+<!-- north -->
+<g transform="translate(720,900)"><circle cx="0" cy="0" r="42" fill="#fff" stroke="#ddd4ce" stroke-width="2"/><path d="M0 -25 L10 5 L0 0 L-10 5 Z" fill="#3d4853"/><text x="0" y="-50" text-anchor="middle" class="sub">N</text></g>
+
+<!-- legend -->
+<rect x="54" y="1016" width="792" height="76" rx="18" fill="#fff3f4"/>
+<circle cx="82" cy="1043" r="9" fill="#b5121b"/><text x="103" y="1050" class="legend">赤：Match Point（基準地点）</text>
+<circle cx="430" cy="1043" r="9" fill="#1f5a99"/><text x="451" y="1050" class="legend">青：クーポン利用先</text>
+<text x="82" y="1078" class="sub">※ 当日向けに団体名を優先して表示しています</text>
+</svg>

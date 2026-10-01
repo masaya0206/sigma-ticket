@@ -147,10 +147,10 @@ function buildMapPartners(coupons){
   return out;
 }
 function mapLaunchHtml(){
-  return `<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">熊大黒髪北キャンパスの建物配置とシグマ祭テント配置をもとに、クーポン利用先だけを載せた専用マップです。</div><button onclick="openCouponMap()">店舗マップを見る</button></div>`;
+  return `<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">熊大黒髪北キャンパスをもとに、クーポン利用先だけを見やすくまとめた案内マップです。</div><button onclick="openCouponMap()">店舗マップを見る</button></div>`;
 }
 function mapModalHtml(){
-  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">表示しているテント番号は 6・7・10・19 のみです。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="illustrated-map-wrap"><div class="illustrated-map-stage"><img class="illustrated-map" src="./coupon-campus-illustrated.png" alt="熊本大学黒髪北キャンパスのクーポン店舗マップ"><div id="mapFocusRing" class="map-focus-ring" aria-hidden="true"></div></div></div></div></div>`;
+  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">建物と通路の位置関係をもとにした案内用の絵地図です。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="illustrated-map-wrap"><div class="illustrated-map-stage"><img class="illustrated-map" src="./coupon-campus-illustrated.png" alt="熊本大学黒髪北キャンパスのクーポン店舗マップ"><div id="mapFocusRing" class="map-focus-ring" aria-hidden="true"></div></div></div></div></div>`;
 }
 function openCouponMapByName(encodedName){openCouponMap(decodeURIComponent(encodedName||""));}
 function openCouponMap(activeName=""){
@@ -213,7 +213,7 @@ async function partnerHtml(ticketKind){
             <div class="coupon-partner">発行元：${esc(c.partner_name)}</div>
             <div class="coupon-title">${esc(c.title)}</div>
             ${c.description?`<div class="coupon-description">${esc(c.description)}</div>`:""}
-            ${loc?`<div class="coupon-meta"><span class="coupon-spot">場所：テント ${loc.tent}</span></div><button type="button" class="coupon-map-btn" onclick="openCouponMapByName('${encodeURIComponent(c.partner_name)}')">地図で場所を見る</button>`:""}
+            ${loc?`<button type="button" class="coupon-map-btn" onclick="openCouponMapByName('${encodeURIComponent(c.partner_name)}')">地図で場所を見る</button>`:""}
             <div class="coupon-howto">※見本表示です。本物の前売り券QRを提示すると利用できます。</div>
             ${c.instagram_url?`<a class="coupon-instagram" href="${esc(c.instagram_url)}" target="_blank" rel="noopener">Instagramを見る</a>`:""}
           </article>
