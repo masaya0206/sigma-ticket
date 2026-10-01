@@ -651,6 +651,13 @@ table{
           パスワードを忘れた方
         </button>
 
+        <button
+          class="ghost-button"
+          onclick="location.href='presale-collection.html'"
+        >
+          ノルマ集金（オフライン対応）
+        </button>
+
         <p
           id="loginMessage"
           class="message"
@@ -795,11 +802,6 @@ table{
               <span class="core-desc">テント内・外・前売り券・食材保存</span>
             </button>
 
-            <button id="collectionButton" class="core-card points-card" onclick="location.href='presale-collection.html'" style="display:none;">
-              <span class="core-icon">集</span>
-              <span class="core-name">ノルマ集金</span>
-              <span class="core-desc">本日の集金担当者専用・オフライン対応</span>
-            </button>
           </div>
 
           <div id="offlineBackupCard" style="margin-top:14px;background:#fffaf0;border:1px solid #f0d7a5;border-radius:18px;padding:15px;">
@@ -1179,6 +1181,23 @@ table{
         error ||
         !staff
       ) {
+        // 通常スタッフではない場合、提携先スタッフか確認する。
+        // 提携先スタッフは staff_members ではなく partner_staff に登録されているため、
+        // my_partner_staff() 経由で判定して専用QRリーダーへ振り分ける。
+        const {
+          data: partnerRows,
+          error: partnerError
+        } = await supabaseClient.rpc("my_partner_staff");
+
+        const partnerStaff =
+          Array.isArray(partnerRows)
+            ? partnerRows[0]
+            : partnerRows;
+
+        if (!partnerError && partnerStaff) {
+          location.replace("partner-scanner.html");
+          return;
+        }
 
         document.getElementById(
           "loginMessage"
@@ -1395,7 +1414,6 @@ table{
       );
 
       
-      await refreshCollectionAccess();
 const planned =
         assignment
           ? roleText(
@@ -1595,14 +1613,12 @@ const planned =
 
 
     async function checkLogin() {
-
+      // オフライン時はログイン画面をそのまま表示する。
+      // ここから「ノルマ集金（オフライン対応）」へログインなしで移動できる。
       if (!navigator.onLine) {
-        const opened =
-          await showOfflineCollectionPortal();
-
-        if (opened) {
-          return;
-        }
+        document.getElementById("loginArea").style.display = "block";
+        document.getElementById("portalArea").style.display = "none";
+        return;
       }
 
       const {
@@ -1621,7 +1637,8 @@ const planned =
     window.addEventListener(
       "offline",
       async () => {
-        await showOfflineCollectionPortal();
+        document.getElementById("portalArea").style.display = "none";
+        document.getElementById("loginArea").style.display = "block";
       }
     );
 
