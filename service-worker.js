@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-home-routing-v15";
+const CACHE_NAME = "sigma-ticket-home-routing-v16";
 
 const CORE_ASSETS = [
   "./home.html",
@@ -7,6 +7,7 @@ const CORE_ASSETS = [
   "./presale.html",
   "./presale-collection.html",
   "./presale-collection-admin.html",
+  "./presale-admin.html",
   "./admin-menu.html",
   "./manager.html",
   "./offline-store.js",

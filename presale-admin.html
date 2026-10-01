@@ -227,7 +227,7 @@ function renderStaffRows(){
     const confirmed=x.confirmed_quota!=null;
     const sold=Number(x.presale_sold||0);
     const action=!confirmed
-      ? '<span class="muted">未確定</span>'
+      ? `<button class="mini warn" onclick='unlockOne(${JSON.stringify(x.user_id)},${JSON.stringify(x.staff_name)},${sold})'>再設定を許可</button>`
       : (!testMode && sold>0)
         ? '<span class="muted">販売済み・固定</span>'
         : `<button class="mini warn" onclick='unlockOne(${JSON.stringify(x.user_id)},${JSON.stringify(x.staff_name)},${sold})'>ノルマを再設定</button>`;
@@ -349,7 +349,7 @@ async function unlockOne(userId,staffName,sold){
 ※テストモードのため、販売済み ${soldN}枚のデータは残したままノルマ確定だけ解除します。`
     : '';
 
-  if(!confirm(`${staffName}さんのノルマを再設定できる状態に戻しますか？${extra}`))return;
+  if(!confirm(`${staffName}さんにノルマの再設定を許可しますか？${extra}`))return;
 
   cmsg.textContent='再設定を許可中...';
   const{data,error}=await db.rpc('admin_unlock_presale_quota',{p_user:userId});
