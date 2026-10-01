@@ -794,12 +794,6 @@ table{
               <span class="core-name">4部門ポイント</span>
               <span class="core-desc">テント内・外・前売り券・食材保存</span>
             </button>
-
-            <button id="collectionButton" class="core-card points-card" onclick="location.href='presale-collection.html'" style="display:none;">
-              <span class="core-icon">集</span>
-              <span class="core-name">ノルマ集金</span>
-              <span class="core-desc">本日の集金担当者専用・オフライン対応</span>
-            </button>
           </div>
 
           <div id="offlineBackupCard" style="margin-top:14px;background:#fffaf0;border:1px solid #f0d7a5;border-radius:18px;padding:15px;">
@@ -813,6 +807,7 @@ table{
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
               <button id="saveOfflineBackupBtn" onclick="saveOfflineBackup()" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">この端末に保存</button>
               <button onclick="location.href='offline-scanner.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#2c2c2e;color:#fff;">非常用QR受付</button>
+              <button onclick="location.href='offline-seller.html'" style="grid-column:1 / -1;border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#b5121b;color:#fff;">非常用当日券発行</button>
             </div>
             <div id="offlineBackupMessage" style="font-size:12px;color:#6e6e73;line-height:1.5;margin-top:9px;"></div>
           </div>
@@ -1050,102 +1045,6 @@ table{
         }
       );
 
-
-
-    function collectionAuthValid(a) {
-      if (!a || !a.valid_until) return false;
-      return Date.now() <= new Date(a.valid_until).getTime();
-    }
-
-    async function getSavedCollectionAuth() {
-      try {
-        if (!window.SigmaOfflineStore) return null;
-        return await window.SigmaOfflineStore.getCollectionAuth();
-      } catch (_) {
-        return null;
-      }
-    }
-
-    async function refreshCollectionAccess() {
-      const button = document.getElementById("collectionButton");
-      if (!button) return;
-
-      if (!navigator.onLine) {
-        const saved = await getSavedCollectionAuth();
-        button.style.display = collectionAuthValid(saved) ? "block" : "none";
-        return;
-      }
-
-      try {
-        const { data, error } =
-          await supabaseClient.rpc("presale_collection_bootstrap");
-
-        if (error) throw error;
-
-        if (data?.authorized) {
-          button.style.display = "block";
-
-          if (window.SigmaOfflineStore) {
-            await window.SigmaOfflineStore.saveCollectionBootstrap(data);
-          }
-        } else {
-          button.style.display = "none";
-        }
-      } catch (_) {
-        const saved = await getSavedCollectionAuth();
-        button.style.display = collectionAuthValid(saved) ? "block" : "none";
-      }
-    }
-
-    async function showOfflineCollectionPortal() {
-      const saved = await getSavedCollectionAuth();
-      if (!collectionAuthValid(saved)) return false;
-
-      const loginArea = document.getElementById("loginArea");
-      const recoveryArea = document.getElementById("newPasswordArea");
-      const portal = document.getElementById("portalArea");
-      if (loginArea) loginArea.style.display = "none";
-      if (recoveryArea) recoveryArea.style.display = "none";
-      if (portal) portal.style.display = "block";
-
-      const staffName = document.getElementById("staffName");
-      if (staffName) staffName.textContent = saved.collector_name || "集金担当";
-
-      const planned = document.getElementById("plannedRole");
-      const working = document.getElementById("workingRole");
-      if (planned) planned.textContent = "オフライン";
-      if (working) working.textContent = "オフライン";
-
-      const badge = document.getElementById("workingBadge");
-      const badgeText = document.getElementById("workingBadgeText");
-      if (badge) badge.classList.add("off");
-      if (badgeText) badgeText.textContent = "通信障害モード";
-
-      const adminStatus = document.getElementById("adminStatus");
-      if (adminStatus) adminStatus.textContent = "オフライン";
-
-      const collectionButton = document.getElementById("collectionButton");
-      if (collectionButton) collectionButton.style.display = "block";
-
-      const roleSection = document.getElementById("roleSection");
-      const adminEntry = document.getElementById("adminEntry");
-      if (roleSection) roleSection.style.display = "none";
-      if (adminEntry) adminEntry.style.display = "none";
-
-      const backupStatus = document.getElementById("offlineBackupStatus");
-      const backupBadge = document.getElementById("offlineBackupBadge");
-      if (backupStatus) {
-        backupStatus.textContent =
-          "本日の集金担当権限をこの端末に保存済みです。ノルマ集金はオフラインで利用できます。";
-      }
-      if (backupBadge) {
-        backupBadge.textContent = "集金利用可";
-        backupBadge.style.background = "#ecfdf3";
-        backupBadge.style.color = "#15803d";
-      }
-
-      return true;
-    }
 
     async function showPortal() {
 
@@ -1393,9 +1292,7 @@ table{
         isAdmin
       );
 
-      
-      await refreshCollectionAccess();
-const planned =
+      const planned =
         assignment
           ? roleText(
               assignment.role
@@ -1595,15 +1492,6 @@ const planned =
 
     async function checkLogin() {
 
-      if (!navigator.onLine) {
-        const opened =
-          await showOfflineCollectionPortal();
-
-        if (opened) {
-          return;
-        }
-      }
-
       const {
         data: { session }
       } =
@@ -1614,30 +1502,6 @@ const planned =
         await showPortal();
       }
     }
-
-
-
-    window.addEventListener(
-      "offline",
-      async () => {
-        await showOfflineCollectionPortal();
-      }
-    );
-
-    window.addEventListener(
-      "online",
-      async () => {
-        const {
-          data: { session }
-        } =
-          await supabaseClient.auth
-            .getSession();
-
-        if (session) {
-          await showPortal();
-        }
-      }
-    );
 
 
     if (
