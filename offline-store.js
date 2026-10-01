@@ -247,6 +247,17 @@
     return await getMeta('presale_collection_auth',null);
   }
 
+  async function clearCollectionBootstrap(){
+    const d=await db();
+    const tx=d.transaction([STORE_COLLECTION_STAFF,STORE_META],'readwrite');
+    tx.objectStore(STORE_COLLECTION_STAFF).clear();
+    const ms=tx.objectStore(STORE_META);
+    ms.delete('presale_collection_auth');
+    ms.delete('presale_collection_saved_at');
+    await txDone(tx);
+    return true;
+  }
+
   async function getAllCollectionStaff(){
     const d=await db();
     const tx=d.transaction(STORE_COLLECTION_STAFF,'readonly');
@@ -387,5 +398,5 @@
     };
   }
 
-  window.SigmaOfflineStore={normalizeTicketCode,getDeviceId,saveSnapshot,getTicket,markUsed,stats,listUsesByStatus,updateUse,getMeta,setMeta,getStaffList,getDayReservesForSeller,issueOfflineDayTicket,listDayIssuesByStatus,updateDayIssue,setManagerOrders,getManagerOrders,saveCollectionBootstrap,getCollectionAuth,getAllCollectionStaff,getCollectionStaffByToken,findCollectionStaff,markCollectionPaid,listCollectionEventsByStatus,updateCollectionEvent,collectionStats};
+  window.SigmaOfflineStore={normalizeTicketCode,getDeviceId,saveSnapshot,getTicket,markUsed,stats,listUsesByStatus,updateUse,getMeta,setMeta,getStaffList,getDayReservesForSeller,issueOfflineDayTicket,listDayIssuesByStatus,updateDayIssue,setManagerOrders,getManagerOrders,saveCollectionBootstrap,getCollectionAuth,clearCollectionBootstrap,getAllCollectionStaff,getCollectionStaffByToken,findCollectionStaff,markCollectionPaid,listCollectionEventsByStatus,updateCollectionEvent,collectionStats};
 })();

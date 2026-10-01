@@ -652,8 +652,10 @@ table{
         </button>
 
         <button
+          id="loginCollectionButton"
           class="ghost-button"
           onclick="location.href='presale-collection.html'"
+          style="display:none;"
         >
           ノルマ集金（オフライン対応）
         </button>
@@ -1071,6 +1073,18 @@ table{
       return Date.now() <= new Date(a.valid_until).getTime();
     }
 
+    function collectionNetworkError(error) {
+      const msg = String(error?.message || error || "").toLowerCase();
+      return (
+        msg.includes("failed to fetch") ||
+        msg.includes("networkerror") ||
+        msg.includes("network request failed") ||
+        msg.includes("load failed") ||
+        msg.includes("fetch failed") ||
+        msg.includes("connection")
+      );
+    }
+
     async function getSavedCollectionAuth() {
       try {
         if (!window.SigmaOfflineStore) return null;
@@ -1078,6 +1092,29 @@ table{
       } catch (_) {
         return null;
       }
+    }
+
+    async function clearSavedCollectionAuth() {
+      try {
+        if (window.SigmaOfflineStore?.clearCollectionBootstrap) {
+          await window.SigmaOfflineStore.clearCollectionBootstrap();
+        }
+      } catch (_) {}
+    }
+
+    async function refreshLoginCollectionAccess() {
+      const button = document.getElementById("loginCollectionButton");
+      if (!button) return;
+
+      // オンライン時はログイン前から古い保存権限を見せない。
+      // オフライン時だけ、当日有効な保存済み権限がある端末に表示する。
+      if (navigator.onLine) {
+        button.style.display = "none";
+        return;
+      }
+
+      const saved = await getSavedCollectionAuth();
+      button.style.display = collectionAuthValid(saved) ? "block" : "none";
     }
 
     async function refreshCollectionAccess() {
@@ -1103,11 +1140,20 @@ table{
             await window.SigmaOfflineStore.saveCollectionBootstrap(data);
           }
         } else {
+          await clearSavedCollectionAuth();
           button.style.display = "none";
         }
-      } catch (_) {
-        const saved = await getSavedCollectionAuth();
-        button.style.display = collectionAuthValid(saved) ? "block" : "none";
+      } catch (error) {
+        if (collectionNetworkError(error)) {
+          // navigator.onLine=trueでも通信障害の場合だけ、当日保存済み権限を利用。
+          const saved = await getSavedCollectionAuth();
+          button.style.display = collectionAuthValid(saved) ? "block" : "none";
+          return;
+        }
+
+        // サーバーが「担当ではない」と返した場合は、古いオフライン権限を破棄。
+        await clearSavedCollectionAuth();
+        button.style.display = "none";
       }
     }
 
@@ -1621,6 +1667,8 @@ const planned =
       document.getElementById(
         "password"
       ).value = "";
+
+      await refreshLoginCollectionAccess();
     }
 
 
@@ -1630,8 +1678,11 @@ const planned =
       if (!navigator.onLine) {
         document.getElementById("loginArea").style.display = "block";
         document.getElementById("portalArea").style.display = "none";
+        await refreshLoginCollectionAccess();
         return;
       }
+
+      await refreshLoginCollectionAccess();
 
       const {
         data: { session }
@@ -1651,12 +1702,14 @@ const planned =
       async () => {
         document.getElementById("portalArea").style.display = "none";
         document.getElementById("loginArea").style.display = "block";
+        await refreshLoginCollectionAccess();
       }
     );
 
     window.addEventListener(
       "online",
       async () => {
+        await refreshLoginCollectionAccess();
         const {
           data: { session }
         } =

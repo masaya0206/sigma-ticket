@@ -172,6 +172,23 @@ function authValid(a){
   return Date.now()<=new Date(a.valid_until).getTime();
 }
 
+function collectionNetworkError(error){
+  const msg=String(error?.message||error||'').toLowerCase();
+  return msg.includes('failed to fetch')
+    || msg.includes('networkerror')
+    || msg.includes('network request failed')
+    || msg.includes('load failed')
+    || msg.includes('fetch failed')
+    || msg.includes('connection');
+}
+
+async function clearRevokedCollectionAccess(){
+  authCache=null;
+  try{
+    if(S?.clearCollectionBootstrap)await S.clearCollectionBootstrap();
+  }catch(_){}
+}
+
 async function initialize(){
   setMode();
   authCache=await S.getCollectionAuth();
@@ -202,12 +219,17 @@ async function initialize(){
     await syncPending();
     await renderAll();
   }catch(e){
-    if(authValid(authCache)){
+    if(collectionNetworkError(e) && authValid(authCache)){
+      // 実際の通信障害だけ保存済みオフライン権限へフォールバックする。
       loginCard.classList.add('hidden');
       appArea.classList.remove('hidden');
-      syncStatus.textContent='サーバー取得に失敗したため保存済みデータで開いています：'+e.message;
+      syncStatus.textContent='通信障害のため保存済みデータで開いています：'+e.message;
       await renderAll();
     }else{
+      // 「本日の集金担当ではない」など、サーバーが権限を否定した場合は
+      // 保存済み権限を破棄して開かせない。
+      await clearRevokedCollectionAccess();
+      appArea.classList.add('hidden');
       loginCard.classList.remove('hidden');
       loginMsg.textContent='集金担当として開けません：'+e.message;
     }
@@ -361,7 +383,7 @@ async function syncNow(){
     return;
   }
   await syncPending();
-  try{await fetchBootstrap()}catch(e){syncStatus.textContent='同期エラー: '+e.message}
+  try{await fetchBootstrap()}catch(e){if(!collectionNetworkError(e)){await clearRevokedCollectionAccess();location.href='home.html';return;}syncStatus.textContent='同期エラー: '+e.message}
   await renderAll();
 }
 

@@ -1,16 +1,115 @@
-const CACHE_NAME = "sigma-ticket-campus-illustrated-map-v26";
-const PRECACHE = [
-  "./coupon-campus-illustrated.png"
+const CACHE_NAME = "sigma-ticket-integrated-v27";
+
+const CORE_ASSETS = [
+  "./home.html",
+  "./offline-scanner.html",
+  "./offline-seller.html",
+  "./presale.html",
+  "./presale-collection.html",
+  "./presale-collection-admin.html",
+  "./admin-menu.html",
+  "./manager.html",
+  "./offline-store.js",
+  "./benefits.html",
+  "./claim.html",
+  "./sample-ticket.html",
+  "./ticket.html",
+  "./coupon-campus-illustrated.png",
+  "./coupon-campus-illustrated.svg",
+  "./manifest.webmanifest",
+  "./icon-180.png",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
-self.addEventListener("install",e=>e.waitUntil(
-  caches.open(CACHE_NAME).then(c=>c.addAll(PRECACHE)).catch(()=>{}).then(()=>self.skipWaiting())
-));
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{
-  const r=e.request;if(r.method!=="GET")return;
-  const u=new URL(r.url);if(u.origin!==location.origin)return;
-  if(r.mode==="navigate"||r.destination==="document"){
-    e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(CACHE_NAME).then(c=>c.put(r,cp));return res;}).catch(()=>caches.match(r).then(x=>x||caches.match("./home.html"))));return;
+
+const EXTERNAL_ASSETS = [
+  "https://unpkg.com/html5-qrcode",
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+  "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+];
+
+self.addEventListener("install", event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // 1ファイルの取得失敗でService Worker全体の更新が止まらないよう個別保存。
+    for (const url of CORE_ASSETS) {
+      try {
+        await cache.add(url);
+      } catch (_) {}
+    }
+
+    for (const url of EXTERNAL_ASSETS) {
+      try {
+        const res = await fetch(url);
+        if (res && res.ok) await cache.put(url, res.clone());
+      } catch (_) {}
+    }
+
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+
+  if (EXTERNAL_ASSETS.includes(url.href)) {
+    event.respondWith(
+      caches.match(request).then(cached => cached || fetch(request).then(async response => {
+        try {
+          if (response && response.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, response.clone());
+          }
+        } catch (_) {}
+        return response;
+      }))
+    );
+    return;
   }
-  e.respondWith(caches.match(r).then(c=>c||fetch(r).then(res=>{const cp=res.clone();caches.open(CACHE_NAME).then(x=>x.put(r,cp));return res;})));
+
+  if (url.origin !== location.origin) return;
+
+  // HTMLは常にオンラインの最新版を優先。
+  // これによりノルマ集金担当解除などの権限変更が古いキャッシュに邪魔されにくくなる。
+  if (request.mode === "navigate" || request.destination === "document") {
+    event.respondWith(
+      fetch(request)
+        .then(async response => {
+          try {
+            if (response && response.ok) {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put(request, response.clone());
+            }
+          } catch (_) {}
+          return response;
+        })
+        .catch(() => caches.match(request).then(cached => cached || caches.match("./home.html")))
+    );
+    return;
+  }
+
+  // 画像・JS等はキャッシュ優先。未保存なら取得して保存。
+  event.respondWith(
+    caches.match(request).then(cached => cached || fetch(request).then(async response => {
+      try {
+        if (response && response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, response.clone());
+        }
+      } catch (_) {}
+      return response;
+    }))
+  );
 });
