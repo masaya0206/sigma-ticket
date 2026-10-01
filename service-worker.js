@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-home-routing-v14";
+const CACHE_NAME = "sigma-ticket-home-routing-v15";
 
 const CORE_ASSETS = [
   "./home.html",

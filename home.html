@@ -802,6 +802,17 @@ table{
               <span class="core-desc">テント内・外・前売り券・食材保存</span>
             </button>
 
+            <button
+              id="collectionButton"
+              class="core-card points-card"
+              onclick="location.href='presale-collection.html'"
+              style="display:none;"
+            >
+              <span class="core-icon">集</span>
+              <span class="core-name">ノルマ集金</span>
+              <span class="core-desc">本日の集金担当専用・オフライン対応</span>
+            </button>
+
           </div>
 
           <div id="offlineBackupCard" style="margin-top:14px;background:#fffaf0;border:1px solid #f0d7a5;border-radius:18px;padding:15px;">
@@ -1245,6 +1256,7 @@ table{
 
       await refreshPortal();
       await refreshOfflineBackupStatus();
+      await refreshCollectionAccess();
     }
 
 
