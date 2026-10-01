@@ -3,1801 +3,345 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>シグマ祭 ポータル</title>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./offline-store.js"></script>
-
-  <meta name="theme-color" content="#b5121b">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="シグマ祭">
-
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icon-180.png">
-
-
-  <!-- URL共有時のプレビュー -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="シグマ祭 Match Point">
-  <meta property="og:description" content="Match Point シグマ祭スタッフポータル">
-  <meta property="og:url" content="https://masaya0206.github.io/sigma-ticket/home.html">
-  <meta property="og:image" content="https://masaya0206.github.io/sigma-ticket/social-preview.png?v=77">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="シグマ祭 Match Point">
-  <meta name="twitter:description" content="Match Point シグマ祭スタッフポータル">
-  <meta name="twitter:image" content="https://masaya0206.github.io/sigma-ticket/social-preview.png?v=77">
-
   <style>
-    :root {
-      --red: #b5121b;
-      --red-dark: #8f0e15;
-      --red-soft: #fff1f2;
-      --gold: #d9a526;
-      --ink: #1c1c1e;
-      --muted: #6e6e73;
-      --line: #ece7e4;
-      --surface: #ffffff;
-      --bg: #f7f4f2;
-      --green: #15803d;
-      --green-soft: #ecfdf3;
-      --shadow: 0 8px 24px rgba(74, 25, 25, 0.08);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Hiragino Sans",
-        "Yu Gothic",
-        sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-    }
-
-    button,
-    input {
-      font: inherit;
-    }
-
-    button {
-      border: 0;
-      cursor: pointer;
-    }
-
-    .app {
-      max-width: 620px;
-      min-height: 100vh;
-      margin: 0 auto;
-      padding-bottom: 34px;
-      background: var(--bg);
-    }
-
-    .hero {
-      position: relative;
-      overflow: hidden;
-      padding:
-        max(34px, env(safe-area-inset-top))
-        22px
-        38px;
-      color: #fff;
-      background:
-        radial-gradient(circle at 85% 20%, rgba(255,255,255,.13), transparent 28%),
-        radial-gradient(circle at 10% 92%, rgba(255,210,90,.16), transparent 30%),
-        linear-gradient(145deg, var(--red), var(--red-dark));
-      border-radius: 0 0 30px 30px;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      right: -58px;
-      bottom: -72px;
-      width: 190px;
-      height: 190px;
-      border: 2px solid rgba(217,165,38,.35);
-      border-radius: 50%;
-    }
-
-    .brand {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-mark {
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      border: 1px solid rgba(255,255,255,.55);
-      border-radius: 15px;
-      color: #fff;
-      font-size: 29px;
-      font-weight: 900;
-      background: rgba(255,255,255,.09);
-      backdrop-filter: blur(8px);
-    }
-
-    .brand-copy {
-      min-width: 0;
-    }
-
-    .brand-title {
-      margin: 0;
-      font-size: 28px;
-      line-height: 1.15;
-      letter-spacing: .02em;
-    }
-
-    .brand-subtitle {
-      margin-top: 5px;
-      color: rgba(255,255,255,.78);
-      font-size: 13px;
-      letter-spacing: .08em;
-    }
-
-    .content {
-      padding: 0 16px 26px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid rgba(181,18,27,.06);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-    }
-
-    .login-card {
-      margin-top: -18px;
-      position: relative;
-      z-index: 2;
-      padding: 22px;
-    }
-
-    .login-title {
-      margin: 0 0 14px;
-      font-size: 23px;
-    }
-
-    input {
-      width: 100%;
-      margin-top: 10px;
-      padding: 15px 16px;
-      color: var(--ink);
-      border: 1px solid #ded8d4;
-      border-radius: 14px;
-      outline: none;
-      background: #fff;
-    }
-
-    input:focus {
-      border-color: var(--red);
-      box-shadow: 0 0 0 3px rgba(181,18,27,.10);
-    }
-
-    .primary-button,
-    .secondary-button,
-    .ghost-button {
-      width: 100%;
-      margin-top: 12px;
-      padding: 15px 16px;
-      border-radius: 14px;
-      font-weight: 800;
-    }
-
-    .primary-button {
-      color: #fff;
-      background: var(--red);
-    }
-
-    .primary-button:active {
-      background: var(--red-dark);
-    }
-
-    .secondary-button {
-      color: var(--red);
-      background: var(--red-soft);
-    }
-
-    .ghost-button {
-      color: var(--ink);
-      background: #f3efec;
-    }
-
-    .message {
-      margin: 14px 2px 0;
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    #portalArea,
-    #newPasswordArea {
-      display: none;
-    }
-
-    .profile-card {
-      margin-top: -18px;
-      position: relative;
-      z-index: 2;
-      padding: 18px;
-    }
-
-    .profile-main {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .avatar {
-      flex: 0 0 auto;
-      width: 66px;
-      height: 66px;
-      position: relative;
-      overflow: hidden;
-      border: 3px solid #fff;
-      border-radius: 50%;
-      background: #e7e4e2;
-      box-shadow: 0 4px 14px rgba(0,0,0,.08);
-    }
-
-    /* よくある無地の人型デフォルトアイコン */
-    .avatar::before {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 13px;
-      width: 23px;
-      height: 23px;
-      transform: translateX(-50%);
-      border-radius: 50%;
-      background: #88827f;
-    }
-
-    .avatar::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: 7px;
-      width: 42px;
-      height: 24px;
-      transform: translateX(-50%);
-      border-radius: 24px 24px 10px 10px;
-      background: #88827f;
-    }
-
-    .profile-copy {
-      min-width: 0;
-      flex: 1;
-    }
-
-    .eyebrow {
-      color: var(--red);
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .11em;
-    }
-
-    .staff-name {
-      margin-top: 2px;
-      font-size: 25px;
-      font-weight: 900;
-      overflow-wrap: anywhere;
-    }
-
-    .working-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      margin-top: 8px;
-      padding: 7px 10px;
-      color: var(--green);
-      border-radius: 999px;
-      background: var(--green-soft);
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .working-badge.off {
-      color: var(--muted);
-      background: #f2f2f2;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 18px;
-    }
-
-    .mini-stat {
-      min-height: 86px;
-      padding: 13px 14px;
-      border-radius: 16px;
-      background: #faf7f5;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .mini-stat.primary {
-      background: linear-gradient(180deg, #fff7f7 0%, #faf4f2 100%);
-      border: 1px solid rgba(181,18,27,.08);
-    }
-
-    .mini-label {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .mini-value {
-      margin-top: 0;
-      font-size: 16px;
-      line-height: 1.35;
-      font-weight: 900;
-      overflow-wrap: anywhere;
-    }
-
-    .mini-value.emphasis {
-      color: var(--red);
-      font-size: 28px;
-      line-height: 1.1;
-    }
-
-    .mini-value.subtext {
-      font-size: 13px;
-      line-height: 1.45;
-      font-weight: 700;
-    }
-
-    .section {
-      margin-top: 18px;
-    }
-
-    .section-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 0 4px 10px;
-    }
-
-    .section-title h2 {
-      margin: 0;
-      font-size: 19px;
-    }
-
-    .section-hint {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .menu-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
-
-    .menu-card {
-      min-height: 122px;
-      padding: 16px;
-      text-align: left;
-      border: 1px solid var(--line);
-      border-radius: 19px;
-      background: #fff;
-      box-shadow: 0 4px 15px rgba(43,22,22,.045);
-    }
-
-    .menu-card:active {
-      transform: scale(.985);
-    }
-
-    .menu-icon {
-      width: 39px;
-      height: 39px;
-      display: grid;
-      place-items: center;
-      color: var(--red);
-      border-radius: 12px;
-      background: var(--red-soft);
-      font-size: 21px;
-      font-weight: 900;
-    }
-
-    .menu-name {
-      display: block;
-      margin-top: 12px;
-      color: var(--ink);
-      font-size: 16px;
-      font-weight: 900;
-    }
-
-    .menu-desc {
-      display: block;
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .notice {
-      margin-top: 16px;
-      padding: 15px 16px;
-      color: #5d4b42;
-      border: 1px solid #f1dfd1;
-      border-radius: 16px;
-      background: #fffaf5;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .portal-actions {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 9px;
-    }
-
-    .portal-actions button {
-      margin: 0;
-    }
-
-    .recovery-card {
-      margin-top: -18px;
-      position: relative;
-      z-index: 2;
-      padding: 22px;
-    }
-
-    @media (max-width: 390px) {
-      .hero {
-        padding-left: 18px;
-        padding-right: 18px;
-      }
-
-      .brand-title {
-        font-size: 25px;
-      }
-
-      .content {
-        padding-left: 12px;
-        padding-right: 12px;
-      }
-
-      .menu-grid {
-        gap: 8px;
-      }
-
-      .menu-card {
-        padding: 14px;
-      }
-
-      .stats-grid,
-      .portal-actions {
-        grid-template-columns: 1fr;
-      }
-
-      .mini-stat {
-        min-height: auto;
-      }
-
-      .mini-value.emphasis {
-        font-size: 24px;
-      }
-    }
-
-    .core-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .core-card{min-height:138px;padding:18px;text-align:left;border:1px solid var(--line);
-      border-radius:21px;background:#fff;box-shadow:0 5px 16px rgba(43,22,22,.05)}
-    .core-card:active{transform:scale(.985)}
-    .core-icon{width:44px;height:44px;display:grid;place-items:center;color:var(--red);
-      border-radius:14px;background:var(--red-soft);font-size:21px;font-weight:900}
-    .core-name{display:block;margin-top:13px;font-size:17px;font-weight:900;color:var(--ink)}
-    .core-desc{display:block;margin-top:5px;color:var(--muted);font-size:12px;line-height:1.5}
-    .role-section{display:none;margin-top:18px}
-    .role-card{width:100%;min-height:96px;padding:17px;text-align:left;border:0;border-radius:19px;
-      color:#fff;background:linear-gradient(145deg,var(--red),var(--red-dark));box-shadow:var(--shadow)}
-    .role-card+.role-card{margin-top:10px}
-    .role-title{display:block;font-size:20px;font-weight:900}
-    .role-desc{display:block;margin-top:5px;color:rgba(255,255,255,.82);font-size:13px}
-    .admin-entry{display:none;margin-top:18px}
-    @media(max-width:390px){.core-grid{gap:9px}.core-card{padding:15px}}
-
-  
-    .core-card.points-card {
-      grid-column: 1 / -1;
-    }
+    body{font-family:sans-serif;max-width:560px;margin:0 auto;padding:20px;text-align:center;background:#fafafa}
+    h1{margin-bottom:8px}.subtitle{color:#666;margin-bottom:18px}
+    input,button{width:100%;box-sizing:border-box;padding:14px;margin-top:10px;font-size:16px}
+    input{border:1px solid #ccc;border-radius:10px;background:#fff}
+    button{border:none;border-radius:10px;cursor:pointer}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .card{margin-top:16px;padding:18px;background:#f2f2f2;border-radius:12px;text-align:left}
+    .success{background:#e8f7e8!important}.danger{background:#ffe8e8!important}
+    .menu-button{text-align:left;padding:16px}.menu-title{font-size:17px;font-weight:bold}
+    .menu-desc{display:block;margin-top:4px;font-size:13px;color:#555}
+    .status-line{margin:7px 0}.small{font-size:13px;color:#666;line-height:1.5}
+    #portalArea,#newPasswordArea{display:none}
   </style>
-
-<style id="v80BottomNav">
-body{padding-bottom:82px!important}
-.global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
-width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));
-display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);
-border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08);backdrop-filter:blur(12px)}
-.global-bottom-nav.admin-nav{grid-template-columns:repeat(4,1fr)}
-.global-bottom-nav button{width:100%!important;margin:0!important;padding:7px 4px!important;border:0!important;
-border-radius:12px!important;background:transparent!important;color:#6e6e73!important;font:inherit;font-size:11px!important;
-font-weight:700!important;line-height:1.15;box-shadow:none!important}
-.global-bottom-nav .gicon{display:block;margin-bottom:4px;font-size:20px;line-height:1}
-.global-bottom-nav button.active{color:#b5121b!important;background:#fff1f2!important}
-</style>
-
-
-<style id="responsiveOverflowFixV1">
-/* 共通：iPhone/Safariを含む横はみ出し防止 */
-*,*::before,*::after{box-sizing:border-box}
-html,body{width:100%;max-width:100%;overflow-x:hidden}
-body{overflow-wrap:anywhere}
-main,.container,.wrap,.content,.page,.card,.panel,.row,.grid,.field,form,
-main>*,.card>*,.panel>*,.grid>*{
-  min-width:0;
-  max-width:100%;
-}
-input,select,textarea,button{
-  max-width:100%;
-  min-width:0;
-  box-sizing:border-box;
-}
-input[type="datetime-local"],
-input[type="date"],
-input[type="time"],
-input[type="month"],
-input[type="week"]{
-  display:block;
-  width:100%!important;
-  max-width:100%!important;
-  min-width:0!important;
-  box-sizing:border-box!important;
-  -webkit-appearance:none;
-  appearance:none;
-}
-img,video,canvas,svg,iframe{
-  max-width:100%;
-}
-pre,code{
-  max-width:100%;
-  overflow-x:auto;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
-  word-break:break-word;
-}
-table{
-  max-width:100%;
-}
-@media(max-width:600px){
-  main{width:100%;max-width:100%}
-  .card,.panel{max-width:100%;min-width:0}
-  input,select,textarea{font-size:16px}
-}
-</style>
-
 </head>
-
 <body>
-  <main class="app">
+  <h1>シグマ祭 ポータル</h1>
+  <div class="subtitle">このページを入口にすればOKです</div>
 
-    <header class="hero">
-      <div class="brand">
-        <div class="brand-mark">Σ</div>
+  <div id="loginArea" class="card">
+    <h2>ログイン</h2>
+    <input id="email" type="email" placeholder="メールアドレス" autocomplete="email">
+    <input id="password" type="password" placeholder="パスワード" autocomplete="current-password">
+    <button onclick="login()">ログイン</button>
+    <button onclick="resetPassword()">パスワードを設定・再設定</button>
+    <p id="loginMessage"></p>
+  </div>
 
-        <div class="brand-copy">
-          <h1 class="brand-title">
-            シグマ祭
-          </h1>
+  <div id="newPasswordArea" class="card">
+    <h2>新しいパスワードを設定</h2>
+    <input id="newPassword" type="password" placeholder="新しいパスワード">
+    <button onclick="saveNewPassword()">パスワードを保存</button>
+    <p id="passwordMessage"></p>
+  </div>
 
-          <div class="brand-subtitle">
-            MATCH POINT · 中華屋台
-          </div>
-        </div>
-      </div>
-    </header>
-
-
-    <div class="content">
-
-      <section
-        id="loginArea"
-        class="card login-card"
-      >
-        <h2 class="login-title">
-          ログイン
-        </h2>
-
-        <input
-          id="email"
-          type="email"
-          placeholder="メールアドレス"
-          autocomplete="email"
-        >
-
-        <input
-          id="password"
-          type="password"
-          placeholder="パスワード"
-          autocomplete="current-password"
-        >
-
-        <button
-          class="primary-button"
-          onclick="login()"
-        >
-          ログイン
-        </button>
-
-        <button
-          class="secondary-button"
-          onclick="location.href='reset-password.html'"
-        >
-          パスワードを忘れた方
-        </button>
-
-        <p
-          id="loginMessage"
-          class="message"
-        ></p>
-
-        <div id="offlineEmergencyLogin" style="
-          display:none;
-          margin-top:16px;
-          padding:14px;
-          border-radius:16px;
-          background:#fff8e8;
-          border:1px solid #efd39a;
-        ">
-          <div style="font-weight:900;font-size:16px;color:#6f4b00;">
-            非常用オフライン受付
-          </div>
-          <div id="offlineEmergencyLoginText" style="
-            margin-top:6px;
-            color:#6e5b34;
-            font-size:13px;
-            line-height:1.55;
-          ">
-            この端末に保存済みの非常用データを確認しています。
-          </div>
-          <button
-            type="button"
-            onclick="location.href='offline-scanner.html'"
-            style="
-              width:100%;
-              margin-top:12px;
-              border:0;
-              border-radius:13px;
-              padding:13px 14px;
-              background:#2c2c2e;
-              color:#fff;
-              font-weight:900;
-              font-size:15px;
-            "
-          >
-            ログインせず非常用QR受付を開く
-          </button>
-          <button
-            type="button"
-            onclick="location.href='offline-seller.html'"
-            style="width:100%;margin-top:8px;border:0;border-radius:13px;padding:13px 14px;background:#fff1f2;color:#b5121b;font-weight:900;font-size:15px;"
-          >
-            非常用当日券を発行
-          </button>
-        </div>
-      </section>
-
-
-      <section
-        id="newPasswordArea"
-        class="card recovery-card"
-      >
-        <h2 class="login-title">
-          新しいパスワード
-        </h2>
-
-        <input
-          id="newPassword"
-          type="password"
-          placeholder="新しいパスワード"
-        >
-
-        <button
-          class="primary-button"
-          onclick="saveNewPassword()"
-        >
-          パスワードを保存
-        </button>
-
-        <p
-          id="passwordMessage"
-          class="message"
-        ></p>
-      </section>
-
-
-      <div id="portalArea">
-
-        <section class="card profile-card">
-          <div class="profile-main">
-
-            <div
-              class="avatar"
-              aria-label="デフォルトプロフィールアイコン"
-            ></div>
-
-            <div class="profile-copy">
-
-              <div class="eyebrow">
-                STAFF
-              </div>
-
-              <div
-                id="staffName"
-                class="staff-name"
-              >
-                -
-              </div>
-
-              <div
-                id="workingBadge"
-                class="working-badge off"
-              >
-                <span class="dot"></span>
-                <span id="workingBadgeText">
-                  勤務していません
-                </span>
-              </div>
-
-            </div>
-          </div>
-
-
-          <div class="stats-grid">
-
-            <div class="mini-stat primary">
-              <div class="mini-label">
-                現状残り枚数
-              </div>
-              <div id="homeResidual" class="mini-value emphasis">-</div>
-            </div>
-
-            <div class="mini-stat">
-              <div class="mini-label">
-                前売り状況
-              </div>
-              <div id="homeResidualValue" class="mini-value subtext">-</div>
-            </div>
-
-            <div class="mini-stat">
-              <div class="mini-label">
-                現在の予定
-              </div>
-              <div id="plannedRole" class="mini-value">-</div>
-            </div>
-
-            <div class="mini-stat">
-              <div class="mini-label">
-                現在の勤務
-              </div>
-              <div id="workingRole" class="mini-value">-</div>
-            </div>
-
-          </div>
-
-          <div class="portal-actions">
-            <button
-              class="secondary-button"
-              onclick="refreshPortal()"
-            >
-              状態を更新
-            </button>
-
-            <button
-              class="ghost-button"
-              onclick="logout()"
-            >
-              ログアウト
-            </button>
-          </div>
-        </section>
-        <section class="section">
-          <div class="section-title">
-            <h2>メニュー</h2>
-            <span id="adminStatus" class="section-hint"></span>
-          </div>
-
-          <div class="core-grid">
-            <button class="core-card" onclick="location.href='work.html'">
-              <span class="core-icon">時</span>
-              <span class="core-name">勤怠・シフト</span>
-              <span class="core-desc">出退勤の確認・希望シフト</span>
-            </button>
-
-            <button class="core-card" onclick="location.href='tickets.html'">
-              <span class="core-icon">券</span>
-              <span class="core-name">前売り券・当日券</span>
-              <span class="core-desc">券の発行・ノルマ・販売状況</span>
-            </button>
-            <button class="core-card points-card" onclick="location.href='points-my.html'">
-              <span class="core-icon">pt</span>
-              <span class="core-name">4部門ポイント</span>
-              <span class="core-desc">テント内・外・前売り券・食材保存</span>
-            </button>
-          </div>
-
-          <div id="offlineBackupCard" style="margin-top:14px;background:#fffaf0;border:1px solid #f0d7a5;border-radius:18px;padding:15px;">
-            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
-              <div style="min-width:0;">
-                <div style="font-weight:900;font-size:16px;">非常用オフラインバックアップ</div>
-                <div id="offlineBackupStatus" style="margin-top:5px;color:#6e5b34;font-size:13px;line-height:1.5;">保存状況を確認しています...</div>
-              </div>
-              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-                <span id="offlineAutoBackupBadge" style="font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#ecfdf3;color:#15803d;white-space:nowrap;">自動バックアップ ON</span>
-                <span id="offlineBackupBadge" style="font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eee;color:#555;white-space:nowrap;">確認中</span>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-              <button id="saveOfflineBackupBtn" onclick="saveOfflineBackup()" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">今すぐ更新</button>
-              <button onclick="location.href='offline-scanner.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#2c2c2e;color:#fff;">非常用QR受付</button>
-              <button onclick="location.href='offline-seller.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#fff1f2;color:#b5121b;">非常用当日券発行</button>
-            </div>
-            <div id="offlineBackupMessage" style="font-size:12px;color:#6e6e73;line-height:1.5;margin-top:9px;"></div>
-          </div>
-
-          <div id="roleSection" class="role-section">
-            <div class="section-title" style="margin-top:0;">
-              <h2>勤務中の機能</h2>
-              <span class="section-hint">現在の役割に応じて表示</span>
-            </div>
-            <div id="roleMenu"></div>
-          </div>
-
-          <div id="adminEntry" class="admin-entry">
-            <button class="core-card" style="width:100%;min-height:104px;" onclick="location.href='admin-menu.html'">
-              <span class="core-icon">管</span>
-              <span class="core-name">管理者メニュー</span>
-              <span class="core-desc">全機能・設定・運営操作</span>
-            </button>
-          </div>
-        </section>
-
-        <div class="notice">
-          通常は「勤怠・シフト」「前売り券・当日券」「4部門ポイント」を表示します。
-          出勤中は「店長・レジ・サポート・買い出し」のうち必要な機能だけ自動で追加されます。
-          売り子・調理には専用メニューを追加しません。
-        </div>
-
-      </div>
+  <div id="portalArea">
+    <div class="card success">
+      <h2>ログイン中</h2>
+      <div class="status-line">スタッフ：<strong id="staffName">-</strong></div>
+      <div class="status-line">現在の予定：<strong id="plannedRole">-</strong></div>
+      <div class="status-line">現在の勤務：<strong id="workingRole">-</strong></div>
+      <div class="status-line">管理者：<strong id="adminStatus">-</strong></div>
+      <button onclick="refreshPortal()">状態を更新</button>
+      <button onclick="logout()">ログアウト</button>
     </div>
-  </main>
 
+    <div class="card">
+      <h2>メニュー</h2>
+
+      <button class="menu-button" onclick="location.href='staff.html'">
+        <span class="menu-title">👤 スタッフ画面</span>
+        <span class="menu-desc">出勤・休憩・退勤・レジ勤務</span>
+      </button>
+
+      <button class="menu-button" onclick="location.href='seller.html'">
+        <span class="menu-title">🎫 チケット発行</span>
+        <span class="menu-desc">前売り券の発行・販売履歴</span>
+      </button>
+
+      <button id="collectionButton" class="menu-button" onclick="location.href='presale-collection.html'" style="display:none;">
+        <span class="menu-title">💴 ノルマ集金</span>
+        <span class="menu-desc">本日の集金担当者専用・オフライン対応</span>
+      </button>
+
+      <button id="registerButton" class="menu-button" onclick="location.href='index.html'" style="display:none;">
+        <span class="menu-title">📷 レジ受付</span>
+        <span class="menu-desc">QRコードを読み取って使用済みにする</span>
+      </button>
+
+      <button id="frontButton" class="menu-button" onclick="location.href='front.html'" style="display:none;">
+        <span class="menu-title">📊 表番</span>
+        <span class="menu-desc">来客数・混雑度・チケット利用状況</span>
+      </button>
+
+      <button id="backButton" class="menu-button" onclick="location.href='back.html'" style="display:none;">
+        <span class="menu-title">🧭 裏番</span>
+        <span class="menu-desc">全体状況・勤怠確認・修正</span>
+      </button>
+
+      <button id="adminButton" class="menu-button" onclick="location.href='admin.html'" style="display:none;">
+        <span class="menu-title">⚙️ 管理者画面</span>
+        <span class="menu-desc">スタッフ・シフト・チケット管理</span>
+      </button>
+    </div>
+
+    <div class="card">
+      <strong>役割ページについて</strong>
+      <p class="small">レジ・表番・裏番のボタンは、現在その役割で勤務しているときだけ表示されます。</p>
+    </div>
+  </div>
 
   <script>
-    const SUPABASE_URL =
-      "https://gsniytemgrbtgfywhqlu.supabase.co";
+    const SUPABASE_URL="https://gsniytemgrbtgfywhqlu.supabase.co";
+    const SUPABASE_KEY="sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
+    const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-    const SUPABASE_KEY =
-      "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn";
-
-    const supabaseClient =
-      (typeof supabase !== "undefined")
-        ? supabase.createClient(
-            SUPABASE_URL,
-            SUPABASE_KEY
-          )
-        : null;
-
-
-    function formatOfflineBackupDate(value) {
-      if (!value) return "未保存";
-      try { return new Date(value).toLocaleString("ja-JP"); } catch (_) { return String(value); }
+    function roleText(role){
+      if(role==="seller") return "売り子";
+      if(role==="tent") return "テント内";
+      if(role==="front") return "表番";
+      if(role==="back") return "裏番";
+      if(role==="register") return "レジ";
+      return "なし";
     }
 
-    async function refreshOfflineBackupStatus() {
-      if (!window.SigmaOfflineStore) return;
-      const status = document.getElementById("offlineBackupStatus");
-      const badge = document.getElementById("offlineBackupBadge");
-      const msg = document.getElementById("offlineBackupMessage");
-      if (!status || !badge) return;
-      try {
-        const s = await SigmaOfflineStore.stats();
-        if (s.ticketCount > 0) {
-          status.textContent = `保存済み ${s.ticketCount}枚 / 最終保存 ${formatOfflineBackupDate(s.savedAt)}`;
-          badge.textContent = s.pending > 0 || s.conflicts > 0 ? `未同期 ${s.pending + s.conflicts}件` : "保存済み";
-          badge.style.background = s.pending > 0 || s.conflicts > 0 ? "#fff0d6" : "#ecfdf3";
-          badge.style.color = s.pending > 0 || s.conflicts > 0 ? "#8a5a00" : "#15803d";
-          if (msg) msg.textContent = s.pending > 0 ? "オフラインで使用した履歴があります。通信復旧後に非常用QR受付から同期してください。" : "通信障害時は「非常用QR受付」を開いてください。";
-        } else {
-          status.textContent = "この端末には非常用チケットデータが保存されていません。";
-          badge.textContent = "未保存";
-          badge.style.background = "#fff0f0";
-          badge.style.color = "#b5121b";
-          if (msg) msg.textContent = "前売り終了後〜イベント開始前に、全スタッフが一度保存してください。";
-        }
-      } catch (e) {
-        status.textContent = "保存状況を確認できませんでした。";
-        badge.textContent = "確認失敗";
-      }
-    }
-
-    const OFFLINE_AUTO_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
-    const OFFLINE_AUTO_BACKUP_MIN_GAP_MS = 90 * 1000;
-    let offlineAutoBackupTimer = null;
-    let offlineBackupInProgress = false;
-
-    async function syncPendingOfflineDayIssues() {
-      if (!navigator.onLine || !supabaseClient || !window.SigmaOfflineStore?.listDayIssuesByStatus) return;
-      try {
-        const rows = await SigmaOfflineStore.listDayIssuesByStatus(["pending"]);
-        if (!rows.length) return;
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return;
-        for (const x of rows) {
-          try {
-            const { data, error } = await supabaseClient.rpc("sync_offline_day_issue_v2", {
-              p_ticket_code: x.ticket_code,
-              p_seller_user_id: x.seller_user_id,
-              p_buyer_name: x.buyer_name || null,
-              p_issued_at: x.issued_at,
-              p_device_id: x.device_id,
-              p_local_id: x.local_id
-            });
-            if (error) throw error;
-            await SigmaOfflineStore.updateDayIssue(x.local_id, {
-              sync_status: "synced",
-              synced_at: new Date().toISOString(),
-              server_result: data,
-              sync_error: null
-            });
-          } catch (e) {
-            await SigmaOfflineStore.updateDayIssue(x.local_id, { sync_error: e?.message || String(e) });
-          }
-        }
-      } catch (_) {}
-    }
-
-    async function performOfflineBackup(options = {}) {
-      const manual = !!options.manual;
-      const force = !!options.force;
-      const btn = document.getElementById("saveOfflineBackupBtn");
-      const msg = document.getElementById("offlineBackupMessage");
-
-      if (offlineBackupInProgress) return { skipped: true, reason: "busy" };
-
-      if (!navigator.onLine) {
-        if (manual && msg) {
-          msg.textContent = "オフライン中は最新版を取得できません。保存済みデータは非常用QR受付で利用できます。";
-        }
-        return { skipped: true, reason: "offline" };
-      }
-
-      if (!supabaseClient || !window.SigmaOfflineStore) {
-        if (manual && msg) {
-          msg.textContent = "非常用保存機能を読み込めませんでした。ページを再読み込みしてください。";
-        }
-        return { skipped: true, reason: "unavailable" };
-      }
-
-      try {
-        if (!force) {
-          const current = await SigmaOfflineStore.stats();
-          if (current.savedAt) {
-            const age = Date.now() - new Date(current.savedAt).getTime();
-            if (Number.isFinite(age) && age >= 0 && age < OFFLINE_AUTO_BACKUP_MIN_GAP_MS) {
-              return { skipped: true, reason: "recent" };
-            }
-          }
-        }
-
-        offlineBackupInProgress = true;
-        if (manual && btn) btn.disabled = true;
-        if (msg) msg.textContent = manual
-          ? "非常用データを更新しています..."
-          : "非常用データを自動更新しています...";
-
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) {
-          if (manual && msg) msg.textContent = "ログイン情報を確認できません。";
-          return { skipped: true, reason: "no_user" };
-        }
-
-        await syncPendingOfflineDayIssues();
-
-        const { data: staff } = await supabaseClient
-          .from("staff_members")
-          .select("staff_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        const [{ data, error }, { data: offlineStaff, error: offlineStaffError }] = await Promise.all([
-          supabaseClient.rpc("offline_ticket_backup_snapshot"),
-          supabaseClient.rpc("offline_staff_backup_list")
-        ]);
-        if (error) throw error;
-        if (offlineStaffError) throw offlineStaffError;
-
-        // 非常用当日券画面を事前に開かなくても、
-        // ホームの自動バックアップだけで発行者一覧を端末へ保存する。
-        const snapshot = {
-          ...(data || {}),
-          staff: Array.isArray(offlineStaff) ? offlineStaff : []
-        };
-
-        const saved = await SigmaOfflineStore.saveSnapshot(snapshot, {
-          user_id: user.id,
-          staff_name: staff?.staff_name || "スタッフ"
-        });
-
-        if (msg) {
-          msg.textContent = `${saved.ticket_count}枚を更新しました。自動バックアップは10分おきに行われます。`;
-        }
-        await refreshOfflineBackupStatus();
-        await refreshOfflineEmergencyLogin();
-        return { ok: true, saved };
-      } catch (e) {
-        // 更新失敗時も既存IndexedDBは消さない
-        if (msg) {
-          msg.textContent = `自動更新に失敗しました。前回の保存データは保持されています：${e?.message || e}`;
-        }
-        return { ok: false, error: e };
-      } finally {
-        offlineBackupInProgress = false;
-        if (btn) btn.disabled = false;
-      }
-    }
-
-    async function saveOfflineBackup() {
-      return performOfflineBackup({ manual: true, force: true });
-    }
-
-    function stopOfflineAutoBackup() {
-      if (offlineAutoBackupTimer) {
-        clearInterval(offlineAutoBackupTimer);
-        offlineAutoBackupTimer = null;
-      }
-    }
-
-    function startOfflineAutoBackup() {
-      stopOfflineAutoBackup();
-
-      // ホーム表示直後に一度自動更新
-      setTimeout(() => {
-        performOfflineBackup({ manual: false, force: false });
-      }, 700);
-
-      // アプリを開いている間は10分ごと
-      offlineAutoBackupTimer = setInterval(() => {
-        performOfflineBackup({ manual: false, force: false });
-      }, OFFLINE_AUTO_BACKUP_INTERVAL_MS);
-    }
-
-    async function autoBackupWhenOnline() {
-      if (!navigator.onLine) return;
-      // 回線復帰直後の不安定さを避けて少し待つ
-      setTimeout(() => {
-        performOfflineBackup({ manual: false, force: false });
-      }, 1200);
-    }
-
-    function roleText(role) {
-      // 旧 front/back/tent は過去データ互換として manager に正規化。
-      if (["front","back","tent"].includes(role)) role = "manager";
-
-      return ({
-        seller: "売り子",
-        manager: "店長",
-        register: "レジ",
-        shopping_driver: "買い出し運転手",
-        shopping_helper: "買い出し手伝い",
-        cook: "調理",
-        support: "サポート"
-      })[role] || "なし";
-    }
-
-
-    async function refreshOfflineEmergencyLogin() {
-      const box = document.getElementById("offlineEmergencyLogin");
-      const text = document.getElementById("offlineEmergencyLoginText");
-      if (!box || !window.SigmaOfflineStore) return false;
-
-      try {
-        const s = await SigmaOfflineStore.stats();
-        const operator = await SigmaOfflineStore.getMeta("operator", null);
-
-        if (s.ticketCount > 0) {
-          box.style.display = "block";
-          const who = operator?.staff_name ? ` / 保存者 ${operator.staff_name}` : "";
-          const net = navigator.onLine
-            ? "通常ログインが使えない場合も、この端末の保存データだけで非常用受付を開けます。"
-            : "現在オフラインです。Supabaseへのログインなしで、この端末の保存データだけを使えます。";
-          if (text) {
-            text.textContent =
-              `保存済み ${s.ticketCount}枚 / 最終保存 ${formatOfflineBackupDate(s.savedAt)}${who}。${net}`;
-          }
-          return true;
-        }
-
-        box.style.display = "none";
-        return false;
-      } catch (_) {
-        box.style.display = "none";
-        return false;
-      }
-    }
-
-
-    async function login() {
-
-      if (!navigator.onLine) {
-        const available = await refreshOfflineEmergencyLogin();
-        const message = document.getElementById("loginMessage");
-        message.textContent = available
-          ? "現在オフラインです。下の「ログインせず非常用QR受付を開く」を使用してください。"
-          : "現在オフラインです。この端末には非常用データが保存されていません。";
-        return;
-      }
-
-      if (!supabaseClient) {
-        const available = await refreshOfflineEmergencyLogin();
-        const message = document.getElementById("loginMessage");
-        message.textContent = available
-          ? "通信機能を読み込めません。下の非常用QR受付は利用できます。"
-          : "通信機能を読み込めません。オンラインで再読み込みしてください。";
-        return;
-      }
-
-      const email =
-        document.getElementById(
-          "email"
-        ).value;
-
-      const password =
-        document.getElementById(
-          "password"
-        ).value;
-
-      const message =
-        document.getElementById(
-          "loginMessage"
-        );
-
-      message.textContent =
-        "ログインしています...";
-
-      const {
-        error
-      } =
-        await supabaseClient.auth
-          .signInWithPassword({
-            email,
-            password
-          });
-
-      if (error) {
-
-        message.textContent =
-          "ログイン失敗：" +
-          error.message;
-
-        return;
-      }
-
-      message.textContent = "";
-
+    async function login(){
+      const email=document.getElementById("email").value;
+      const password=document.getElementById("password").value;
+      const message=document.getElementById("loginMessage");
+      message.textContent="ログインしています...";
+      const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+      if(error){message.textContent="ログイン失敗："+error.message;return;}
+      message.textContent="";
       await showPortal();
     }
 
-    async function saveNewPassword() {
+    async function resetPassword(){
+      const email=document.getElementById("email").value;
+      const message=document.getElementById("loginMessage");
+      if(!email){message.textContent="メールアドレスを入力してください。";return;}
+      const {error}=await supabaseClient.auth.resetPasswordForEmail(
+        email,
+        {redirectTo:"https://masaya0206.github.io/sigma-ticket/home.html"}
+      );
+      if(error){message.textContent="エラー："+error.message;return;}
+      message.textContent="パスワード設定用メールを送信しました。";
+    }
 
-      const password =
-        document.getElementById(
-          "newPassword"
-        ).value;
-
-      const message =
-        document.getElementById(
-          "passwordMessage"
-        );
-
-      if (!password) {
-
-        message.textContent =
-          "新しいパスワードを入力してください。";
-
-        return;
-      }
-
-      const {
-        error
-      } =
-        await supabaseClient.auth
-          .updateUser({
-            password
-          });
-
-      if (error) {
-
-        message.textContent =
-          "エラー：" +
-          error.message;
-
-        return;
-      }
-
-      message.textContent =
-        "✅ パスワードを設定しました。";
-
+    async function saveNewPassword(){
+      const password=document.getElementById("newPassword").value;
+      const message=document.getElementById("passwordMessage");
+      if(!password){message.textContent="新しいパスワードを入力してください。";return;}
+      const {error}=await supabaseClient.auth.updateUser({password});
+      if(error){message.textContent="エラー："+error.message;return;}
+      message.textContent="✅ パスワードを設定しました。";
       await showPortal();
     }
 
-
-    if (supabaseClient) {
-      supabaseClient.auth
-        .onAuthStateChange(
-          async (event) => {
-
-            if (
-              event ===
-              "PASSWORD_RECOVERY"
-            ) {
-
-              document.getElementById(
-                "loginArea"
-              ).style.display =
-                "none";
-
-              document.getElementById(
-                "portalArea"
-              ).style.display =
-                "none";
-
-              document.getElementById(
-                "newPasswordArea"
-              ).style.display =
-                "block";
-            }
-          }
-        );
-    }
-
-
-    async function showPortal() {
-
-      const {
-        data: { user }
-      } =
-        await supabaseClient.auth
-          .getUser();
-
-      if (!user) {
-        return;
+    supabaseClient.auth.onAuthStateChange(async(event)=>{
+      if(event==="PASSWORD_RECOVERY"){
+        document.getElementById("loginArea").style.display="none";
+        document.getElementById("portalArea").style.display="none";
+        document.getElementById("newPasswordArea").style.display="block";
       }
-
-      const {
-        data: staff,
-        error
-      } =
-        await supabaseClient
-          .from("staff_members")
-          .select(
-            "staff_name,is_active"
-          )
-          .eq(
-            "user_id",
-            user.id
-          )
-          .maybeSingle();
-
-      if (
-        error ||
-        !staff
-      ) {
-
-        document.getElementById(
-          "loginMessage"
-        ).textContent =
-          "スタッフ情報が見つかりません。";
-
-        await supabaseClient.auth
-          .signOut();
-
-        return;
-      }
-
-      if (!staff.is_active) {
-
-        document.getElementById(
-          "loginMessage"
-        ).textContent =
-          "このスタッフアカウントは停止中です。";
-
-        await supabaseClient.auth
-          .signOut();
-
-        return;
-      }
-
-      document.getElementById(
-        "staffName"
-      ).textContent =
-        staff.staff_name;
-
-      document.getElementById(
-        "loginArea"
-      ).style.display =
-        "none";
-
-      document.getElementById(
-        "newPasswordArea"
-      ).style.display =
-        "none";
-
-      document.getElementById(
-        "portalArea"
-      ).style.display =
-        "block";
-
-      await refreshPortal();
-      await refreshOfflineBackupStatus();
-      startOfflineAutoBackup();
-    }
-
-
-    async function refreshPortal() {
-
-      const {
-        data: { user }
-      } =
-        await supabaseClient.auth
-          .getUser();
-
-      if (!user) {
-        return;
-      }
-
-      const now =
-        new Date().toISOString();
-
-      const [
-        assignmentResult,
-        attendanceResult,
-        adminResult,
-        presaleResult
-      ] =
-        await Promise.all([
-
-          supabaseClient
-            .from("staff_assignments")
-            .select(
-              "role,start_at,end_at"
-            )
-            .eq(
-              "user_id",
-              user.id
-            )
-            .lte(
-              "start_at",
-              now
-            )
-            .gte(
-              "end_at",
-              now
-            )
-            .order(
-              "start_at",
-              {
-                ascending:
-                  false
-              }
-            )
-            .limit(1)
-            .maybeSingle(),
-
-          supabaseClient
-            .from("staff_attendance")
-            .select(
-              "role,attendance_state,clock_in"
-            )
-            .eq(
-              "user_id",
-              user.id
-            )
-            .eq(
-              "attendance_state",
-              "working"
-            )
-            .is(
-              "clock_out",
-              null
-            )
-            .order(
-              "clock_in",
-              {
-                ascending:
-                  false
-              }
-            )
-            .limit(1)
-            .maybeSingle(),
-
-          supabaseClient
-            .from("admins")
-            .select("user_id")
-            .eq("user_id", user.id)
-            .maybeSingle(),
-
-          supabaseClient.rpc("my_presale_status")
-        ]);
-
-      const assignment =
-        assignmentResult.data;
-
-      const attendance =
-        attendanceResult.data;
-
-      const isAdmin =
-        !!adminResult.data;
-
-      const presaleData = presaleResult.data || {};
-
-      const presaleClosed =
-        !!presaleData.day_enabled &&
-        !presaleData.presale_enabled;
-
-      const soldCount =
-        Number(presaleData.presale_sold || 0);
-
-      const currentQuota =
-        Number(presaleData.current_quota || 0);
-
-      const transferredIn =
-        Number(presaleData.transferred_in || 0);
-
-      const currentRemaining =
-        presaleData.confirmed_at
-          ? (
-              presaleClosed
-                ? Number(presaleData.residual_remaining || 0)
-                : Math.max(
-                    currentQuota +
-                    transferredIn -
-                    soldCount,
-                    0
-                  )
-            )
-          : 0;
-
-      document.getElementById("homeResidual").textContent =
-        currentRemaining + " 枚";
-
-      document.getElementById("homeResidualValue").textContent =
-        !presaleData.confirmed_at
-          ? "ノルマ未確定"
-          : presaleClosed
-            ? (
-                currentRemaining > 0
-                  ? "確定残券 " + currentRemaining + "枚"
-                  : "確定残券なし"
-              )
-            : (
-                "販売 " +
-                soldCount +
-                "枚 / 現在ノルマ " +
-                (currentQuota + transferredIn) +
-                "枚"
-              );
-
-
-      portalIsAdmin = isAdmin;
-
-      const {
-        data: currentRoleData
-      } = await supabaseClient.rpc(
-        "current_work_role",
-        { p_user: user.id }
-      );
-
-      portalCurrentRole =
-        currentRoleData ||
-        attendance?.role ||
-        null;
-
-      await renderHomeMenus(
-        user.id,
-        portalCurrentRole,
-        isAdmin
-      );
-
-      const planned =
-        assignment
-          ? roleText(
-              assignment.role
-            )
-          : "なし";
-
-      const working =
-        attendance
-          ? roleText(
-              portalCurrentRole
-            )
-          : "勤務なし";
-
-      document.getElementById(
-        "plannedRole"
-      ).textContent =
-        planned;
-
-      document.getElementById(
-        "workingRole"
-      ).textContent =
-        working;
-
-      document.getElementById(
-        "adminStatus"
-      ).textContent =
-        isAdmin
-          ? "管理者"
-          : "";
-
-      const badge =
-        document.getElementById(
-          "workingBadge"
-        );
-
-      const badgeText =
-        document.getElementById(
-          "workingBadgeText"
-        );
-
-      if (attendance) {
-
-        badge.classList.remove(
-          "off"
-        );
-
-        badgeText.textContent =
-          working +
-          "勤務中";
-
-      } else {
-
-        badge.classList.add(
-          "off"
-        );
-
-        badgeText.textContent =
-          "勤務していません";
-      }
-
-      
-
-      
-
-      
-
-      
-
-      
-
-      
-
-      
-
-      
-
-      
-
-      
-    }
-
-
-
-    let portalIsAdmin = false;
-    let portalCurrentRole = null;
-
-    function showAccessToast(message) {
-      const toast = document.getElementById("accessToast");
-      toast.textContent = message;
-      toast.style.display = "block";
-      clearTimeout(window.__accessToastTimer);
-      window.__accessToastTimer = setTimeout(() => {
-        toast.style.display = "none";
-      }, 2600);
-    }
-
-    function protectedNavigate(page, roles = [], message = "この機能は利用できません。", adminOnly = false) {
-      if (portalIsAdmin) {
-        location.href = page;
-        return;
-      }
-
-      if (adminOnly) {
-        showAccessToast(message);
-        return;
-      }
-
-      if (roles.includes(portalCurrentRole)) {
-        location.href = page;
-        return;
-      }
-
-      showAccessToast(message);
-    }
-
-
-    function roleMenuCard(title,desc,page){
-      return `<button class="role-card" onclick="location.href='${page}'">
-        <span class="role-title">${title}</span>
-        <span class="role-desc">${desc}</span>
-      </button>`;
-    }
-
-    async function renderHomeMenus(userId,currentRole,isAdmin){
-      const roleSection=document.getElementById("roleSection");
-      const roleMenu=document.getElementById("roleMenu");
-      const adminEntry=document.getElementById("adminEntry");
-
-      roleMenu.innerHTML="";
-      roleSection.style.display="none";
-      adminEntry.style.display=isAdmin?"block":"none";
-
-      const cards=[];
-
-      if(currentRole==="manager"){
-        cards.push(roleMenuCard("店長","注文・人員・レジ・買い出しを管理","manager.html"));
-      }
-
-      if(currentRole==="register"){
-        cards.push(roleMenuCard("レジ","現金会計・QR交換","index.html"));
-      }
-
-      if(currentRole==="support"){
-        cards.push(roleMenuCard("サポート","注文状況・受け渡し確認","support.html"));
-      }
-
-      try{
-        const {data:board,error}=await supabaseClient.rpc("shopping_board");
-        if(!error&&board){
-          const team=(board.team||[]).some(x=>x.user_id===userId);
-          const relevant=(board.missions||[]).some(m=>{
-            const driver=m.driver_user_id===userId &&
-              ["driver_selected","departed"].includes(m.status);
-            const missionActive=
-              ["approved","driver_selected","departed"].includes(m.status);
-
-            const helper=missionActive && (m.helpers||[]).some(h=>
-              h.user_id===userId && ["pending","accepted"].includes(h.status)
-            );
-
-            const canClaim=team&&m.status==="approved";
-
-            return driver||helper||canClaim;
-          });
-          if(relevant && !cards.some(x=>x.includes(">買い出し<"))){
-            cards.push(roleMenuCard("買い出し","招待・運転手選択・ミッション確認","shopping.html"));
-          }
-        }
-      }catch(_){}
-
-      if(cards.length){
-        roleMenu.innerHTML=cards.join("");
-        roleSection.style.display="block";
-      }
-    }
-
-          async function logout() {
-
-      stopOfflineAutoBackup();
-
-      await supabaseClient.auth
-        .signOut();
-
-      document.getElementById(
-        "portalArea"
-      ).style.display =
-        "none";
-
-      document.getElementById(
-        "loginArea"
-      ).style.display =
-        "block";
-
-      document.getElementById(
-        "password"
-      ).value = "";
-    }
-
-
-    async function checkLogin() {
-
-      await refreshOfflineEmergencyLogin();
-
-      if (!navigator.onLine || !supabaseClient) {
-        return;
-      }
-
-      try {
-        const {
-          data: { session }
-        } =
-          await supabaseClient.auth
-            .getSession();
-
-        if (session) {
-          await showPortal();
-        }
-      } catch (_) {
-        await refreshOfflineEmergencyLogin();
-      }
-    }
-
-
-    if (
-      "serviceWorker"
-      in navigator
-    ) {
-
-      window.addEventListener(
-        "load",
-        () => {
-
-          navigator.serviceWorker
-            .register(
-              "./service-worker.js",
-              {
-                scope:
-                  "./"
-              }
-            )
-            .catch(
-              error => {
-                console.log(
-                  "Service Worker registration failed:",
-                  error
-                );
-              }
-            );
-        }
-      );
-    }
-
-
-    window.addEventListener("online", () => {
-      refreshOfflineEmergencyLogin();
-      autoBackupWhenOnline();
     });
-    window.addEventListener("offline", refreshOfflineEmergencyLogin);
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && navigator.onLine) {
-        performOfflineBackup({ manual: false, force: false });
+
+    function collectionAuthValid(a){
+      if(!a || !a.valid_until) return false;
+      return Date.now() <= new Date(a.valid_until).getTime();
+    }
+
+    async function getSavedCollectionAuth(){
+      try{
+        if(!window.SigmaOfflineStore) return null;
+        return await window.SigmaOfflineStore.getCollectionAuth();
+      }catch(_){
+        return null;
       }
+    }
+
+    async function refreshCollectionAccess(){
+      const button=document.getElementById("collectionButton");
+      if(!button) return;
+
+      // 通信障害時は、端末に保存済みの「今日の集金担当権限」で表示する。
+      if(!navigator.onLine){
+        const saved=await getSavedCollectionAuth();
+        button.style.display=collectionAuthValid(saved) ? "block" : "none";
+        return;
+      }
+
+      // オンライン時はDBで今日の担当権限を確認。
+      // 担当に指定されていれば、その場でスタッフ一覧も端末へ保存する。
+      try{
+        const {data,error}=await supabaseClient.rpc("presale_collection_bootstrap");
+        if(error) throw error;
+
+        if(data?.authorized){
+          button.style.display="block";
+          if(window.SigmaOfflineStore){
+            await window.SigmaOfflineStore.saveCollectionBootstrap(data);
+          }
+        }else{
+          button.style.display="none";
+        }
+      }catch(_){
+        // 担当外ならRPCがエラーになる仕様。
+        // 保存済み権限が今日まだ有効なら、回線不安定時に備えて入口は残す。
+        const saved=await getSavedCollectionAuth();
+        button.style.display=collectionAuthValid(saved) ? "block" : "none";
+      }
+    }
+
+    async function showOfflineCollectionPortal(){
+      const saved=await getSavedCollectionAuth();
+      if(!collectionAuthValid(saved)) return false;
+
+      document.getElementById("staffName").textContent=saved.collector_name || "集金担当";
+      document.getElementById("plannedRole").textContent="オフライン";
+      document.getElementById("workingRole").textContent="オフライン";
+      document.getElementById("adminStatus").textContent="確認不可";
+
+      document.getElementById("loginArea").style.display="none";
+      document.getElementById("newPasswordArea").style.display="none";
+      document.getElementById("portalArea").style.display="block";
+
+      document.getElementById("registerButton").style.display="none";
+      document.getElementById("frontButton").style.display="none";
+      document.getElementById("backButton").style.display="none";
+      document.getElementById("adminButton").style.display="none";
+      document.getElementById("collectionButton").style.display="block";
+      return true;
+    }
+
+    async function showPortal(){
+      const {data:{user}}=await supabaseClient.auth.getUser();
+      if(!user) return;
+
+      const {data:staff,error}=await supabaseClient
+        .from("staff_members")
+        .select("staff_name,is_active")
+        .eq("user_id",user.id)
+        .maybeSingle();
+
+      if(error||!staff){
+        document.getElementById("loginMessage").textContent="スタッフ情報が見つかりません。";
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      if(!staff.is_active){
+        document.getElementById("loginMessage").textContent="このスタッフアカウントは停止中です。";
+        await supabaseClient.auth.signOut();
+        return;
+      }
+
+      document.getElementById("staffName").textContent=staff.staff_name;
+      document.getElementById("loginArea").style.display="none";
+      document.getElementById("newPasswordArea").style.display="none";
+      document.getElementById("portalArea").style.display="block";
+      await refreshPortal();
+    }
+
+    async function refreshPortal(){
+      const {data:{user}}=await supabaseClient.auth.getUser();
+      if(!user) return;
+
+      const now=new Date().toISOString();
+
+      const [assignmentResult,attendanceResult,adminResult]=await Promise.all([
+        supabaseClient
+          .from("staff_assignments")
+          .select("role,start_at,end_at")
+          .eq("user_id",user.id)
+          .lte("start_at",now)
+          .gte("end_at",now)
+          .order("start_at",{ascending:false})
+          .limit(1)
+          .maybeSingle(),
+
+        supabaseClient
+          .from("staff_attendance")
+          .select("role,attendance_state,clock_in")
+          .eq("user_id",user.id)
+          .eq("attendance_state","working")
+          .is("clock_out",null)
+          .order("clock_in",{ascending:false})
+          .limit(1)
+          .maybeSingle(),
+
+        supabaseClient
+          .from("admins")
+          .select("user_id")
+          .eq("user_id",user.id)
+          .maybeSingle()
+      ]);
+
+      const assignment=assignmentResult.data;
+      const attendance=attendanceResult.data;
+      const isAdmin=!!adminResult.data;
+
+      document.getElementById("plannedRole").textContent=
+        assignment ? roleText(assignment.role) : "なし";
+
+      document.getElementById("workingRole").textContent=
+        attendance ? roleText(attendance.role) : "勤務なし";
+
+      document.getElementById("adminStatus").textContent=
+        isAdmin ? "はい" : "いいえ";
+
+      document.getElementById("registerButton").style.display=
+        attendance?.role==="register" ? "block" : "none";
+
+      document.getElementById("frontButton").style.display=
+        attendance?.role==="front" ? "block" : "none";
+
+      document.getElementById("backButton").style.display=
+        attendance?.role==="back" ? "block" : "none";
+
+      document.getElementById("adminButton").style.display=
+        isAdmin ? "block" : "none";
+
+      await refreshCollectionAccess();
+    }
+
+    async function logout(){
+      await supabaseClient.auth.signOut();
+      document.getElementById("portalArea").style.display="none";
+      document.getElementById("loginArea").style.display="block";
+      document.getElementById("password").value="";
+    }
+
+    async function checkLogin(){
+      // 通信障害時:
+      // その端末に今日の集金担当権限が保存されていれば、
+      // ログイン画面を出さず個人ポータルを開く。
+      if(!navigator.onLine){
+        const opened=await showOfflineCollectionPortal();
+        if(opened) return;
+      }
+
+      const {data:{session}}=await supabaseClient.auth.getSession();
+      if(session) await showPortal();
+    }
+
+    window.addEventListener("offline",async()=>{
+      await showOfflineCollectionPortal();
+    });
+
+    window.addEventListener("online",async()=>{
+      const {data:{session}}=await supabaseClient.auth.getSession();
+      if(session) await showPortal();
     });
 
     checkLogin();
   </script>
-
-<div id="accessToast" style="
-position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
-background:#1f1f1f;color:white;padding:13px 18px;border-radius:14px;
-font-weight:700;max-width:88%;text-align:center;display:none;z-index:9999;
-box-shadow:0 8px 28px rgba(0,0,0,.25);"></div>
-<nav class="global-bottom-nav"><button class="active" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body>
 </html>
