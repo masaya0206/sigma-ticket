@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-campus-illustrated-map-v25";
+const CACHE_NAME = "sigma-ticket-campus-illustrated-map-v26";
 const PRECACHE = [
   "./coupon-campus-illustrated.png"
 ];
