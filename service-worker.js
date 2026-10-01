@@ -1,5 +1,10 @@
-const CACHE_NAME = "sigma-ticket-coupon-scroll-v19";
-self.addEventListener("install",e=>e.waitUntil(self.skipWaiting()));
+const CACHE_NAME = "sigma-ticket-coupon-map-v20";
+const PRECACHE = [
+  "./coupon-map.png"
+];
+self.addEventListener("install",e=>e.waitUntil(
+  caches.open(CACHE_NAME).then(c=>c.addAll(PRECACHE)).catch(()=>{}).then(()=>self.skipWaiting())
+));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",e=>{
   const r=e.request;if(r.method!=="GET")return;

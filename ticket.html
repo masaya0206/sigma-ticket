@@ -48,6 +48,30 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .coupon-howto{margin-top:14px;padding:11px 12px;border-radius:13px;background:#fff4f5;color:#7f252b;font-size:12px;font-weight:800;line-height:1.55}
 .coupon-instagram{display:block;margin-top:12px;padding:12px 14px;border:1px solid #ead1d4;border-radius:13px;background:#fff;color:#333;text-decoration:none;text-align:center;font-size:13px;font-weight:900}
 .coupon-empty{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;color:var(--muted);font-size:13px}
+
+.coupon-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.coupon-spot{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;background:#eef6ff;color:#174a88;font-size:12px;font-weight:900}
+.coupon-map-btn{display:block;margin-top:12px;padding:12px 14px;border:1px solid #ead1d4;border-radius:13px;background:#fff;color:var(--red);text-decoration:none;text-align:center;font-size:13px;font-weight:900}
+.map-launch-title{font-size:19px;font-weight:950}
+.map-launch-text{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
+.map-modal{position:fixed;inset:0;background:rgba(18,12,12,.52);display:none;align-items:flex-end;justify-content:center;padding:16px;z-index:9999}
+.map-modal.show{display:flex}
+.map-sheet{width:min(100%,720px);max-height:min(92vh,900px);overflow:auto;background:#fff;border-radius:24px;padding:18px;box-shadow:0 18px 48px rgba(0,0,0,.22)}
+.map-sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.map-sheet-title{font-size:22px;font-weight:950;line-height:1.2}
+.map-sheet-sub{margin-top:5px;color:var(--muted);font-size:13px;line-height:1.6}
+.map-close{width:auto;margin:0;padding:10px 13px;border-radius:12px;background:#fff1f2;color:var(--red);font-size:14px}
+.map-image-wrap{margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:18px;background:#faf7f5}
+.map-image{display:block;width:100%;height:auto;border-radius:12px}
+.map-caption{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.6}
+.map-store-list{display:grid;gap:10px;margin-top:14px}
+.map-store{padding:13px 14px;border:1px solid var(--line);border-radius:16px;background:#faf7f5}
+.map-store.active{border-color:#d9a0a6;background:#fff1f2;box-shadow:0 0 0 3px rgba(181,18,27,.08)}
+.map-store-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.map-store-name{font-weight:900;line-height:1.45}
+.map-store-num{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:#eef6ff;color:#174a88;font-size:12px;font-weight:900;white-space:nowrap}
+.map-store-note{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.6}
+
 @media(max-width:420px){.coupon-card{flex-basis:88%;}.coupon-title{font-size:23px}}
 .small{font-size:12px;color:var(--muted);line-height:1.65}
 .used-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#fff0f0;color:#b5121b;font-size:12px;font-weight:900}
@@ -123,6 +147,73 @@ const sb=supabase.createClient(
 );
 const code=new URLSearchParams(location.search).get("code");
 
+const PARTNER_TENT_LOOKUP=[
+  {tent:19,display_name:"生協組織部",aliases:["組織部","生協組織部"]},
+  {tent:10,display_name:"文芸部・セピア",aliases:["熊大文芸部 セピア","文芸部・セピア","文芸部セピア","セピア"]}
+];
+let currentCouponMapPartners=[];
+function normalizePartnerName(v){return String(v??"").toLowerCase().replace(/熊本大学/g,"熊大").replace(/[\s　・･\-ー―_]/g,"");}
+function resolvePartnerLocation(name){
+  const target=normalizePartnerName(name);
+  if(!target) return null;
+  for(const item of PARTNER_TENT_LOOKUP){
+    const names=[item.display_name].concat(item.aliases||[]);
+    for(const n of names){
+      const x=normalizePartnerName(n);
+      if(!x) continue;
+      if(target===x || target.includes(x) || x.includes(target)) return item;
+    }
+  }
+  return null;
+}
+function buildMapPartners(coupons){
+  const out=[]; const seen=new Set();
+  for(const c of coupons){
+    const loc=resolvePartnerLocation(c.partner_name);
+    if(!loc) continue;
+    const key=loc.tent+"|"+loc.display_name;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    out.push({partner_name:c.partner_name,display_name:loc.display_name,tent:loc.tent});
+  }
+  return out.sort((a,b)=>a.tent-b.tent);
+}
+function samePartner(a,b){
+  const ra=resolvePartnerLocation(a); const rb=resolvePartnerLocation(b);
+  if(ra&&rb) return ra.tent===rb.tent;
+  return normalizePartnerName(a)===normalizePartnerName(b);
+}
+function mapLaunchHtml(){
+  return currentCouponMapPartners.length?`<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">クーポンが使える店舗の位置をテント配置図で確認できます。</div><button onclick="openCouponMap()">マップを見る</button></div>`:"";
+}
+function mapModalHtml(){
+  if(!currentCouponMapPartners.length) return "";
+  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">下の地図でテント番号を確認してください。各店舗の場所は一覧にもまとめています。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="map-image-wrap"><img class="map-image" src="./coupon-map.png" alt="シグマ祭のテント配置図。クーポン店舗のテント番号確認用"><div class="map-caption">※ 地図内の番号と、下の店舗一覧の「テント番号」を対応させて見てください。</div></div><div id="couponMapList" class="map-store-list"></div></div></div>`;
+}
+function renderCouponMapList(activeName=""){
+  const list=document.getElementById("couponMapList");
+  if(!list) return;
+  list.innerHTML=currentCouponMapPartners.map(p=>`<div class="map-store ${activeName&&samePartner(activeName,p.partner_name)?'active':''}" data-tent="${p.tent}"><div class="map-store-top"><div class="map-store-name">${esc(p.partner_name)}</div><span class="map-store-num">テント ${p.tent}</span></div><div class="map-store-note">地図内の番号 ${p.tent} を探してください。</div></div>`).join("");
+  const active=list.querySelector(".map-store.active");
+  if(active) active.scrollIntoView({block:"nearest",behavior:"smooth"});
+}
+function openCouponMapByName(encodedName){openCouponMap(decodeURIComponent(encodedName||""));}
+function openCouponMap(activeName=""){
+  const modal=document.getElementById("couponMapModal");
+  if(!modal) return;
+  renderCouponMapList(activeName);
+  modal.classList.add("show");
+  document.body.style.overflow="hidden";
+}
+function closeCouponMap(){
+  const modal=document.getElementById("couponMapModal");
+  if(!modal) return;
+  modal.classList.remove("show");
+  document.body.style.overflow="";
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCouponMap();});
+
+
 function esc(v){
   return String(v??"")
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")
@@ -141,15 +232,19 @@ async function partnerHtml(ticketKind){
     description:row.description,
     valid_label:row.valid_label
   }));
+  currentCouponMapPartners=buildMapPartners(coupons);
 
   return `
+    ${mapLaunchHtml()}
     <section class="coupon-section" aria-label="使えるクーポン">
       <div class="coupon-section-head">
         <div class="coupon-section-title">🎟️ 使えるクーポン</div>
         <div class="coupon-section-hint">横にスワイプ →</div>
       </div>
       <div class="coupon-rail">
-        ${coupons.map(c=>`
+        ${coupons.map(c=>{
+          const loc=resolvePartnerLocation(c.partner_name);
+          return `
           <article class="coupon-card">
             <div class="coupon-top">
               <div class="coupon-mark">提携クーポン</div>
@@ -159,12 +254,15 @@ async function partnerHtml(ticketKind){
             <div class="coupon-partner">発行元：${esc(c.partner_name)}</div>
             <div class="coupon-title">${esc(c.title)}</div>
             ${c.description?`<div class="coupon-description">${esc(c.description)}</div>`:""}
+            ${loc?`<div class="coupon-meta"><span class="coupon-spot">場所：テント ${loc.tent}</span></div><button type="button" class="coupon-map-btn" onclick="openCouponMapByName('${encodeURIComponent(c.partner_name)}')">地図で場所を見る</button>`:""}
             <div class="coupon-howto">利用時に${esc(ticketKind)}のQRコードを提携先スタッフへ提示してください。</div>
             ${c.instagram_url?`<a class="coupon-instagram" href="${esc(c.instagram_url)}" target="_blank" rel="noopener">Instagramを見る</a>`:""}
           </article>
-        `).join("")}
+          `;
+        }).join("")}
       </div>
     </section>
+    ${mapModalHtml()}
   `;
 }
 
