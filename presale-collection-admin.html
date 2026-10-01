@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ノルマ集金管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+main{max-width:720px;margin:auto;padding:18px 16px 60px}.top{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+.back{width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--red);font-size:20px;font-weight:900}
+h1{font-size:25px;margin:0}.sub,.muted{color:var(--muted);font-size:13px}.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin:12px 0}
+input,button{width:100%;padding:13px;border-radius:12px;font-size:16px}input{border:1px solid #d9d3d0;background:#fff}
+button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px}.secondary{background:#fff;color:var(--red);border:1px solid var(--red)}
+.staff{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.staff:last-child{border:0}
+.staff input{width:21px;height:21px}.staff label{flex:1;font-weight:800}.pill{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.metric{padding:12px;background:#faf8f7;border-radius:14px}.metric span{display:block;font-size:11px;color:var(--muted)}.metric b{font-size:22px}
+.row{padding:10px 0;border-bottom:1px solid var(--line)}.ok{color:#157b35}.warn{color:#b36a00}
+@media(max-width:520px){.metrics{grid-template-columns:1fr 1fr}.metric:last-child{grid-column:1/-1}}
+</style></head><body><main>
+<div class="top"><button class="back" onclick="history.back()">←</button><div><h1>ノルマ集金管理</h1><div class="sub">当日の集金担当を指定</div></div></div>
+
+<div class="card">
+  <h2>集金日</h2>
+  <input id="collectionDate" type="date">
+  <p class="muted">選択した日だけ、指定された幹部が集金画面をオンライン認証できます。</p>
+</div>
+
+<div class="card">
+  <h2>集金担当幹部</h2>
+  <div id="staffList">読み込み中...</div>
+  <button onclick="saveCollectors()">この日の集金担当を保存</button>
+  <p id="assignMsg"></p>
+</div>
+
+<div class="card">
+  <h2>回収状況</h2>
+  <div class="metrics">
+    <div class="metric"><span>対象</span><b id="targetCount">--</b></div>
+    <div class="metric"><span>回収済み</span><b id="collectedCount">--</b></div>
+    <div class="metric"><span>回収額</span><b id="totalAmount">--</b></div>
+  </div>
+  <button class="secondary" onclick="loadSummary()">最新状況に更新</button>
+  <div id="summaryList"></div>
+</div>
+
+<div class="card">
+  <h2>集金画面</h2>
+  <p class="muted">集金担当者はオンライン時に一度この画面を開くと、当日のスタッフデータと担当権限が端末へ保存されます。その後は通信障害時でもログインなしで開けます。</p>
+  <button onclick="location.href='presale-collection.html'">集金画面を開く</button>
+</div>
+
+<script>
+const db=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+let staffRows=[];
+
+function todayJst(){
+  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+}
+collectionDate.value=todayJst();
+collectionDate.onchange=loadAll;
+
+async function ensureAdmin(){
+  const {data:{user}}=await db.auth.getUser();
+  if(!user){location.href='home.html';return false}
+  const {data,error}=await db.rpc('admin_presale_collection_staff',{p_date:collectionDate.value});
+  if(error){staffList.innerHTML='<span class="warn">'+esc(error.message)+'</span>';return false}
+  staffRows=data||[];
+  return true;
+}
+
+async function loadCollectors(){
+  if(!await ensureAdmin())return;
+  staffList.innerHTML=staffRows.map(x=>`
+    <div class="staff">
+      <input type="checkbox" id="u_${x.user_id}" value="${x.user_id}" ${x.assigned?'checked':''}>
+      <label for="u_${x.user_id}">${esc(x.staff_name)}</label>
+      ${x.assigned?'<span class="pill">担当</span>':''}
+    </div>`).join('')||'<span class="muted">スタッフがいません。</span>';
+}
+
+async function saveCollectors(){
+  const ids=[...document.querySelectorAll('#staffList input:checked')].map(x=>x.value);
+  assignMsg.textContent='保存中...';
+  const {data,error}=await db.rpc('admin_set_presale_collection_collectors',{
+    p_date:collectionDate.value,p_user_ids:ids
+  });
+  assignMsg.textContent=error?'エラー: '+error.message:`✅ ${Number(data?.assigned||0)}人を集金担当に設定しました`;
+  if(!error)await loadAll();
+}
+
+async function loadSummary(){
+  const {data,error}=await db.rpc('admin_presale_collection_summary',{p_date:collectionDate.value});
+  if(error){summaryList.innerHTML='<p class="warn">'+esc(error.message)+'</p>';return}
+  const rows=data?.staff||[];
+  targetCount.textContent=rows.length+'人';
+  const done=rows.filter(x=>x.collected_at);
+  collectedCount.textContent=done.length+'人';
+  totalAmount.textContent=done.reduce((s,x)=>s+Number(x.amount||0),0).toLocaleString()+'円';
+  summaryList.innerHTML=rows.map(x=>`
+    <div class="row">
+      <b>${esc(x.staff_name)}</b> / ${Number(x.confirmed_quota||0)}枚 / ${Number(x.amount||0).toLocaleString()}円<br>
+      ${x.collected_at
+        ? `<span class="ok">✅ 回収済み</span> <span class="muted">${new Date(x.collected_at).toLocaleString('ja-JP')} / ${esc(x.collector_name||'')}</span>`
+        : `<span class="warn">未回収</span>`}
+    </div>`).join('');
+}
+
+async function loadAll(){await loadCollectors();await loadSummary()}
+loadAll();
+</script>
+</main></body></html>

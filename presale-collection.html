@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ノルマ集金</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="./offline-store.js"></script>
+<style>
+:root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2;--green:#147b31;--orange:#a86000}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+main{max-width:650px;margin:auto;padding:16px 14px 60px}.top{display:flex;align-items:center;gap:12px}.back{width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--red);font-size:20px;font-weight:900}
+h1{font-size:25px;margin:0}.muted{color:var(--muted);font-size:13px;line-height:1.55}.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:17px;margin:12px 0}
+.mode{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:900}.online{background:#ecfdf3;color:#166534}.offline{background:#fff4df;color:#805000}
+input,button{width:100%;padding:13px;border-radius:12px;font-size:16px}input{border:1px solid #d9d3d0;background:#fff}button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:9px}.secondary{background:#fff;color:var(--red);border:1px solid var(--red)}.danger{background:#6d0c13}.hidden{display:none!important}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{padding:11px;background:#faf8f7;border-radius:13px}.stat span{font-size:10px;color:var(--muted);display:block}.stat b{font-size:20px}
+.staff-row{padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.staff-row:last-child{border:0}.staff-row b{font-size:16px}.ok{color:var(--green)}.warn{color:var(--orange)}.conflict{color:#a91520}
+#reader{overflow:hidden;border-radius:16px}.person{background:#fff7f7;border:1px solid #f1d6d6;border-radius:16px;padding:14px;margin-top:12px}.amount{font-size:34px;font-weight:900;color:var(--red);margin:6px 0}
+.syncbox{display:flex;justify-content:space-between;gap:12px;align-items:center}.syncbox button{width:auto;margin:0;padding:9px 13px;font-size:13px}
+#loginCard input{margin:6px 0}
+@media(max-width:480px){.stats{grid-template-columns:1fr 1fr}.stat:last-child{grid-column:1/-1}}
+</style></head><body><main>
+<div class="top"><button class="back" onclick="history.length>1?history.back():location.href='home.html'">←</button><div><h1>ノルマ集金</h1><div id="modeLabel" class="mode online">確認中</div></div></div>
+
+<div id="loginCard" class="card hidden">
+  <h2>集金担当ログイン</h2>
+  <p class="muted">オンライン時のみ必要です。一度その日の集金担当として認証すると、通信障害時はこの端末でログインなしで開けます。</p>
+  <input id="email" type="email" placeholder="メールアドレス">
+  <input id="password" type="password" placeholder="パスワード">
+  <button onclick="login()">ログイン</button>
+  <p id="loginMsg"></p>
+</div>
+
+<div id="appArea" class="hidden">
+  <div class="card">
+    <div class="syncbox">
+      <div><b id="collectorName">--</b><div class="muted" id="collectionDateLabel">--</div></div>
+      <button class="secondary" onclick="syncNow()">同期</button>
+    </div>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><span>対象</span><b id="staffCount">--</b></div>
+      <div class="stat"><span>回収済み</span><b id="collectedCount">--</b></div>
+      <div class="stat"><span>未同期</span><b id="pendingCount">--</b></div>
+    </div>
+    <p id="syncStatus" class="muted"></p>
+  </div>
+
+  <div class="card">
+    <h2>QRで照合</h2>
+    <button id="scanBtn" onclick="startScanner()">QRを読み取る</button>
+    <div id="readerWrap" class="hidden" style="margin-top:12px"><div id="reader"></div><button class="secondary" onclick="stopScanner()">カメラを閉じる</button></div>
+  </div>
+
+  <div class="card">
+    <h2>名前から照合</h2>
+    <p class="muted">通信障害時も、端末に保存済みのスタッフ一覧から検索できます。</p>
+    <input id="searchName" type="search" placeholder="名前を入力">
+    <div id="searchResults"></div>
+  </div>
+
+  <div id="personCard" class="card hidden">
+    <h2>集金確認</h2>
+    <div class="person">
+      <b id="personName">--</b>
+      <div class="muted">確定ノルマ：<span id="personQuota">--</span>枚</div>
+      <div class="amount" id="personAmount">--円</div>
+      <div id="personStatus"></div>
+    </div>
+    <button id="collectBtn" onclick="confirmCollect()">回収済みにする</button>
+  </div>
+
+  <div id="conflictCard" class="card hidden">
+    <h2>⚠️ 同期時の重複候補</h2>
+    <div id="conflictList"></div>
+  </div>
+</div>
+
+<script>
+const db=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
+const S=window.SigmaOfflineStore;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+let authCache=null,currentStaff=null,scanner=null;
+
+function setMode(){
+  modeLabel.textContent=navigator.onLine?'オンライン':'オフライン';
+  modeLabel.className='mode '+(navigator.onLine?'online':'offline');
+}
+window.addEventListener('online',()=>{setMode();syncNow()});
+window.addEventListener('offline',setMode);
+
+async function login(){
+  loginMsg.textContent='ログイン中...';
+  const {error}=await db.auth.signInWithPassword({email:email.value,password:password.value});
+  if(error){loginMsg.textContent='エラー: '+error.message;return}
+  loginMsg.textContent='';
+  await initialize();
+}
+
+async function fetchBootstrap(){
+  const {data,error}=await db.rpc('presale_collection_bootstrap');
+  if(error)throw error;
+  await S.saveCollectionBootstrap(data);
+  authCache=await S.getCollectionAuth();
+  return data;
+}
+
+function authValid(a){
+  if(!a||!a.valid_until)return false;
+  return Date.now()<=new Date(a.valid_until).getTime();
+}
+
+async function initialize(){
+  setMode();
+  authCache=await S.getCollectionAuth();
+
+  if(!navigator.onLine){
+    if(!authValid(authCache)){
+      loginCard.classList.remove('hidden');
+      loginCard.innerHTML='<h2>オフライン集金を開けません</h2><p class="muted">この端末では今日の集金担当認証がまだ保存されていません。オンライン時に一度ログインして集金画面を開いてください。</p>';
+      return;
+    }
+    loginCard.classList.add('hidden');
+    appArea.classList.remove('hidden');
+    await renderAll();
+    return;
+  }
+
+  const {data:{user}}=await db.auth.getUser();
+  if(!user){
+    loginCard.classList.remove('hidden');
+    appArea.classList.add('hidden');
+    return;
+  }
+
+  try{
+    await fetchBootstrap();
+    loginCard.classList.add('hidden');
+    appArea.classList.remove('hidden');
+    await syncPending();
+    await renderAll();
+  }catch(e){
+    if(authValid(authCache)){
+      loginCard.classList.add('hidden');
+      appArea.classList.remove('hidden');
+      syncStatus.textContent='サーバー取得に失敗したため保存済みデータで開いています：'+e.message;
+      await renderAll();
+    }else{
+      loginCard.classList.remove('hidden');
+      loginMsg.textContent='集金担当として開けません：'+e.message;
+    }
+  }
+}
+
+async function renderAll(){
+  authCache=await S.getCollectionAuth();
+  collectorName.textContent=authCache?.collector_name||'保存済み担当者';
+  collectionDateLabel.textContent=(authCache?.collection_date||'')+' 集金担当';
+  const st=await S.collectionStats();
+  staffCount.textContent=st.staffCount+'人';
+  collectedCount.textContent=st.collected+'人';
+  pendingCount.textContent=st.pending+'件';
+  await renderSearch();
+  await renderConflicts();
+  syncStatus.textContent=navigator.onLine
+    ? `最終端末保存：${authCache?.saved_at?new Date(authCache.saved_at).toLocaleString('ja-JP'):'--'}`
+    : '通信障害モード：回収記録は端末内に保存し、通信復旧後に同期します。';
+}
+
+async function renderSearch(){
+  const rows=await S.findCollectionStaff(searchName.value);
+  searchResults.innerHTML=rows.slice(0,80).map(r=>`
+    <div class="staff-row" onclick="selectStaff('${r.token}')">
+      <b>${esc(r.staff_name)}</b> / ${Number(r.amount||0).toLocaleString()}円
+      <div class="muted">${Number(r.confirmed_quota||0)}枚　
+      ${r.local_conflict?'<span class="conflict">重複候補</span>':r.collected_at?'<span class="ok">回収済み</span>':'<span class="warn">未回収</span>'}</div>
+    </div>`).join('')||'<p class="muted">該当するスタッフがいません。</p>';
+}
+searchName.oninput=renderSearch;
+
+async function selectStaff(token){
+  const row=await S.getCollectionStaffByToken(token);
+  if(!row)return alert('スタッフ情報が見つかりません');
+  currentStaff=row;
+  personCard.classList.remove('hidden');
+  personName.textContent=row.staff_name;
+  personQuota.textContent=Number(row.confirmed_quota||0);
+  personAmount.textContent=Number(row.amount||0).toLocaleString()+'円';
+  if(row.local_conflict){
+    personStatus.innerHTML='<span class="conflict">⚠️ 別端末との重複候補です。管理者確認が必要です。</span>';
+    collectBtn.disabled=true;
+  }else if(row.collected_at){
+    personStatus.innerHTML=`<span class="ok">✅ 回収済み</span><br><span class="muted">${new Date(row.collected_at).toLocaleString('ja-JP')} / ${esc(row.collector_name||'')}</span>`;
+    collectBtn.disabled=true;
+  }else{
+    personStatus.innerHTML='<span class="warn">未回収</span>';
+    collectBtn.disabled=false;
+  }
+  personCard.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function confirmCollect(){
+  if(!currentStaff)return;
+  const amount=Number(currentStaff.amount||0);
+  if(!confirm(`${currentStaff.staff_name}さんから ${amount.toLocaleString()}円 を受け取りましたか？`))return;
+  try{
+    await S.markCollectionPaid(currentStaff,authCache);
+    await renderAll();
+    const updated=await S.getCollectionStaffByToken(currentStaff.token);
+    currentStaff=updated;
+    await selectStaff(updated.token);
+    if(navigator.onLine)await syncNow();
+  }catch(e){alert(e.message)}
+}
+
+function parseQr(text){
+  const raw=String(text||'').trim();
+  if(raw.startsWith('SIGMA-COLLECT:'))return raw.slice('SIGMA-COLLECT:'.length);
+  try{
+    const u=new URL(raw);
+    return u.searchParams.get('collect')||'';
+  }catch(_){return raw}
+}
+
+async function startScanner(){
+  readerWrap.classList.remove('hidden');
+  if(scanner)return;
+  scanner=new Html5Qrcode("reader");
+  try{
+    await scanner.start(
+      {facingMode:"environment"},
+      {fps:10,qrbox:{width:250,height:250}},
+      async decoded=>{
+        const token=parseQr(decoded);
+        const row=await S.getCollectionStaffByToken(token);
+        if(row){
+          await stopScanner();
+          await selectStaff(token);
+        }
+      },
+      ()=>{}
+    );
+  }catch(e){
+    alert('カメラを起動できません：'+e.message);
+    await stopScanner();
+  }
+}
+
+async function stopScanner(){
+  if(scanner){
+    try{await scanner.stop()}catch(_){}
+    try{await scanner.clear()}catch(_){}
+    scanner=null;
+  }
+  readerWrap.classList.add('hidden');
+}
+
+async function syncPending(){
+  if(!navigator.onLine)return;
+  const {data:{user}}=await db.auth.getUser();
+  if(!user)return;
+
+  const rows=await S.listCollectionEventsByStatus(['pending']);
+  for(const e of rows){
+    try{
+      const {data,error}=await db.rpc('record_presale_collection',{
+        p_staff_token:e.token,
+        p_client_event_id:e.client_event_id,
+        p_collected_at:e.collected_at,
+        p_device_id:e.device_id,
+        p_was_offline:e.was_offline
+      });
+      if(error)throw error;
+      const result=data||{};
+      if(result.status==='duplicate'){
+        await S.updateCollectionEvent(e.local_id,{
+          sync_status:'conflict',sync_error:'別の回収記録が先に登録されています',
+          synced_at:new Date().toISOString(),server_result:result
+        });
+      }else{
+        await S.updateCollectionEvent(e.local_id,{
+          sync_status:'synced',sync_error:null,
+          synced_at:new Date().toISOString(),server_result:result
+        });
+      }
+    }catch(err){
+      await S.updateCollectionEvent(e.local_id,{sync_error:err.message});
+    }
+  }
+}
+
+async function syncNow(){
+  if(!navigator.onLine){syncStatus.textContent='オフラインのため端末内に保存しています。';return}
+  syncStatus.textContent='同期中...';
+  const {data:{user}}=await db.auth.getUser();
+  if(!user){
+    syncStatus.textContent='同期にはオンラインログインが必要です。';
+    return;
+  }
+  await syncPending();
+  try{await fetchBootstrap()}catch(e){syncStatus.textContent='同期エラー: '+e.message}
+  await renderAll();
+}
+
+async function renderConflicts(){
+  const rows=await S.listCollectionEventsByStatus(['conflict']);
+  conflictCard.classList.toggle('hidden',rows.length===0);
+  conflictList.innerHTML=rows.map(e=>`
+    <div class="staff-row">
+      <b>${esc(e.staff_name)}</b> / ${Number(e.amount||0).toLocaleString()}円<br>
+      <span class="conflict">別端末でも回収記録あり</span>
+      <div class="muted">この端末：${new Date(e.collected_at).toLocaleString('ja-JP')} / ${esc(e.collector_name||'')}</div>
+      ${e.server_result?.collector_name?`<div class="muted">サーバー：${esc(e.server_result.collector_name)} / ${new Date(e.server_result.collected_at).toLocaleString('ja-JP')}</div>`:''}
+    </div>`).join('');
+}
+
+initialize();
+</script>
+</main></body></html>

@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>前売りノルマ</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700}</style>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>前売りノルマ</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff5f5;margin:0;color:#251313}main{max-width:760px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #f0caca;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 5px 18px #8b000012}h1{font-size:24px}h2{font-size:18px;margin-top:0}button{width:100%;padding:14px;margin:7px 0;border:0;border-radius:12px;background:#a91520;color:white;font-weight:700;font-size:16px}.secondary{background:#fff;color:#a91520;border:1px solid #a91520}.danger{background:#6d0c13}input,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d9bcbc;border-radius:10px;font-size:16px;margin:5px 0 10px}.big{font-size:32px;font-weight:800}.muted{color:#725b5b;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#fff7f7;border-radius:14px;padding:14px}.ok{color:#147b31}.warn{color:#b36a00}.row{padding:10px 0;border-bottom:1px solid #f0dddd}.pill{display:inline-block;padding:4px 8px;background:#f8dddd;border-radius:999px;font-size:12px}label{font-weight:700}</style>
 <style id="globalBottomNavStyle">
   body{padding-bottom:82px!important}
   .global-bottom-nav{
@@ -207,6 +207,18 @@ table{
   <div id="transferHistory" class="transfer-list"><span class="muted">読み込み中...</span></div>
 </div>
 
+
+<div class="card" id="collectionQrCard" style="display:none">
+  <h2>ノルマ集金用QR</h2>
+  <p class="muted">
+    集金時にこのQRを幹部へ見せてください。回収対象は
+    <b>確定ノルマ × 450円</b>のみです。保証金はありません。
+  </p>
+  <div id="collectionQrStatus" class="collection-status">読み込み中...</div>
+  <div id="collectionQr" class="collection-qr"></div>
+  <div id="collectionQrInfo"></div>
+</div>
+
 <div class="card">
   <h2>確定内容</h2>
   <div id="details">読み込み中...</div>
@@ -257,6 +269,14 @@ h3{font-size:15px;margin:18px 0 6px}
 .cutoff-rule-card{border-color:#e8c49b;background:#fffdf8}
 .cutoff-rule{padding:13px;border-radius:13px;background:#fff4df;border:1px solid #efcf9f;color:#6d4510;line-height:1.65;margin:8px 0 10px}
 .cutoff-chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#fff0d8;color:#8b5608;font-size:12px;font-weight:800}
+.collection-qr{display:flex;justify-content:center;margin:16px 0}
+.collection-qr canvas,.collection-qr img{max-width:240px!important;width:70vw!important;height:auto!important}
+.collection-status{padding:12px;border-radius:12px;background:#fff7f7;border:1px solid #f0d6d6;font-weight:800}
+.collection-status.done{background:#ecfdf3;border-color:#a7e2b8;color:#166534}
+.collection-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.collection-info>div{padding:11px;border-radius:12px;background:#fff7f7}
+.collection-info span{display:block;color:#725b5b;font-size:11px}
+.collection-info b{display:block;margin-top:3px;font-size:17px}
 
 @media(max-width:480px){
   .assumption-box,.incentive-main,.incentive-detail{grid-template-columns:1fr}
@@ -442,13 +462,73 @@ async function updatePreview(){
 
 quota.oninput=updatePreview;
 
+
+function renderCollectionQr(data){
+  const card=document.getElementById('collectionQrCard');
+  const status=document.getElementById('collectionQrStatus');
+  const qr=document.getElementById('collectionQr');
+  const info=document.getElementById('collectionQrInfo');
+  if(!card||!data||!data.confirmed)return;
+
+  card.style.display='block';
+  const amount=Number(data.amount||0);
+  const quota=Number(data.confirmed_quota||0);
+
+  if(data.collected_at){
+    status.className='collection-status done';
+    status.innerHTML=`✅ 回収済み<br><span class="muted">${esc(data.collector_name||'')} / ${new Date(data.collected_at).toLocaleString('ja-JP')}</span>`;
+  }else{
+    status.className='collection-status';
+    status.textContent='未回収';
+  }
+
+  info.innerHTML=`
+    <div class="collection-info">
+      <div><span>確定ノルマ</span><b>${quota}枚</b></div>
+      <div><span>集金額</span><b>${amount.toLocaleString()}円</b></div>
+    </div>`;
+
+  qr.innerHTML='';
+  if(data.token){
+    new QRCode(qr,{
+      text:'SIGMA-COLLECT:'+data.token,
+      width:240,height:240,
+      correctLevel:QRCode.CorrectLevel.M
+    });
+  }
+
+  try{
+    localStorage.setItem('sigma_my_collection_qr',JSON.stringify(data));
+  }catch(_){}
+}
+
+async function loadCollectionQr(){
+  const cached=(()=>{
+    try{return JSON.parse(localStorage.getItem('sigma_my_collection_qr')||'null')}catch(_){return null}
+  })();
+
+  if(!navigator.onLine && cached){
+    renderCollectionQr(cached);
+    return;
+  }
+
+  try{
+    const {data,error}=await db.rpc('my_presale_collection_qr');
+    if(error)throw error;
+    if(data)renderCollectionQr(data);
+  }catch(e){
+    if(cached)renderCollectionQr(cached);
+  }
+}
+
 async function load(){
   const {data:{user}}=await db.auth.getUser();
   if(!user){location.href='home.html';return}
 
   await Promise.all([
     loadSimulation(),
-    loadIncentiveContext()
+    loadIncentiveContext(),
+    loadCollectionQr()
   ]);
 
   const {data,error}=await db.rpc('my_presale_status');
