@@ -151,12 +151,12 @@ const sb=supabase.createClient(
 const code=new URLSearchParams(location.search).get("code");
 
 const BASE_MAP_SPOTS=[
-  {tent:7,display_name:"Match Point",short_label:"Match Point",aliases:["Match Point","MatchPoint","マッチポイント"],always_show:true,is_base:true,x:57.8,y:64.3}
+  {tent:7,display_name:"Match Point",short_label:"Match Point",aliases:["Match Point","MatchPoint","マッチポイント"],always_show:true,is_base:true,x:61.1,y:64.6}
 ];
 const PARTNER_TENT_LOOKUP=[
-  {tent:19,display_name:"生協組織部",short_label:"組織部",aliases:["組織部","生協組織部"],x:56.7,y:26.8},
-  {tent:10,display_name:"文芸部・セピア",short_label:"セピア",aliases:["熊大文芸部 セピア","文芸部・セピア","文芸部セピア","セピア"],x:58.4,y:50.5},
-  {tent:6,display_name:"書道部",short_label:"書道部",aliases:["書道部"],x:55.6,y:76.6}
+  {tent:19,display_name:"生協組織部",short_label:"組織部",aliases:["組織部","生協組織部"],x:59.7,y:33.3},
+  {tent:10,display_name:"文芸部・セピア",short_label:"セピア",aliases:["熊大文芸部 セピア","文芸部・セピア","文芸部セピア","セピア"],x:60.0,y:57.3},
+  {tent:6,display_name:"書道部",short_label:"書道部",aliases:["書道部"],x:58.0,y:71.2}
 ];
 let currentCouponMapPartners=[];
 function normalizePartnerName(v){return String(v??"").toLowerCase().replace(/熊本大学/g,"熊大").replace(/[\s　・･\-ー―_]/g,"");}
@@ -190,10 +190,10 @@ function buildMapPartners(coupons){
   return out;
 }
 function mapLaunchHtml(){
-  return `<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">熊大黒髪北キャンパスをもとに、五高記念館などの目印と道沿いの店舗位置を分かりやすくまとめた案内マップです。</div><button onclick="openCouponMap()">店舗マップを見る</button></div>`;
+  return `<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">熊大黒髪北キャンパスをもとに、赤門からの道筋と道沿いの店舗位置を分かりやすくまとめた案内図です。</div><button onclick="openCouponMap()">店舗マップを見る</button></div>`;
 }
 function mapModalHtml(){
-  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">五高記念館などの目印と、道沿いの店舗位置を優先した当日向けの絵地図です。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="illustrated-map-wrap"><div class="illustrated-map-stage"><img class="illustrated-map" src="./coupon-campus-illustrated.png" alt="熊本大学黒髪北キャンパスのクーポン店舗マップ"><div id="mapFocusRing" class="map-focus-ring" aria-hidden="true"></div></div></div></div></div>`;
+  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">赤門（会場入口）からの道筋と、道沿いの店舗位置を優先した当日向けの案内図です。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="illustrated-map-wrap"><div class="illustrated-map-stage"><img class="illustrated-map" src="./coupon-campus-illustrated.png" alt="熊本大学黒髪北キャンパスのクーポン店舗マップ"><div id="mapFocusRing" class="map-focus-ring" aria-hidden="true"></div></div></div></div></div>`;
 }
 function openCouponMapByName(encodedName){openCouponMap(decodeURIComponent(encodedName||""));}
 function openCouponMap(activeName=""){
