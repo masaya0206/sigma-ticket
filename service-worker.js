@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-presale-collection-portal-v12";
+const CACHE_NAME = "sigma-ticket-presale-collection-designfix-v13";
 
 const CORE_ASSETS = [
   "./home.html",
