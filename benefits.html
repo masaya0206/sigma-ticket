@@ -24,6 +24,7 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 .coupon-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:4px 2px 10px}.coupon-head h2{margin:0;font-size:21px}.coupon-hint{font-size:11px;color:var(--muted);white-space:nowrap}.coupon-rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:2px 2px 12px;scrollbar-width:none}.coupon-rail::-webkit-scrollbar{display:none}.coupon{position:relative;flex:0 0 min(84%,370px);scroll-snap-align:start;background:linear-gradient(180deg,#fffaf9,#fff);border:1.5px solid #efc7cb;border-radius:22px;padding:18px;box-shadow:0 8px 22px rgba(74,25,25,.07);overflow:hidden}.coupon::before,.coupon::after{content:"";position:absolute;top:96px;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid #efc7cb}.coupon::before{left:-12px}.coupon::after{right:-12px}.coupon-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.coupon-label{display:inline-flex;align-items:center;gap:7px;color:var(--red);font-size:12px;font-weight:950}.coupon-label::before{content:"COUPON";padding:5px 8px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;letter-spacing:.1em}.coupon-valid{padding:6px 10px;border-radius:999px;background:#ffe9eb;color:var(--red);font-size:11px;font-weight:900}.coupon-cut{margin:14px -18px;border-top:2px dashed #edcfd2}.coupon-partner{font-size:13px;font-weight:800;color:#555}.coupon-title{font-size:25px;font-weight:950;line-height:1.28;margin-top:8px}.coupon-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-top:10px}.coupon-use{margin-top:14px;padding:11px 12px;border-radius:13px;background:#fff4f5;color:#7f252b;font-size:12px;font-weight:800;line-height:1.55}.coupon-instagram,.coupon-map-btn{display:block;margin-top:12px;padding:12px 14px;border:1px solid #ead1d4;border-radius:13px;background:#fff;color:#333;text-decoration:none;text-align:center;font-size:13px;font-weight:900}.coupon-map-btn{color:var(--red)}.coupon-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.coupon-spot{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;background:#eef6ff;color:#174a88;font-size:12px;font-weight:900}.coupon-empty{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;color:var(--muted);font-size:13px}
 .map-launch-title{font-size:19px;font-weight:950}.map-launch-text{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
 .map-modal{position:fixed;inset:0;background:rgba(18,12,12,.52);display:none;align-items:flex-end;justify-content:center;padding:16px;z-index:9999}.map-modal.show{display:flex}.map-sheet{width:min(100%,720px);max-height:min(92vh,900px);overflow:auto;background:#fff;border-radius:24px;padding:18px;box-shadow:0 18px 48px rgba(0,0,0,.22)}.map-sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.map-sheet-title{font-size:22px;font-weight:950;line-height:1.2}.map-sheet-sub{margin-top:5px;color:var(--muted);font-size:13px;line-height:1.6}.map-close{width:auto;margin:0;padding:10px 13px;border-radius:12px;background:#fff1f2;color:var(--red);font-size:14px}.map-image-wrap{margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:18px;background:#faf7f5}.map-image{display:block;width:100%;height:auto;border-radius:12px}.map-caption{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.6}.map-store-list{display:grid;gap:10px;margin-top:14px}.map-store{padding:13px 14px;border:1px solid var(--line);border-radius:16px;background:#faf7f5}.map-store.active{border-color:#d9a0a6;background:#fff1f2;box-shadow:0 0 0 3px rgba(181,18,27,.08)}.map-store-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.map-store-name{font-weight:900;line-height:1.45}.map-store-num{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:#eef6ff;color:#174a88;font-size:12px;font-weight:900;white-space:nowrap}.map-store-note{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.6}
+.illustrated-map-wrap{margin-top:14px}.illustrated-map-stage{position:relative;width:100%;overflow:hidden;border:1px solid #eee2dd;border-radius:20px;background:#fbfaf8}.illustrated-map{display:block;width:100%;height:auto}.map-focus-ring{position:absolute;display:none;width:72px;height:72px;border:5px solid #ff3347;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 7px rgba(255,51,71,.15);animation:mapPulse 1.25s ease-in-out infinite;pointer-events:none}@keyframes mapPulse{0%,100%{transform:translate(-50%,-50%) scale(.92);opacity:.82}50%{transform:translate(-50%,-50%) scale(1.08);opacity:1}}.map-image-wrap,.map-store-list,.map-wrap{display:none!important}@media(max-width:520px){.map-sheet{padding:14px}.map-sheet-title{font-size:20px}.map-sheet-sub{font-size:12px}.map-focus-ring{width:58px;height:58px;border-width:4px}}
 .map-wrap{margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:18px;background:#faf7f5}.map-stage{position:relative;border-radius:14px;overflow:hidden;background:#f0eeec}.map-image{display:block;width:100%;height:auto}.map-pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:0;cursor:pointer}.map-pin-badge{width:34px;height:34px;border-radius:999px;background:#123e74;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:950;box-shadow:0 6px 18px rgba(0,0,0,.18)}.map-pin-base .map-pin-badge{background:#b5121b}.map-pin-label{max-width:132px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.96);color:#1d2733;font-size:12px;font-weight:900;line-height:1.2;box-shadow:0 6px 18px rgba(0,0,0,.12)}.map-pin.active .map-pin-badge{transform:scale(1.08);box-shadow:0 0 0 4px rgba(181,18,27,.16),0 8px 24px rgba(0,0,0,.18)}.map-pin.active .map-pin-label{background:#fff1f2;color:#9a1620;box-shadow:0 0 0 3px rgba(181,18,27,.10),0 8px 24px rgba(0,0,0,.14)}.map-chip-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.map-chip{width:auto;margin:0;padding:10px 12px;border-radius:999px;background:#fff;border:1px solid #d8dfe8;color:#174a88;font-size:12px;font-weight:900}.map-chip.active{background:#fff1f2;border-color:#efc7cb;color:#9a1620}.map-chip small{font-size:11px;font-weight:800;opacity:.85}.map-tip{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.6}.map-minilegend{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}.map-miniitem{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#fff;border:1px solid #ece7e4;font-size:12px;font-weight:900;color:#38404a}.map-dot{width:10px;height:10px;border-radius:999px;background:#123e74;display:inline-block}.map-miniitem.base .map-dot{background:#b5121b}.map-image-wrap,.map-store-list{display:none}@media(max-width:520px){.map-pin-badge{width:30px;height:30px;font-size:12px}.map-pin-label{font-size:11px;max-width:112px;padding:6px 8px}}
 @media(max-width:420px){.coupon{flex-basis:88%}.coupon-title{font-size:23px}}
 </style>
@@ -38,12 +39,12 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 <script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 const BASE_MAP_SPOTS=[
-  {tent:7,display_name:"Match Point",short_label:"Match Point",aliases:["Match Point","MatchPoint","マッチポイント"],always_show:true,is_base:true,x:40.2,y:74.6}
+  {tent:7,display_name:"Match Point",short_label:"Match Point",aliases:["Match Point","MatchPoint","マッチポイント"],always_show:true,is_base:true,x:42.2,y:64.7}
 ];
 const PARTNER_TENT_LOOKUP=[
-  {tent:19,display_name:"生協組織部",short_label:"組織部",aliases:["組織部","生協組織部"],x:29.5,y:15.9},
-  {tent:10,display_name:"文芸部・セピア",short_label:"セピア",aliases:["熊大文芸部 セピア","文芸部・セピア","文芸部セピア","セピア"],x:44.8,y:57.8},
-  {tent:6,display_name:"書道部",short_label:"書道部",aliases:["書道部"],x:35.7,y:84.5}
+  {tent:19,display_name:"生協組織部",short_label:"組織部",aliases:["組織部","生協組織部"],x:31.7,y:23.2},
+  {tent:10,display_name:"文芸部・セピア",short_label:"セピア",aliases:["熊大文芸部 セピア","文芸部・セピア","文芸部セピア","セピア"],x:46.1,y:51.3},
+  {tent:6,display_name:"書道部",short_label:"書道部",aliases:["書道部"],x:35.0,y:75.9}
 ];
 let currentCouponMapPartners=[];
 function normalizePartnerName(v){return String(v??"").toLowerCase().replace(/熊本大学/g,"熊大").replace(/[\s　・･\-ー―_]/g,"");}
@@ -65,52 +66,33 @@ function buildMapPartners(coupons){
   const out=[];const seen=new Set();
   for(const base of BASE_MAP_SPOTS){
     const key=base.tent+"|"+base.display_name;
-    if(seen.has(key)) continue;
-    seen.add(key);
-    out.push({partner_name:base.display_name,display_name:base.display_name,short_label:base.short_label||base.display_name,tent:base.tent,is_base:true,x:base.x,y:base.y});
+    seen.add(key);out.push({...base,partner_name:base.display_name});
   }
   for(const c of coupons){
     const loc=resolvePartnerLocation(c.partner_name);
     if(!loc) continue;
     const key=loc.tent+"|"+loc.display_name;
     if(seen.has(key)) continue;
-    seen.add(key);
-    out.push({partner_name:c.partner_name,display_name:loc.display_name,short_label:loc.short_label||c.partner_name,tent:loc.tent,is_base:false,x:loc.x,y:loc.y});
+    seen.add(key);out.push({...loc,partner_name:c.partner_name,is_base:false});
   }
-  return out.sort((a,b)=>a.tent-b.tent);
-}
-function samePartner(a,b){
-  const ra=resolvePartnerLocation(a); const rb=resolvePartnerLocation(b);
-  if(ra&&rb) return ra.tent===rb.tent;
-  return normalizePartnerName(a)===normalizePartnerName(b);
+  return out;
 }
 function mapLaunchHtml(){
-  return currentCouponMapPartners.length?`<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">不要な料金表を外した見やすい地図です。クーポンが使える場所と Match Point の位置をひと目で確認できます。</div><button onclick="openCouponMap()">見やすい地図を見る</button></div>`:"";
+  return `<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">熊大黒髪北キャンパスの建物配置とシグマ祭テント配置をもとに、クーポン利用先だけを載せた専用マップです。</div><button onclick="openCouponMap()">店舗マップを見る</button></div>`;
 }
 function mapModalHtml(){
-  if(!currentCouponMapPartners.length) return "";
-  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">地図上に店舗名を直接表示しています。気になる場所をタップすると強調表示できます。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="map-wrap"><div id="couponMapStage" class="map-stage"></div><div id="couponMapLegend" class="map-chip-list"></div><div class="map-minilegend"><div class="map-miniitem base"><span class="map-dot"></span>基準地点：Match Point</div><div class="map-miniitem"><span class="map-dot"></span>クーポン利用先</div></div><div class="map-tip">各クーポンの「地図で場所を見る」を押すと、その店舗が強調された状態で開きます。</div></div></div></div>`;
+  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">表示しているテント番号は 6・7・10・19 のみです。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="illustrated-map-wrap"><div class="illustrated-map-stage"><img class="illustrated-map" src="./coupon-campus-illustrated.png" alt="熊本大学黒髪北キャンパスのクーポン店舗マップ"><div id="mapFocusRing" class="map-focus-ring" aria-hidden="true"></div></div></div></div></div>`;
 }
-function renderMapPins(activeName=""){
-  const stage=document.getElementById("couponMapStage");
-  if(!stage) return;
-  stage.innerHTML=`<img class="map-image" src="./coupon-map-focus.png" alt="クーポン店舗の位置を見やすく切り出したシグマ祭マップ">${currentCouponMapPartners.map(p=>`<button type="button" class="map-pin ${p.is_base?'map-pin-base':''} ${activeName&&samePartner(activeName,p.partner_name)?'active':''}" style="left:${p.x}%;top:${p.y}%" onclick="focusCouponMapByName('${encodeURIComponent(p.partner_name)}')"><span class="map-pin-badge">${p.tent}</span><span class="map-pin-label">${esc(p.short_label)}</span></button>`).join("")}`;
-}
-function renderMapLegend(activeName=""){
-  const legend=document.getElementById("couponMapLegend");
-  if(!legend) return;
-  legend.innerHTML=currentCouponMapPartners.map(p=>`<button type="button" class="map-chip ${activeName&&samePartner(activeName,p.partner_name)?'active':''}" onclick="focusCouponMapByName('${encodeURIComponent(p.partner_name)}')">${esc(p.short_label)} <small>テント${p.tent}</small></button>`).join("");
-}
-function renderCouponMapUI(activeName=""){
-  renderMapPins(activeName);
-  renderMapLegend(activeName);
-}
-function focusCouponMapByName(encodedName){renderCouponMapUI(decodeURIComponent(encodedName||""));}
-function openCouponMapByName(encodedName){const activeName=decodeURIComponent(encodedName||"");openCouponMap(activeName);}
+function openCouponMapByName(encodedName){openCouponMap(decodeURIComponent(encodedName||""));}
 function openCouponMap(activeName=""){
   const modal=document.getElementById("couponMapModal");
+  const ring=document.getElementById("mapFocusRing");
   if(!modal) return;
-  renderCouponMapUI(activeName);
+  if(ring){
+    const loc=resolvePartnerLocation(activeName);
+    if(loc){ring.style.display="block";ring.style.left=loc.x+"%";ring.style.top=loc.y+"%";}
+    else{ring.style.display="none";}
+  }
   modal.classList.add("show");
   document.body.style.overflow="hidden";
 }
