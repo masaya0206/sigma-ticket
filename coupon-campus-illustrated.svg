@@ -1,99 +1,96 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1120" viewBox="0 0 900 1120">
 <defs>
-  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.12"/></filter>
-  <marker id="arrowRed" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#b5121b"/></marker>
-  <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#1f5a99"/></marker>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-opacity="0.12"/></filter>
   <style>
     .title{font-family:"Noto Sans CJK JP",sans-serif;fill:#27313c;font-weight:900}
     .sub{font-family:"Noto Sans CJK JP",sans-serif;fill:#6f6f72;font-size:18px}
-    .roadMajor{fill:none;stroke:#e4ddd7;stroke-width:30;stroke-linecap:round;stroke-linejoin:round}
-    .roadMinor{fill:none;stroke:#efe9e4;stroke-width:14;stroke-linecap:round;stroke-linejoin:round}
-    .bld{fill:#f6f2ee;stroke:#cec5be;stroke-width:3}
-    .bldLabel{font-family:"Noto Sans CJK JP",sans-serif;fill:#27313c;font-weight:850;font-size:23px}
-    .bldSub{font-family:"Noto Sans CJK JP",sans-serif;fill:#7a7a7a;font-size:17px}
-    .route{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
-    .routeRed{stroke:#b5121b;marker-end:url(#arrowRed)}
-    .routeBlue{stroke:#1f5a99;marker-end:url(#arrowBlue)}
+    .roadMajor{fill:none;stroke:#e3ddd7;stroke-width:34;stroke-linecap:round;stroke-linejoin:round}
+    .roadMinor{fill:none;stroke:#f0ebe7;stroke-width:15;stroke-linecap:round;stroke-linejoin:round}
+    .bld{fill:#f7f3ef;stroke:#cec5be;stroke-width:3}
+    .bldSub{font-family:"Noto Sans CJK JP",sans-serif;fill:#797979;font-size:17px}
     .spotLabel{font-family:"Noto Sans CJK JP",sans-serif;font-weight:900;font-size:22px;fill:#17212b}
     .legend{font-family:"Noto Sans CJK JP",sans-serif;fill:#4b535c;font-size:18px;font-weight:700}
+    .sideNote{font-family:"Noto Sans CJK JP",sans-serif;fill:#7a5b23;font-size:17px;font-weight:800}
   </style>
 </defs>
 <rect width="900" height="1120" rx="36" fill="#fbfaf8"/>
 <text x="54" y="62" class="title" font-size="30">熊大 黒髪北キャンパス｜クーポン店舗マップ</text>
-<text x="54" y="94" class="sub">当日向けに、目印になる建物と通り道だけを残した案内マップ</text>
+<text x="54" y="94" class="sub">目印になる建物と、道沿いの店舗位置を優先した当日案内マップ</text>
 
-<!-- main roads only -->
-<path class="roadMajor" d="M350 110 C405 185 420 255 394 325 C368 392 378 455 430 525 C474 585 482 650 450 720 C420 788 380 868 334 1010"/>
-<path class="roadMajor" d="M688 135 C638 210 622 310 628 398 C634 486 646 572 642 657 C638 742 625 860 640 1006"/>
-<path class="roadMajor" d="M145 528 C280 520 420 520 650 502"/>
-<path class="roadMajor" d="M268 770 C390 744 518 744 650 760"/>
-<path class="roadMinor" d="M395 325 C505 308 592 332 672 378"/>
-<path class="roadMinor" d="M442 552 C540 568 598 612 646 678"/>
-<path class="roadMinor" d="M350 838 C415 814 474 804 530 803"/>
-<path class="roadMinor" d="M528 800 C572 786 610 775 650 772"/>
-<path class="roadMinor" d="M275 739 C313 711 350 692 390 684"/>
-<path class="roadMinor" d="M326 888 C347 865 368 842 392 820"/>
+<!-- roads -->
+<path class="roadMajor" d="M430 105 C475 165 485 230 467 298 C448 372 449 438 471 507 C492 575 492 646 474 717 C455 789 429 874 398 1010"/>
+<path class="roadMajor" d="M705 130 C652 215 638 310 645 405 C651 500 657 590 650 675 C643 768 637 876 649 1008"/>
+<path class="roadMajor" d="M138 527 C276 520 418 520 646 504"/>
+<path class="roadMajor" d="M270 770 C391 746 516 746 651 762"/>
+<path class="roadMinor" d="M462 316 C555 305 619 328 683 366"/>
+<path class="roadMinor" d="M476 545 C554 564 609 608 648 670"/>
+<path class="roadMinor" d="M399 830 C459 810 516 804 570 804"/>
+<path class="roadMinor" d="M570 804 C600 790 624 779 651 772"/>
+<path class="roadMinor" d="M340 742 C378 714 414 697 449 687"/>
 
 <!-- landmarks -->
-<rect x="110" y="498" width="220" height="126" rx="18" class="bld"/>
-<text x="220" y="550" text-anchor="middle" class="title" font-size="26">メインステージ</text>
+<rect x="120" y="205" width="278" height="148" rx="20" class="bld"/>
+<text x="259" y="264" text-anchor="middle" class="title" font-size="29">五高記念館</text>
+<text x="259" y="300" text-anchor="middle" class="bldSub">重要文化財</text>
+<text x="259" y="328" text-anchor="middle" class="bldSub">組織部の近くの目印</text>
+
+<rect x="110" y="500" width="220" height="126" rx="18" class="bld"/>
+<text x="220" y="551" text-anchor="middle" class="title" font-size="26">メインステージ</text>
 <text x="220" y="582" text-anchor="middle" class="bldSub">イベントエリア</text>
 
-<rect x="372" y="294" width="194" height="98" rx="18" class="bld"/>
-<text x="469" y="341" text-anchor="middle" class="title" font-size="24">サブステージ</text>
+<rect x="292" y="420" width="194" height="98" rx="18" class="bld"/>
+<text x="389" y="468" text-anchor="middle" class="title" font-size="24">サブステージ</text>
 
-<rect x="666" y="489" width="176" height="236" rx="18" class="bld"/>
-<text x="754" y="590" text-anchor="middle" class="title" font-size="22">ひご未来図書館</text>
-<text x="754" y="622" text-anchor="middle" class="bldSub">中央館</text>
+<rect x="665" y="492" width="176" height="232" rx="18" class="bld"/>
+<text x="753" y="590" text-anchor="middle" class="title" font-size="22">ひご未来図書館</text>
+<text x="753" y="622" text-anchor="middle" class="bldSub">中央館</text>
 
 <rect x="456" y="826" width="208" height="150" rx="18" class="bld"/>
 <text x="560" y="928" text-anchor="middle" class="title" font-size="24">保健センター</text>
 
-<rect x="640" y="246" width="176" height="122" rx="18" class="bld"/>
-<text x="728" y="292" text-anchor="middle" class="title" font-size="22">学生会館周辺</text>
-<text x="728" y="322" text-anchor="middle" class="bldSub">北地区</text>
+<rect x="642" y="246" width="176" height="122" rx="18" class="bld"/>
+<text x="730" y="292" text-anchor="middle" class="title" font-size="22">学生会館周辺</text>
+<text x="730" y="322" text-anchor="middle" class="bldSub">北地区</text>
 
-<!-- actual locations dots -->
-<circle cx="286" cy="260" r="16" fill="#1f5a99" filter="url(#shadow)"/>
-<circle cx="416" cy="575" r="16" fill="#1f5a99" filter="url(#shadow)"/>
-<circle cx="382" cy="724" r="18" fill="#b5121b" filter="url(#shadow)"/>
-<circle cx="316" cy="849" r="16" fill="#1f5a99" filter="url(#shadow)"/>
-
-<!-- callout labels and arrows -->
+<!-- all tents are on the right side of the central road -->
+<!-- 組織部 -->
 <g filter="url(#shadow)">
-  <rect x="350" y="208" width="154" height="56" rx="28" fill="#fff" stroke="#d8e0ea" stroke-width="2"/>
-  <text x="427" y="244" text-anchor="middle" class="spotLabel">組織部</text>
-  <path d="M350 236 C332 240 315 246 302 252" class="route routeBlue"/>
+  <circle cx="510" cy="300" r="18" fill="#1f5a99"/>
+  <rect x="536" y="269" width="160" height="62" rx="30" fill="#fff" stroke="#d8e0ea" stroke-width="2"/>
+  <text x="616" y="308" text-anchor="middle" class="spotLabel">組織部</text>
 </g>
 
+<!-- セピア -->
 <g filter="url(#shadow)">
-  <rect x="456" y="540" width="154" height="56" rx="28" fill="#fff" stroke="#d8e0ea" stroke-width="2"/>
-  <text x="533" y="576" text-anchor="middle" class="spotLabel">セピア</text>
-  <path d="M456 568 C446 569 438 571 431 573" class="route routeBlue"/>
+  <circle cx="526" cy="566" r="18" fill="#1f5a99"/>
+  <rect x="552" y="535" width="160" height="62" rx="30" fill="#fff" stroke="#d8e0ea" stroke-width="2"/>
+  <text x="632" y="574" text-anchor="middle" class="spotLabel">セピア</text>
 </g>
 
+<!-- Match Point -->
 <g filter="url(#shadow)">
-  <rect x="422" y="690" width="244" height="66" rx="32" fill="#fff" stroke="#e7b9bd" stroke-width="3"/>
-  <text x="544" y="732" text-anchor="middle" class="spotLabel" fill="#9a1620">Match Point</text>
-  <path d="M422 723 C412 723 404 723 399 723" class="route routeRed"/>
+  <circle cx="520" cy="720" r="20" fill="#b5121b"/>
+  <rect x="550" y="687" width="236" height="66" rx="32" fill="#fff" stroke="#e7b9bd" stroke-width="3"/>
+  <text x="668" y="729" text-anchor="middle" class="spotLabel" fill="#9a1620">Match Point</text>
 </g>
 
+<!-- 書道部 -->
 <g filter="url(#shadow)">
-  <rect x="352" y="820" width="154" height="56" rx="28" fill="#fff" stroke="#d8e0ea" stroke-width="2"/>
-  <text x="429" y="856" text-anchor="middle" class="spotLabel">書道部</text>
-  <path d="M352 848 C344 848 338 848 332 848" class="route routeBlue"/>
+  <circle cx="500" cy="858" r="18" fill="#1f5a99"/>
+  <rect x="526" y="827" width="160" height="62" rx="30" fill="#fff" stroke="#d8e0ea" stroke-width="2"/>
+  <text x="606" y="866" text-anchor="middle" class="spotLabel">書道部</text>
 </g>
 
-<!-- guide note -->
-<rect x="76" y="960" width="748" height="46" rx="16" fill="#fff6f0" stroke="#f0d8c5"/>
-<text x="450" y="990" text-anchor="middle" class="legend">赤いラベルが Match Point、青いラベルがクーポン利用先です</text>
+<!-- explanatory callout -->
+<rect x="86" y="944" width="726" height="58" rx="18" fill="#fff8e8" stroke="#ecd6ad"/>
+<text x="449" y="979" text-anchor="middle" class="sideNote">4団体とも、中央の道を基準に右側の道沿いです</text>
 
 <!-- north -->
-<g transform="translate(730,900)"><circle cx="0" cy="0" r="42" fill="#fff" stroke="#ddd4ce" stroke-width="2"/><path d="M0 -25 L10 5 L0 0 L-10 5 Z" fill="#3d4853"/><text x="0" y="-50" text-anchor="middle" class="sub">N</text></g>
+<g transform="translate(758,884)"><circle cx="0" cy="0" r="42" fill="#fff" stroke="#ddd4ce" stroke-width="2"/><path d="M0 -25 L10 5 L0 0 L-10 5 Z" fill="#3d4853"/><text x="0" y="-50" text-anchor="middle" class="sub">N</text></g>
 
 <!-- footer legend -->
 <rect x="54" y="1018" width="792" height="72" rx="18" fill="#fff3f4"/>
 <circle cx="82" cy="1044" r="9" fill="#b5121b"/><text x="103" y="1051" class="legend">Match Point（基準地点）</text>
 <circle cx="380" cy="1044" r="9" fill="#1f5a99"/><text x="401" y="1051" class="legend">クーポン利用先</text>
-<text x="82" y="1078" class="sub">※ 目印になる建物と通り道を優先した簡略図です</text>
+<text x="82" y="1078" class="sub">※ 建物・道路・テントの位置関係を優先した案内用簡略図です</text>
 </svg>
