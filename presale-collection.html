@@ -12,12 +12,12 @@ main{max-width:650px;margin:auto;padding:16px 14px 60px}.top{display:flex;align-
 h1{font-size:25px;margin:0}.muted{color:var(--muted);font-size:13px;line-height:1.55}.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:17px;margin:12px 0}
 .mode{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:900}.online{background:#ecfdf3;color:#166534}.offline{background:#fff4df;color:#805000}
 input,button{width:100%;padding:13px;border-radius:12px;font-size:16px}input{border:1px solid #d9d3d0;background:#fff}button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:9px}.secondary{background:#fff;color:var(--red);border:1px solid var(--red)}.danger{background:#6d0c13}.hidden{display:none!important}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{padding:11px;background:#faf8f7;border-radius:13px}.stat span{font-size:10px;color:var(--muted);display:block}.stat b{font-size:20px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{padding:11px;background:#faf8f7;border-radius:13px}.stat span{font-size:10px;color:var(--muted);display:block}.stat b{font-size:20px}
 .staff-row{padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.staff-row:last-child{border:0}.staff-row b{font-size:16px}.ok{color:var(--green)}.warn{color:var(--orange)}.conflict{color:#a91520}
 #reader{overflow:hidden;border-radius:16px}.person{background:#fff7f7;border:1px solid #f1d6d6;border-radius:16px;padding:14px;margin-top:12px}.amount{font-size:34px;font-weight:900;color:var(--red);margin:6px 0}
 .syncbox{display:flex;justify-content:space-between;gap:12px;align-items:center}.syncbox button{width:auto;margin:0;padding:9px 13px;font-size:13px}
 #loginCard input{margin:6px 0}
-@media(max-width:480px){.stats{grid-template-columns:1fr 1fr}.stat:last-child{grid-column:1/-1}}
+@media(max-width:480px){.stats{grid-template-columns:1fr 1fr}}
 </style></head><body><main>
 <div class="top"><button class="back" onclick="history.length>1?history.back():location.href='home.html'">←</button><div><h1>ノルマ集金</h1><div id="modeLabel" class="mode online">確認中</div></div></div>
 
@@ -40,8 +40,22 @@ input,button{width:100%;padding:13px;border-radius:12px;font-size:16px}input{bor
       <div class="stat"><span>対象</span><b id="staffCount">--</b></div>
       <div class="stat"><span>回収済み</span><b id="collectedCount">--</b></div>
       <div class="stat"><span>未同期</span><b id="pendingCount">--</b></div>
+      <div class="stat"><span>自分の徴収額</span><b id="myCollectedAmount">--</b></div>
     </div>
     <p id="syncStatus" class="muted"></p>
+  </div>
+
+  <div class="card">
+    <h2>回収箱への提出</h2>
+    <p class="muted">あなたが徴収処理したノルマ金は、回収箱へ入れるまであなたの預かり分として管理されます。</p>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><span>徴収総額</span><b id="myTotalAmount">--</b></div>
+      <div class="stat"><span>手元保管中</span><b id="myHoldingAmount">--</b></div>
+      <div class="stat"><span>提出済み</span><b id="mySubmittedAmount">--</b></div>
+      <div class="stat"><span>徴収人数</span><b id="myCollectedPeople">--</b></div>
+    </div>
+    <button id="handoverBtn" onclick="submitToCashBox()">手元のノルマ金を回収箱へ提出済みにする</button>
+    <p id="handoverMsg" class="muted"></p>
   </div>
 
   <div class="card">
@@ -103,6 +117,56 @@ async function fetchBootstrap(){
   return data;
 }
 
+async function loadMyCashSummary(){
+  if(!navigator.onLine){
+    const events=await S.listCollectionEventsByStatus(['pending','synced']);
+    const mine=events.filter(e=>String(e.collector_user_id||'')===String(authCache?.collector_user_id||''));
+    const total=mine.reduce((sum,e)=>sum+Number(e.amount||0),0);
+    myCollectedAmount.textContent=total.toLocaleString()+'円';
+    myTotalAmount.textContent=total.toLocaleString()+'円';
+    myHoldingAmount.textContent='オンラインで確認';
+    mySubmittedAmount.textContent='オンラインで確認';
+    myCollectedPeople.textContent=mine.length+'人';
+    handoverBtn.disabled=true;
+    handoverMsg.textContent='回収箱への提出処理はオンライン時に行ってください。';
+    return;
+  }
+  const {data:{user}}=await db.auth.getUser();
+  if(!user){handoverBtn.disabled=true;return}
+  const {data,error}=await db.rpc('my_presale_collection_cash_summary',{p_collection_date:authCache?.collection_date||null});
+  if(error){
+    handoverMsg.textContent='集計取得エラー: '+error.message;
+    return;
+  }
+  const d=data||{};
+  myCollectedAmount.textContent=Number(d.total_amount||0).toLocaleString()+'円';
+  myTotalAmount.textContent=Number(d.total_amount||0).toLocaleString()+'円';
+  myHoldingAmount.textContent=Number(d.holding_amount||0).toLocaleString()+'円';
+  mySubmittedAmount.textContent=Number(d.submitted_amount||0).toLocaleString()+'円';
+  myCollectedPeople.textContent=Number(d.collected_count||0)+'人';
+  handoverBtn.disabled=Number(d.holding_amount||0)<=0;
+  handoverMsg.textContent=Number(d.holding_amount||0)>0
+    ? '回収箱に実際に入れた後で、提出済みにしてください。'
+    : '現在、手元保管中のノルマ金はありません。';
+}
+
+async function submitToCashBox(){
+  if(!navigator.onLine)return alert('回収箱への提出処理はオンライン時に行ってください');
+  const {data:{user}}=await db.auth.getUser();
+  if(!user)return alert('ログインが必要です');
+  const summary=await db.rpc('my_presale_collection_cash_summary',{p_collection_date:authCache?.collection_date||null});
+  if(summary.error)return alert(summary.error.message);
+  const holding=Number(summary.data?.holding_amount||0);
+  if(holding<=0)return alert('手元保管中のお金はありません');
+  if(!confirm(`${holding.toLocaleString()}円を回収箱に入れましたか？\n実際に入れた後で確定してください。`))return;
+  handoverBtn.disabled=true;
+  handoverMsg.textContent='提出処理中...';
+  const {data,error}=await db.rpc('submit_my_presale_cash_to_box',{p_collection_date:authCache?.collection_date||null});
+  if(error){handoverMsg.textContent='提出エラー: '+error.message;handoverBtn.disabled=false;return}
+  handoverMsg.textContent=`${Number(data?.submitted_amount||0).toLocaleString()}円を提出済みにしました。`;
+  await loadMyCashSummary();
+}
+
 function authValid(a){
   if(!a||!a.valid_until)return false;
   return Date.now()<=new Date(a.valid_until).getTime();
@@ -160,6 +224,7 @@ async function renderAll(){
   pendingCount.textContent=st.pending+'件';
   await renderSearch();
   await renderConflicts();
+  await loadMyCashSummary();
   syncStatus.textContent=navigator.onLine
     ? `最終端末保存：${authCache?.saved_at?new Date(authCache.saved_at).toLocaleString('ja-JP'):'--'}`
     : '通信障害モード：回収記録は端末内に保存し、通信復旧後に同期します。';

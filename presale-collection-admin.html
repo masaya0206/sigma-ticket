@@ -14,7 +14,7 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 .staff{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.staff:last-child{border:0}
 .staff input{width:21px;height:21px}.staff label{flex:1;font-weight:800}.pill{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red)}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.metric{padding:12px;background:#faf8f7;border-radius:14px}.metric span{display:block;font-size:11px;color:var(--muted)}.metric b{font-size:22px}
-.row{padding:10px 0;border-bottom:1px solid var(--line)}.ok{color:#157b35}.warn{color:#b36a00}
+.row{padding:10px 0;border-bottom:1px solid var(--line)}.ok{color:#157b35}.warn{color:#b36a00}.holding{color:#9a5a00}.submitted{color:#157b35}.collector-card{padding:13px;border:1px solid var(--line);border-radius:14px;margin:10px 0;background:#fcfbfa}.collector-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}.collector-grid div{background:#f7f4f2;padding:9px;border-radius:10px}.collector-grid span{display:block;font-size:10px;color:var(--muted)}.collector-grid b{font-size:17px}@media(max-width:520px){.collector-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.metrics{grid-template-columns:1fr 1fr}.metric:last-child{grid-column:1/-1}}
 </style></head><body><main>
 <div class="top"><button class="back" onclick="history.back()">←</button><div><h1>ノルマ集金管理</h1><div class="sub">当日の集金担当を指定</div></div></div>
@@ -41,6 +41,13 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
   </div>
   <button class="secondary" onclick="loadSummary()">最新状況に更新</button>
   <div id="summaryList"></div>
+</div>
+
+
+<div class="card">
+  <h2>徴収担当者ごとの管理</h2>
+  <p class="muted">誰が何人からいくら徴収し、現在いくら手元で預かっているかを確認できます。</p>
+  <div id="collectorSummaryList">読み込み中...</div>
 </div>
 
 <div class="card">
@@ -101,9 +108,26 @@ async function loadSummary(){
     <div class="row">
       <b>${esc(x.staff_name)}</b> / ${Number(x.confirmed_quota||0)}枚 / ${Number(x.amount||0).toLocaleString()}円<br>
       ${x.collected_at
-        ? `<span class="ok">✅ 回収済み</span> <span class="muted">${new Date(x.collected_at).toLocaleString('ja-JP')} / ${esc(x.collector_name||'')}</span>`
-        : `<span class="warn">未回収</span>`}
+        ? `<span class="ok">✅ 徴収済み</span> <span class="muted">${new Date(x.collected_at).toLocaleString('ja-JP')} / 徴収担当: ${esc(x.collector_name||'')}</span><br>${x.submitted_to_box_at?`<span class="submitted">回収箱提出済み</span> <span class="muted">${new Date(x.submitted_to_box_at).toLocaleString('ja-JP')}</span>`:`<span class="holding">手元保管中</span>`}`
+        : `<span class="warn">未徴収</span>`}
     </div>`).join('');
+
+  const {data:collectorData,error:collectorError}=await db.rpc('admin_presale_collection_by_collector',{p_date:collectionDate.value});
+  if(collectorError){
+    collectorSummaryList.innerHTML='<p class="warn">'+esc(collectorError.message)+'</p>';
+    return;
+  }
+  const collectors=collectorData?.collectors||[];
+  collectorSummaryList.innerHTML=collectors.length?collectors.map(c=>`
+    <div class="collector-card">
+      <b>${esc(c.collector_name||'')}</b>
+      <div class="collector-grid">
+        <div><span>徴収人数</span><b>${Number(c.collected_count||0)}人</b></div>
+        <div><span>徴収総額</span><b>${Number(c.total_amount||0).toLocaleString()}円</b></div>
+        <div><span>手元保管中</span><b>${Number(c.holding_amount||0).toLocaleString()}円</b></div>
+        <div><span>提出済み</span><b>${Number(c.submitted_amount||0).toLocaleString()}円</b></div>
+      </div>
+    </div>`).join(''):'<p class="muted">この日の徴収記録はまだありません。</p>';
 }
 
 async function loadAll(){await loadCollectors();await loadSummary()}
