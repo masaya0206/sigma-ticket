@@ -81,17 +81,64 @@ function renderNet(){
   p.className="pill "+(navigator.onLine?"ok":"warn");
 }
 
+async function preferredSellerId(list){
+  const rows=list||[];
+
+  // 1. Supabaseの現在のログイン情報（ローカル保存されたセッションも利用）
+  try{
+    if(sb){
+      const {data:{session}}=await sb.auth.getSession();
+      const uid=session?.user?.id||"";
+      if(uid && rows.some(x=>x.user_id===uid)) return {user_id:uid,source:"login"};
+    }
+  }catch(_){}
+
+  // 2. home.htmlで最後に正常ログインした本人情報
+  try{
+    const identity=await SigmaOfflineStore.getMeta("offline_login_identity",null);
+    if(identity?.user_id && rows.some(x=>x.user_id===identity.user_id)){
+      return {user_id:identity.user_id,source:"login-cache"};
+    }
+  }catch(_){}
+
+  // 3. ログイン情報が取れない場合のみ、以前の手動選択を保険として利用
+  try{
+    const saved=await SigmaOfflineStore.getMeta("offline_selected_seller",null);
+    if(saved?.user_id && rows.some(x=>x.user_id===saved.user_id)){
+      return {user_id:saved.user_id,source:"manual"};
+    }
+  }catch(_){}
+
+  return {user_id:"",source:"none"};
+}
+
 async function loadStaff(){
   const list=await SigmaOfflineStore.getStaffList();
   const sel=document.getElementById("sellerSelect");
-  sel.innerHTML=(list||[]).map(x=>`<option value="${x.user_id}">${x.staff_name}</option>`).join("");
-  const saved=await SigmaOfflineStore.getMeta("offline_selected_seller",null);
-  if(saved && (list||[]).some(x=>x.user_id===saved.user_id)) sel.value=saved.user_id;
-  if(!sel.options.length){
+  const rows=list||[];
+
+  if(!rows.length){
     sel.innerHTML='<option value="">スタッフ一覧が保存されていません</option>';
     issueBtn.disabled=true;
+    selectedInfo.textContent="オンライン時にバックアップを更新してください。";
+    await refreshCounts();
+    return;
   }
-  sel.onchange=async()=>{await rememberSeller();await refreshCounts();};
+
+  // 先頭スタッフが勝手に選ばれないよう、未選択項目を必ず先頭に置く。
+  sel.innerHTML='<option value="">発行者を選択してください</option>'+
+    rows.map(x=>`<option value="${x.user_id}">${x.staff_name}</option>`).join("");
+
+  const preferred=await preferredSellerId(rows);
+  sel.value=preferred.user_id||"";
+  sel.dataset.selectionSource=preferred.source;
+
+  sel.onchange=async()=>{
+    sel.dataset.selectionSource="manual";
+    await rememberSeller();
+    await refreshCounts();
+  };
+
   await rememberSeller(false);
   await refreshCounts();
 }
@@ -101,7 +148,16 @@ async function rememberSeller(write=true){
   const user_id=sel.value;
   const staff_name=sel.options[sel.selectedIndex]?.textContent||"";
   if(write && user_id) await SigmaOfflineStore.setMeta("offline_selected_seller",{user_id,staff_name});
-  selectedInfo.textContent=user_id?`発行者：${staff_name}`:"オンライン時にバックアップを更新してください。";
+
+  if(!user_id){
+    selectedInfo.textContent="ログイン情報を確認できない場合は、発行者を手動で選択してください。";
+    return;
+  }
+
+  const source=sel.dataset.selectionSource||"manual";
+  selectedInfo.textContent=(source==="login"||source==="login-cache")
+    ? `ログイン情報から自動選択：${staff_name}`
+    : `手動選択：${staff_name}`;
 }
 
 async function refreshCounts(){

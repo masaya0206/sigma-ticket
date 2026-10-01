@@ -660,6 +660,28 @@ table{
           ノルマ集金（オフライン対応）
         </button>
 
+        <div id="loginOfflineTools" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #ece7e4;">
+          <div style="font-size:13px;font-weight:800;color:#6e5b34;margin-bottom:8px;">通信障害時の非常用機能</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button
+              type="button"
+              class="secondary-button"
+              onclick="location.href='offline-scanner.html'"
+              style="margin:0;"
+            >
+              非常用QR受付
+            </button>
+            <button
+              type="button"
+              class="secondary-button"
+              onclick="location.href='offline-seller.html'"
+              style="margin:0;"
+            >
+              非常用当日券発行
+            </button>
+          </div>
+        </div>
+
         <p
           id="loginMessage"
           class="message"
@@ -1117,6 +1139,13 @@ table{
       button.style.display = collectionAuthValid(saved) ? "block" : "none";
     }
 
+    function refreshLoginOfflineTools() {
+      const tools = document.getElementById("loginOfflineTools");
+      if (!tools) return;
+      // QR受付・当日券発行は通信障害時にログイン画面から直接開ける。
+      tools.style.display = navigator.onLine ? "none" : "block";
+    }
+
     async function refreshCollectionAccess() {
       const button = document.getElementById("collectionButton");
       if (!button) return;
@@ -1284,6 +1313,17 @@ table{
         "staffName"
       ).textContent =
         staff.staff_name;
+
+      // 非常用当日券発行で、初回からログイン中の本人を自動選択できるよう端末に保存。
+      try {
+        if (window.SigmaOfflineStore?.setMeta) {
+          await window.SigmaOfflineStore.setMeta("offline_login_identity", {
+            user_id: user.id,
+            staff_name: staff.staff_name,
+            saved_at: new Date().toISOString()
+          });
+        }
+      } catch (_) {}
 
       document.getElementById(
         "loginArea"
@@ -1669,6 +1709,7 @@ const planned =
       ).value = "";
 
       await refreshLoginCollectionAccess();
+      refreshLoginOfflineTools();
     }
 
 
@@ -1679,10 +1720,12 @@ const planned =
         document.getElementById("loginArea").style.display = "block";
         document.getElementById("portalArea").style.display = "none";
         await refreshLoginCollectionAccess();
+        refreshLoginOfflineTools();
         return;
       }
 
       await refreshLoginCollectionAccess();
+      refreshLoginOfflineTools();
 
       const {
         data: { session }
@@ -1703,6 +1746,7 @@ const planned =
         document.getElementById("portalArea").style.display = "none";
         document.getElementById("loginArea").style.display = "block";
         await refreshLoginCollectionAccess();
+        refreshLoginOfflineTools();
       }
     );
 
@@ -1710,6 +1754,7 @@ const planned =
       "online",
       async () => {
         await refreshLoginCollectionAccess();
+        refreshLoginOfflineTools();
         const {
           data: { session }
         } =
