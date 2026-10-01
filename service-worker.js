@@ -1,6 +1,6 @@
-const CACHE_NAME = "sigma-ticket-coupon-map-v20";
+const CACHE_NAME = "sigma-ticket-coupon-map-v22";
 const PRECACHE = [
-  "./coupon-map.png"
+  "./coupon-map-focus.png"
 ];
 self.addEventListener("install",e=>e.waitUntil(
   caches.open(CACHE_NAME).then(c=>c.addAll(PRECACHE)).catch(()=>{}).then(()=>self.skipWaiting())

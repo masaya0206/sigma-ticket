@@ -66,8 +66,10 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .map-store.active{border-color:#d9a0a6;background:#fff1f2;box-shadow:0 0 0 3px rgba(181,18,27,.08)}
 .map-store-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .map-store-name{font-weight:900;line-height:1.45}
+.map-store-base{margin-top:4px;color:#b5121b;font-size:11px;font-weight:900}
 .map-store-num{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:#eef6ff;color:#174a88;font-size:12px;font-weight:900;white-space:nowrap}
 .map-store-note{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.6}
+.map-wrap{margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:18px;background:#faf7f5}.map-stage{position:relative;border-radius:14px;overflow:hidden;background:#f0eeec}.map-image{display:block;width:100%;height:auto}.map-pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:0;cursor:pointer}.map-pin-badge{width:34px;height:34px;border-radius:999px;background:#123e74;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:950;box-shadow:0 6px 18px rgba(0,0,0,.18)}.map-pin-base .map-pin-badge{background:#b5121b}.map-pin-label{max-width:132px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.96);color:#1d2733;font-size:12px;font-weight:900;line-height:1.2;box-shadow:0 6px 18px rgba(0,0,0,.12)}.map-pin.active .map-pin-badge{transform:scale(1.08);box-shadow:0 0 0 4px rgba(181,18,27,.16),0 8px 24px rgba(0,0,0,.18)}.map-pin.active .map-pin-label{background:#fff1f2;color:#9a1620;box-shadow:0 0 0 3px rgba(181,18,27,.10),0 8px 24px rgba(0,0,0,.14)}.map-chip-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.map-chip{width:auto;margin:0;padding:10px 12px;border-radius:999px;background:#fff;border:1px solid #d8dfe8;color:#174a88;font-size:12px;font-weight:900}.map-chip.active{background:#fff1f2;border-color:#efc7cb;color:#9a1620}.map-chip small{font-size:11px;font-weight:800;opacity:.85}.map-tip{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.6}.map-minilegend{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}.map-miniitem{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#fff;border:1px solid #ece7e4;font-size:12px;font-weight:900;color:#38404a}.map-dot{width:10px;height:10px;border-radius:999px;background:#123e74;display:inline-block}.map-miniitem.base .map-dot{background:#b5121b}.map-image-wrap,.map-store-list{display:none}@media(max-width:520px){.map-pin-badge{width:30px;height:30px;font-size:12px}.map-pin-label{font-size:11px;max-width:112px;padding:6px 8px}}
 
 @media(max-width:420px){.coupon-card{flex-basis:88%;}.coupon-title{font-size:23px}}
 
@@ -104,16 +106,21 @@ const sb=supabase.createClient(
 );
 const params=new URLSearchParams(location.search);
 
+const BASE_MAP_SPOTS=[
+  {tent:7,display_name:"Match Point",short_label:"Match Point",aliases:["Match Point","MatchPoint","マッチポイント"],always_show:true,is_base:true,x:40.2,y:74.6}
+];
 const PARTNER_TENT_LOOKUP=[
-  {tent:19,display_name:"生協組織部",aliases:["組織部","生協組織部"]},
-  {tent:10,display_name:"文芸部・セピア",aliases:["熊大文芸部 セピア","文芸部・セピア","文芸部セピア","セピア"]}
+  {tent:19,display_name:"生協組織部",short_label:"組織部",aliases:["組織部","生協組織部"],x:29.5,y:15.9},
+  {tent:10,display_name:"文芸部・セピア",short_label:"セピア",aliases:["熊大文芸部 セピア","文芸部・セピア","文芸部セピア","セピア"],x:44.8,y:57.8},
+  {tent:6,display_name:"書道部",short_label:"書道部",aliases:["書道部"],x:35.7,y:84.5}
 ];
 let currentCouponMapPartners=[];
 function normalizePartnerName(v){return String(v??"").toLowerCase().replace(/熊本大学/g,"熊大").replace(/[\s　・･\-ー―_]/g,"");}
 function resolvePartnerLocation(name){
   const target=normalizePartnerName(name);
   if(!target) return null;
-  for(const item of PARTNER_TENT_LOOKUP){
+  const all=[...BASE_MAP_SPOTS,...PARTNER_TENT_LOOKUP];
+  for(const item of all){
     const names=[item.display_name].concat(item.aliases||[]);
     for(const n of names){
       const x=normalizePartnerName(n);
@@ -124,14 +131,20 @@ function resolvePartnerLocation(name){
   return null;
 }
 function buildMapPartners(coupons){
-  const out=[]; const seen=new Set();
+  const out=[];const seen=new Set();
+  for(const base of BASE_MAP_SPOTS){
+    const key=base.tent+"|"+base.display_name;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    out.push({partner_name:base.display_name,display_name:base.display_name,short_label:base.short_label||base.display_name,tent:base.tent,is_base:true,x:base.x,y:base.y});
+  }
   for(const c of coupons){
     const loc=resolvePartnerLocation(c.partner_name);
     if(!loc) continue;
     const key=loc.tent+"|"+loc.display_name;
     if(seen.has(key)) continue;
     seen.add(key);
-    out.push({partner_name:c.partner_name,display_name:loc.display_name,tent:loc.tent});
+    out.push({partner_name:c.partner_name,display_name:loc.display_name,short_label:loc.short_label||c.partner_name,tent:loc.tent,is_base:false,x:loc.x,y:loc.y});
   }
   return out.sort((a,b)=>a.tent-b.tent);
 }
@@ -141,24 +154,32 @@ function samePartner(a,b){
   return normalizePartnerName(a)===normalizePartnerName(b);
 }
 function mapLaunchHtml(){
-  return currentCouponMapPartners.length?`<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">クーポンが使える店舗の位置をテント配置図で確認できます。</div><button onclick="openCouponMap()">マップを見る</button></div>`:"";
+  return currentCouponMapPartners.length?`<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">不要な料金表を外した見やすい地図です。クーポンが使える場所と Match Point の位置をひと目で確認できます。</div><button onclick="openCouponMap()">見やすい地図を見る</button></div>`:"";
 }
 function mapModalHtml(){
   if(!currentCouponMapPartners.length) return "";
-  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">下の地図でテント番号を確認してください。各店舗の場所は一覧にもまとめています。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="map-image-wrap"><img class="map-image" src="./coupon-map.png" alt="シグマ祭のテント配置図。クーポン店舗のテント番号確認用"><div class="map-caption">※ 地図内の番号と、下の店舗一覧の「テント番号」を対応させて見てください。</div></div><div id="couponMapList" class="map-store-list"></div></div></div>`;
+  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">地図上に店舗名を直接表示しています。気になる場所をタップすると強調表示できます。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="map-wrap"><div id="couponMapStage" class="map-stage"></div><div id="couponMapLegend" class="map-chip-list"></div><div class="map-minilegend"><div class="map-miniitem base"><span class="map-dot"></span>基準地点：Match Point</div><div class="map-miniitem"><span class="map-dot"></span>クーポン利用先</div></div><div class="map-tip">各クーポンの「地図で場所を見る」を押すと、その店舗が強調された状態で開きます。</div></div></div></div>`;
 }
-function renderCouponMapList(activeName=""){
-  const list=document.getElementById("couponMapList");
-  if(!list) return;
-  list.innerHTML=currentCouponMapPartners.map(p=>`<div class="map-store ${activeName&&samePartner(activeName,p.partner_name)?'active':''}" data-tent="${p.tent}"><div class="map-store-top"><div class="map-store-name">${esc(p.partner_name)}</div><span class="map-store-num">テント ${p.tent}</span></div><div class="map-store-note">地図内の番号 ${p.tent} を探してください。</div></div>`).join("");
-  const active=list.querySelector(".map-store.active");
-  if(active) active.scrollIntoView({block:"nearest",behavior:"smooth"});
+function renderMapPins(activeName=""){
+  const stage=document.getElementById("couponMapStage");
+  if(!stage) return;
+  stage.innerHTML=`<img class="map-image" src="./coupon-map-focus.png" alt="クーポン店舗の位置を見やすく切り出したシグマ祭マップ">${currentCouponMapPartners.map(p=>`<button type="button" class="map-pin ${p.is_base?'map-pin-base':''} ${activeName&&samePartner(activeName,p.partner_name)?'active':''}" style="left:${p.x}%;top:${p.y}%" onclick="focusCouponMapByName('${encodeURIComponent(p.partner_name)}')"><span class="map-pin-badge">${p.tent}</span><span class="map-pin-label">${esc(p.short_label)}</span></button>`).join("")}`;
 }
-function openCouponMapByName(encodedName){openCouponMap(decodeURIComponent(encodedName||""));}
+function renderMapLegend(activeName=""){
+  const legend=document.getElementById("couponMapLegend");
+  if(!legend) return;
+  legend.innerHTML=currentCouponMapPartners.map(p=>`<button type="button" class="map-chip ${activeName&&samePartner(activeName,p.partner_name)?'active':''}" onclick="focusCouponMapByName('${encodeURIComponent(p.partner_name)}')">${esc(p.short_label)} <small>テント${p.tent}</small></button>`).join("");
+}
+function renderCouponMapUI(activeName=""){
+  renderMapPins(activeName);
+  renderMapLegend(activeName);
+}
+function focusCouponMapByName(encodedName){renderCouponMapUI(decodeURIComponent(encodedName||""));}
+function openCouponMapByName(encodedName){const activeName=decodeURIComponent(encodedName||"");openCouponMap(activeName);}
 function openCouponMap(activeName=""){
   const modal=document.getElementById("couponMapModal");
   if(!modal) return;
-  renderCouponMapList(activeName);
+  renderCouponMapUI(activeName);
   modal.classList.add("show");
   document.body.style.overflow="hidden";
 }
