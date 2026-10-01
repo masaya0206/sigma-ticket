@@ -27,12 +27,28 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 #qrcode{display:flex;justify-content:center;margin:20px auto 12px;padding:14px;background:#fff;width:max-content;border-radius:18px;border:1px solid #eee}
 .code{text-align:center;font-size:12px;color:var(--muted);word-break:break-all}
 .note{text-align:center;color:var(--muted);font-size:13px;line-height:1.7}
-.partner{border:2px solid #efc0c5;background:#fff7f7}
-.partner-head{display:flex;align-items:center;gap:9px;color:var(--red);font-size:22px;font-weight:950}
-.partner-name{font-size:17px;font-weight:900;margin-top:16px}
-.partner-title{font-size:24px;font-weight:950;margin:8px 0;line-height:1.35}
-.tag{display:inline-block;padding:6px 10px;background:#ffe6e8;color:var(--red);font-size:12px;font-weight:900;border-radius:999px}
-.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
+
+.coupon-section{margin:18px 0 4px}
+.coupon-section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:0 2px 10px}
+.coupon-section-title{font-size:21px;font-weight:950;line-height:1.2}
+.coupon-section-hint{font-size:11px;color:var(--muted);white-space:nowrap}
+.coupon-rail{display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:2px 2px 10px;margin:0 -2px;scrollbar-width:none}
+.coupon-rail::-webkit-scrollbar{display:none}
+.coupon-card{position:relative;flex:0 0 min(84%,370px);scroll-snap-align:start;background:linear-gradient(180deg,#fffaf9 0%,#fff 100%);border:1.5px solid #efc7cb;border-radius:22px;padding:18px;box-shadow:0 8px 22px rgba(74,25,25,.07);overflow:hidden}
+.coupon-card::before,.coupon-card::after{content:"";position:absolute;top:96px;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid #efc7cb}
+.coupon-card::before{left:-12px}.coupon-card::after{right:-12px}
+.coupon-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.coupon-mark{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:950;letter-spacing:.08em;color:var(--red)}
+.coupon-mark::before{content:"COUPON";display:inline-block;padding:5px 8px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;letter-spacing:.10em}
+.coupon-valid{display:inline-block;padding:6px 10px;background:#ffe9eb;color:var(--red);font-size:11px;font-weight:900;border-radius:999px;white-space:nowrap}
+.coupon-divider{margin:14px -18px 14px;border-top:2px dashed #edcfd2}
+.coupon-partner{font-size:13px;font-weight:800;color:#555}
+.coupon-title{font-size:25px;font-weight:950;line-height:1.28;margin-top:8px;letter-spacing:-.01em}
+.coupon-description{font-size:13px;color:var(--muted);line-height:1.7;margin-top:10px}
+.coupon-howto{margin-top:14px;padding:11px 12px;border-radius:13px;background:#fff4f5;color:#7f252b;font-size:12px;font-weight:800;line-height:1.55}
+.coupon-instagram{display:block;margin-top:12px;padding:12px 14px;border:1px solid #ead1d4;border-radius:13px;background:#fff;color:#333;text-decoration:none;text-align:center;font-size:13px;font-weight:900}
+.coupon-empty{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;color:var(--muted);font-size:13px}
+@media(max-width:420px){.coupon-card{flex-basis:88%;}.coupon-title{font-size:23px}}
 .small{font-size:12px;color:var(--muted);line-height:1.65}
 .used-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#fff0f0;color:#b5121b;font-size:12px;font-weight:900}
 .active-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#e9f8eb;color:#147a2c;font-size:12px;font-weight:900}
@@ -118,82 +134,38 @@ async function partnerHtml(ticketKind){
   const {data,error}=await sb.rpc("public_partner_benefits");
   if(error || !data || data.length===0) return "";
 
-  const groups=new Map();
+  const coupons=(data||[]).map(row=>({
+    partner_name:row.partner_name,
+    instagram_url:row.instagram_url,
+    title:row.benefit_title,
+    description:row.description,
+    valid_label:row.valid_label
+  }));
 
-  for(const row of data){
-    const key=String(row.partner_name||"").trim();
-
-    if(!groups.has(key)){
-      groups.set(key,{
-        partner_name:row.partner_name,
-        instagram_url:row.instagram_url,
-        benefits:[]
-      });
-    }
-
-    groups.get(key).benefits.push({
-      title:row.benefit_title,
-      description:row.description,
-      valid_label:row.valid_label
-    });
-  }
-
-  return Array.from(groups.values()).map(group=>`
-    <div class="card partner">
-
-      <div class="partner-head">
-        🎁 提携特典
+  return `
+    <section class="coupon-section" aria-label="使えるクーポン">
+      <div class="coupon-section-head">
+        <div class="coupon-section-title">🎟️ 使えるクーポン</div>
+        <div class="coupon-section-hint">横にスワイプ →</div>
       </div>
-
-      <div class="partner-name">
-        ${esc(group.partner_name)}
-      </div>
-
-      <div style="margin-top:12px">
-        ${group.benefits.map((b,index)=>`
-          <div
-            style="
-              ${index>0
-                ? "border-top:1px solid #efcfd2;padding-top:16px;margin-top:16px;"
-                : ""}
-            "
-          >
-            <div class="partner-title">
-              ${esc(b.title)}
+      <div class="coupon-rail">
+        ${coupons.map(c=>`
+          <article class="coupon-card">
+            <div class="coupon-top">
+              <div class="coupon-mark">提携クーポン</div>
+              <span class="coupon-valid">${esc(c.valid_label||"利用可能")}</span>
             </div>
-
-            ${b.description
-              ? `<div class="small">${esc(b.description)}</div>`
-              : ""}
-
-            <div style="margin-top:10px">
-              <span class="tag">
-                ${esc(b.valid_label||"")}
-              </span>
-            </div>
-          </div>
+            <div class="coupon-divider"></div>
+            <div class="coupon-partner">発行元：${esc(c.partner_name)}</div>
+            <div class="coupon-title">${esc(c.title)}</div>
+            ${c.description?`<div class="coupon-description">${esc(c.description)}</div>`:""}
+            <div class="coupon-howto">利用時に${esc(ticketKind)}のQRコードを提携先スタッフへ提示してください。</div>
+            ${c.instagram_url?`<a class="coupon-instagram" href="${esc(c.instagram_url)}" target="_blank" rel="noopener">Instagramを見る</a>`:""}
+          </article>
         `).join("")}
       </div>
-
-      ${group.instagram_url
-        ? `
-          <a
-            class="btn instagram"
-            href="${esc(group.instagram_url)}"
-            target="_blank"
-            rel="noopener"
-          >
-            ${esc(group.partner_name)} のInstagramを見る
-          </a>
-        `
-        : ""}
-
-      <div class="small" style="margin-top:12px">
-        ${esc(ticketKind)}のQRコードを提携先スタッフに提示してください。
-      </div>
-
-    </div>
-  `).join("");
+    </section>
+  `;
 }
 
 async function copyTicketUrl(encodedCode){
@@ -244,7 +216,7 @@ async function renderTicket(t){
 
       ${used?`
         <p class="small" style="text-align:center">
-          ※ Match Pointの商品交換が済んでいても、未使用の提携特典は利用できます。
+          ※ Match Pointの商品交換が済んでいても、未使用のクーポンは利用できます。
         </p>`:""}
     </div>
     ${partner}

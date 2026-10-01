@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Match Point 提携特典</title>
+<title>Match Point クーポン</title>
 <meta name="theme-color" content="#b5121b">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-180.png">
@@ -29,11 +29,13 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red);font-size:11px;font-weight:900}
 .instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
 pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
+
+.coupon-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:4px 2px 10px}.coupon-head h2{margin:0;font-size:21px}.coupon-hint{font-size:11px;color:var(--muted);white-space:nowrap}.coupon-rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:2px 2px 12px;scrollbar-width:none}.coupon-rail::-webkit-scrollbar{display:none}.coupon{position:relative;flex:0 0 min(84%,370px);scroll-snap-align:start;background:linear-gradient(180deg,#fffaf9,#fff);border:1.5px solid #efc7cb;border-radius:22px;padding:18px;box-shadow:0 8px 22px rgba(74,25,25,.07);overflow:hidden}.coupon::before,.coupon::after{content:"";position:absolute;top:96px;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid #efc7cb}.coupon::before{left:-12px}.coupon::after{right:-12px}.coupon-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.coupon-label{display:inline-flex;align-items:center;gap:7px;color:var(--red);font-size:12px;font-weight:950}.coupon-label::before{content:"COUPON";padding:5px 8px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;letter-spacing:.1em}.coupon-valid{padding:6px 10px;border-radius:999px;background:#ffe9eb;color:var(--red);font-size:11px;font-weight:900}.coupon-cut{margin:14px -18px;border-top:2px dashed #edcfd2}.coupon-partner{font-size:13px;font-weight:800;color:#555}.coupon-title{font-size:25px;font-weight:950;line-height:1.28;margin-top:8px}.coupon-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-top:10px}.coupon-use{margin-top:14px;padding:11px 12px;border-radius:13px;background:#fff4f5;color:#7f252b;font-size:12px;font-weight:800;line-height:1.55}.coupon-instagram{display:block;margin-top:12px;padding:12px 14px;border:1px solid #ead1d4;border-radius:13px;background:#fff;color:#333;text-decoration:none;text-align:center;font-size:13px;font-weight:900}@media(max-width:420px){.coupon{flex-basis:88%}.coupon-title{font-size:23px}}
 </style>
 </head>
 <body>
 
-<header><h1>Match Point 提携特典</h1><p>Match Pointの前売り券を持っている方が利用できる提携サービスです。</p></header>
+<header><h1>Match Point クーポン</h1><p>前売り券を持っている方が利用できる提携クーポンです。</p></header>
 <main>
   <div id="benefits"><div class="card">読み込み中...</div></div>
 </main>
@@ -50,51 +52,17 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
     return;
   }
 
-  const groups=new Map();
+  const coupons=(data||[]).map(x=>({
+    partner_name:x.partner_name,
+    instagram_url:x.instagram_url,
+    title:x.benefit_title,
+    description:x.description,
+    valid_label:x.valid_label
+  }));
 
-  for(const row of (data||[])){
-    const key=String(row.partner_name||"").trim();
-
-    if(!groups.has(key)){
-      groups.set(key,{
-        partner_name:row.partner_name,
-        instagram_url:row.instagram_url,
-        benefits:[]
-      });
-    }
-
-    groups.get(key).benefits.push(row);
-  }
-
-  const rows=Array.from(groups.values());
-
-  benefits.innerHTML=rows.length
-    ? rows.map(group=>`
-        <div class="card">
-          <h2>${esc(group.partner_name)}</h2>
-
-          ${group.benefits.map((x,index)=>`
-            <div style="${index>0?"border-top:1px solid #eee;padding-top:14px;margin-top:14px;":""}">
-              <div style="font-size:21px;font-weight:900">
-                ${esc(x.benefit_title)}
-              </div>
-
-              ${x.description
-                ? `<div class="small" style="margin-top:8px">${esc(x.description)}</div>`
-                : ""}
-
-              <div style="margin-top:10px">
-                <span class="pill">${esc(x.valid_label)}</span>
-              </div>
-            </div>
-          `).join("")}
-
-          ${group.instagram_url
-            ? `<a class="btn instagram" href="${esc(group.instagram_url)}" target="_blank" rel="noopener">${esc(group.partner_name)} Instagram</a>`
-            : ""}
-        </div>
-      `).join("")
-    : '<div class="card">現在利用できる提携特典はありません。</div>';
+  benefits.innerHTML=coupons.length
+    ? `<div class="coupon-head"><h2>使えるクーポン</h2><div class="coupon-hint">横にスワイプ →</div></div><div class="coupon-rail">${coupons.map(c=>`<article class="coupon"><div class="coupon-top"><div class="coupon-label">提携クーポン</div><span class="coupon-valid">${esc(c.valid_label||"利用可能")}</span></div><div class="coupon-cut"></div><div class="coupon-partner">発行元：${esc(c.partner_name)}</div><div class="coupon-title">${esc(c.title)}</div>${c.description?`<div class="coupon-desc">${esc(c.description)}</div>`:""}<div class="coupon-use">利用時に前売り券QRを提携先スタッフへ提示してください。</div>${c.instagram_url?`<a class="coupon-instagram" href="${esc(c.instagram_url)}" target="_blank" rel="noopener">Instagramを見る</a>`:""}</article>`).join("")}</div>`
+    : '<div class="card">現在利用できるクーポンはありません。</div>';
 })();
 
 </script>
