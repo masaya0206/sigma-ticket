@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-map-redgate-v31";
+const CACHE_NAME = "sigma-ticket-offline-history-v35";
 
 const CORE_ASSETS = [
   "./home.html",

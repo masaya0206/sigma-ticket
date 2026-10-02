@@ -19,6 +19,7 @@ main{max-width:620px;margin:auto;padding:16px 16px 40px}.card{background:#fff;bo
 label{display:block;font-weight:800;margin-bottom:7px}select,input,button{width:100%;padding:13px;border-radius:13px;font-size:16px}select,input{border:1px solid #ddd;background:#fff}input{margin-bottom:12px}button{border:0;font-weight:900;background:#fff1f2;color:var(--red);margin-top:10px}.primary{background:var(--red);color:#fff}.dark{background:#2c2c2e;color:#fff}.small{font-size:12px;color:var(--muted);line-height:1.55}.status{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:6px 9px;border-radius:999px;font-size:12px;font-weight:900;background:#eee}.ok{background:#ecfdf3;color:var(--green)}.warn{background:#fff7df;color:var(--amber)}
 .big{font-size:34px;font-weight:900}.qr{display:flex;justify-content:center;padding:14px;background:#fff;border-radius:16px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;word-break:break-all;text-align:center}
 .notice{background:#fff8e8;border-color:#efd39a}.success{background:#ecfdf3;border-color:#b7e7c5}.hidden{display:none}.ticket-preview{display:block;width:100%;height:auto;border-radius:16px;background:#fff;border:1px solid #e5e7eb}
+.history-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.history-head h2{margin:0}.history-head button{width:auto;margin:0;padding:9px 12px}.history-list{display:grid;gap:10px;margin-top:12px}.history-item{border:1px solid var(--line);border-radius:16px;padding:13px;background:#fff}.history-name{font-size:17px;font-weight:900}.history-meta{margin-top:5px;font-size:12px;color:var(--muted);line-height:1.6}.history-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.history-badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:900;background:#f1f1f1}.history-badge.pending{background:#fff7df;color:#9a6700}.history-badge.synced{background:#ecfdf3;color:#15803d}.history-badge.used{background:#fff0f0;color:#b5121b}.history-badge.active{background:#eef5ff;color:#1d4f91}.history-actions{display:flex;gap:8px;margin-top:10px}.history-actions button{margin:0;flex:1;padding:10px}.history-empty{padding:18px 8px;text-align:center;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -60,6 +61,16 @@ label{display:block;font-weight:800;margin-bottom:7px}select,input,button{width:
 </section>
 
 <section class="card">
+  <div class="history-head">
+    <h2>自分の発行履歴</h2>
+    <button type="button" onclick="refreshHistory()">更新</button>
+  </div>
+  <p class="small">未同期の券はこの端末にだけ保存されています。同期済みの券は別端末でもログイン後に確認できます。</p>
+  <div id="historyList" class="history-list"><div class="history-empty">履歴を読み込んでいます...</div></div>
+  <p id="historyMessage" class="small"></p>
+</section>
+
+<section class="card">
   <button onclick="location.href='offline-scanner.html'">非常用QR受付へ</button>
   <button onclick="location.href='home.html'">ホームへ戻る</button>
   <p id="message" class="small"></p>
@@ -73,6 +84,8 @@ const sb=(typeof supabase!=="undefined")?supabase.createClient(SUPABASE_URL,SUPA
 let currentIssue=null;
 let syncBusy=false;
 let backupBusy=false;
+let historyCache=new Map();
+let historyBusy=false;
 
 function fmt(v){return v?new Date(v).toLocaleString("ja-JP"):"-";}
 function renderNet(){
@@ -137,6 +150,7 @@ async function loadStaff(){
     sel.dataset.selectionSource="manual";
     await rememberSeller();
     await refreshCounts();
+    await refreshHistory();
   };
 
   await rememberSeller(false);
@@ -158,6 +172,141 @@ async function rememberSeller(write=true){
   selectedInfo.textContent=(source==="login"||source==="login-cache")
     ? `ログイン情報から自動選択：${staff_name}`
     : `手動選択：${staff_name}`;
+}
+
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+async function getHistoryOwner(){
+  // オンライン時は現在ログイン中の本人を最優先
+  try{
+    if(sb){
+      const {data:{session}}=await sb.auth.getSession();
+      const uid=session?.user?.id||"";
+      if(uid){
+        const list=await SigmaOfflineStore.getStaffList();
+        const me=(list||[]).find(x=>String(x.user_id)===String(uid));
+        return {user_id:uid,staff_name:me?.staff_name||"",source:"login"};
+      }
+    }
+  }catch(_){ }
+
+  // 完全オフライン時は、home.html が保存した最後のログイン本人情報を使う
+  try{
+    const identity=await SigmaOfflineStore.getMeta("offline_login_identity",null);
+    if(identity?.user_id) return {user_id:identity.user_id,staff_name:identity.staff_name||"",source:"login-cache"};
+  }catch(_){ }
+
+  // 最後の保険として、現在手動選択中の発行者を使う
+  const sel=document.getElementById("sellerSelect");
+  const uid=sel?.value||"";
+  const name=sel?.options?.[sel.selectedIndex]?.textContent||"";
+  return {user_id:uid,staff_name:name,source:uid?"manual":"none"};
+}
+
+function statusLabel(row){
+  if(row.ticket_status==="used") return {text:"使用済み",cls:"used"};
+  if(row.sync_status==="pending") return {text:row.sync_error?"同期待ち":"未同期",cls:"pending"};
+  if(row.ticket_status==="active") return {text:"利用可能",cls:"active"};
+  return {text:"同期済み",cls:"synced"};
+}
+
+function renderHistory(rows){
+  const box=document.getElementById("historyList");
+  if(!box) return;
+  historyCache=new Map((rows||[]).map(x=>[x.ticket_code,x]));
+  if(!rows?.length){
+    box.innerHTML='<div class="history-empty">オフライン当日券の発行履歴はまだありません。</div>';
+    return;
+  }
+  box.innerHTML=rows.map(row=>{
+    const st=statusLabel(row);
+    const syncBadge=row.sync_status==="pending"
+      ? `<span class="history-badge pending">${row.sync_error?"同期待ち":"未同期"}</span>`
+      : `<span class="history-badge synced">同期済み</span>`;
+    const useBadge=row.ticket_status
+      ? `<span class="history-badge ${row.ticket_status==="used"?"used":"active"}">${row.ticket_status==="used"?"使用済み":"利用可能"}</span>`
+      : '';
+    const item=row.redemption_item==="fried_rice"?"炒飯1個":row.redemption_item==="sesame_pair"?"胡麻団子2個":"";
+    return `<div class="history-item">
+      <div class="history-name">${esc(row.buyer_name||"オフライン当日券")}</div>
+      <div class="history-meta">${esc(fmt(row.issued_at))}<br>${esc(row.ticket_code)}${item?`<br>交換：${esc(item)}`:""}</div>
+      <div class="history-badges">${syncBadge}${useBadge}</div>
+      <div class="history-actions"><button type="button" onclick="redisplayHistoryTicket('${encodeURIComponent(row.ticket_code)}')">券を再表示</button></div>
+    </div>`;
+  }).join("");
+}
+
+async function refreshHistory(){
+  if(historyBusy) return;
+  historyBusy=true;
+  const msg=document.getElementById("historyMessage");
+  try{
+    const owner=await getHistoryOwner();
+    if(!owner.user_id){
+      renderHistory([]);
+      if(msg) msg.textContent="本人情報を確認できません。ログインするか、発行者を選択してください。";
+      return;
+    }
+
+    const merged=new Map();
+
+    // 端末内履歴。未同期でも必ず見える。
+    const local=await SigmaOfflineStore.listDayIssuesByStatus(["pending","synced","conflict"]);
+    for(const x of local.filter(x=>String(x.seller_user_id)===String(owner.user_id))){
+      merged.set(x.ticket_code,{...x,ticket_status:null,used_at:null,redemption_item:null,source:"local"});
+    }
+
+    // オンライン・ログイン済みなら、Supabase側の本人履歴を追加。
+    if(navigator.onLine && sb){
+      try{
+        const {data:{session}}=await sb.auth.getSession();
+        if(session?.user?.id && String(session.user.id)===String(owner.user_id)){
+          const {data,error}=await sb.rpc("my_offline_day_ticket_history");
+          if(error) throw error;
+          for(const x of (data||[])){
+            const prev=merged.get(x.ticket_code)||{};
+            merged.set(x.ticket_code,{
+              ...x,
+              ...prev,
+              buyer_name:(prev.buyer_name && prev.buyer_name!=="オフライン当日券")?prev.buyer_name:(x.buyer_name||prev.buyer_name),
+              issued_at:prev.issued_at||x.issued_at,
+              unit_price:Number(prev.unit_price||x.unit_price||0),
+              seller_name:prev.seller_name||x.seller_name||owner.staff_name||"",
+              sync_status:prev.sync_status==="pending"?"pending":"synced",
+              ticket_status:x.ticket_status||prev.ticket_status||null,
+              used_at:x.used_at||prev.used_at||null,
+              redemption_item:x.redemption_item||prev.redemption_item||null,
+              source:"server"
+            });
+          }
+        }
+      }catch(e){
+        if(msg) msg.textContent="同期済み履歴を取得できませんでした。端末内の履歴だけ表示しています。";
+      }
+    }
+
+    const rows=[...merged.values()].sort((a,b)=>String(b.issued_at||"").localeCompare(String(a.issued_at||"")));
+    renderHistory(rows);
+    if(msg && !msg.textContent) msg.textContent=`${rows.length}件の履歴を表示中`;
+  }finally{
+    historyBusy=false;
+  }
+}
+
+async function redisplayHistoryTicket(encodedCode){
+  const code=decodeURIComponent(encodedCode||"");
+  const row=historyCache.get(code);
+  if(!row) return;
+  currentIssue={
+    ticket_code:row.ticket_code,
+    buyer_name:row.buyer_name||"オフライン当日券",
+    seller_name:row.seller_name||"",
+    issued_at:row.issued_at,
+    unit_price:Number(row.unit_price||0)
+  };
+  await renderTicket(currentIssue);
+  const status=row.ticket_status==="used"?"使用済み":row.sync_status==="pending"?"未同期":"同期済み";
+  ticketMeta.textContent+=` / 履歴から再表示（${status}）`;
 }
 
 async function refreshCounts(){
@@ -188,6 +337,7 @@ async function issueOne(){
     buyerName.value="";
     message.textContent="";
     await refreshCounts();
+    await refreshHistory();
     if(navigator.onLine) setTimeout(()=>syncIssues(false),300);
   }catch(e){
     message.textContent=e?.message||e;
@@ -315,17 +465,19 @@ async function syncIssues(manual=false){
   }finally{
     syncBusy=false;
     await refreshCounts();
+    await refreshHistory();
   }
 }
 
-window.addEventListener("online",()=>{renderNet();setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();},1000);});
+window.addEventListener("online",()=>{renderNet();setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();await refreshHistory();},1000);});
 window.addEventListener("offline",renderNet);
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&navigator.onLine)setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();},200);});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(async()=>{if(navigator.onLine){await syncIssues(false);await refreshOfflinePool();}await refreshHistory();},200);});
 window.addEventListener("load",async()=>{
   renderNet();
   if("serviceWorker" in navigator)navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(()=>{});
   await loadStaff();
-  if(navigator.onLine)setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();},700);
+  await refreshHistory();
+  if(navigator.onLine)setTimeout(async()=>{await syncIssues(false);await refreshOfflinePool();await refreshHistory();},700);
   setInterval(async()=>{if(navigator.onLine){await syncIssues(false);await refreshOfflinePool();}},10*60*1000);
 });
 </script>
