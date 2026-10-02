@@ -937,7 +937,7 @@ let scanner = null;
       resultBox.innerHTML =
         "チケットを確認しています...";
 
-      const {
+      let {
         data,
         error
       } =
@@ -949,6 +949,40 @@ let scanner = null;
             ticketCode
           )
           .maybeSingle();
+
+      // 非常用オフライン当日券は、発行端末の同期前だと tickets にまだ存在しない。
+      // 通常レジで OFF-... を読み取った場合は、サーバー側の予約券を確認して
+      // その場で通常チケットへ復旧してから、既存の交換処理へ合流させる。
+      if (!error && !data && /^OFF-/i.test(ticketCode)) {
+        const { data: recovered, error: recoverError } =
+          await supabaseClient.rpc(
+            "recover_offline_day_ticket_for_register",
+            { p_ticket_code: ticketCode }
+          );
+
+        if (recoverError) {
+          resultBox.className = "invalid";
+          resultBox.innerHTML = `
+            <h2>⚠️ オフライン券の復旧に失敗</h2>
+            <p>${recoverError.message}</p>
+            <button onclick="startScanner()">
+              次のQRを読み取る
+            </button>
+          `;
+          return;
+        }
+
+        if (recovered?.status === "recovered" || recovered?.status === "exists") {
+          const retry = await supabaseClient
+            .from("tickets")
+            .select("*")
+            .eq("ticket_code", ticketCode)
+            .maybeSingle();
+
+          data = retry.data;
+          error = retry.error;
+        }
+      }
 
       if (error) {
 
