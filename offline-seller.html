@@ -62,6 +62,9 @@ label{display:block;font-weight:800;margin-bottom:7px}select,input,button{width:
   <p id="ticketMeta" class="small"></p>
   <a class="instagram-main-link" href="https://www.instagram.com/kumadai.bado_mp?stkn=YWp0c3Q4YXVndmRr" target="_blank" rel="noopener noreferrer">📷 Match Point公式Instagramを見る</a>
   <button class="dark" onclick="shareQr()">名前入り当日券画像を共有（AirDrop等）</button>
+  <button onclick="copyOfficialTicketUrl()">正式券URLをコピー</button>
+  <button onclick="openOfficialTicket()">オンライン正式券を開く</button>
+  <p class="small">オフライン発行直後は簡易券です。発行履歴がオンライン同期されると、同じURLから通常券と同じデザインで表示できます。</p>
   <button onclick="issueOne()">次の当日券を1枚発行</button>
 </section>
 
@@ -95,6 +98,29 @@ let historyCache=new Map();
 let historyBusy=false;
 
 function fmt(v){return v?new Date(v).toLocaleString("ja-JP"):"-";}
+
+const PUBLIC_TICKET_BASE_URL="https://masaya0206.github.io/sigma-ticket/ticket.html?code=";
+function ticketDisplayUrl(code){
+  return PUBLIC_TICKET_BASE_URL+encodeURIComponent(String(code||"").trim());
+}
+async function copyOfficialTicketUrl(){
+  if(!currentIssue?.ticket_code)return;
+  const url=ticketDisplayUrl(currentIssue.ticket_code);
+  try{
+    await navigator.clipboard.writeText(url);
+    message.textContent="正式券URLをコピーしました。未同期の場合は、オンライン同期後に正式券として表示されます。";
+  }catch(e){
+    const ta=document.createElement("textarea");
+    ta.value=url;document.body.appendChild(ta);ta.select();
+    try{document.execCommand("copy");message.textContent="正式券URLをコピーしました。";}
+    catch(_){message.textContent="URLをコピーできませんでした。";}
+    ta.remove();
+  }
+}
+function openOfficialTicket(){
+  if(!currentIssue?.ticket_code)return;
+  window.open(ticketDisplayUrl(currentIssue.ticket_code),"_blank","noopener,noreferrer");
+}
 function renderNet(){
   const p=document.getElementById("netPill");
   p.textContent=navigator.onLine?"オンライン":"オフライン";
@@ -365,7 +391,7 @@ async function issueOne(){
 async function renderTicket(x){
   ticketCard.classList.remove("hidden");
   qrCode.innerHTML="";
-  new QRCode(qrCode,{text:x.ticket_code,width:520,height:520,correctLevel:QRCode.CorrectLevel.M});
+  new QRCode(qrCode,{text:ticketDisplayUrl(x.ticket_code),width:520,height:520,correctLevel:QRCode.CorrectLevel.M});
 
   await new Promise(resolve=>setTimeout(resolve,40));
   const qCanvas=qrCode.querySelector("canvas");
@@ -430,7 +456,13 @@ async function shareQr(){
     const blob=await ticketBlob();
     const file=new File([blob],`sigma-${currentIssue.ticket_code}.png`,{type:"image/png"});
     if(navigator.share && navigator.canShare?.({files:[file]})){
-      await navigator.share({files:[file],title:"シグマ祭 当日券",text:`${currentIssue.buyer_name}さんのシグマ祭 当日券`});
+      const isCarry=currentIssue.issue_kind==="quota_residual";
+      const officialUrl=ticketDisplayUrl(currentIssue.ticket_code);
+      await navigator.share({
+        files:[file],
+        title:isCarry?"シグマ祭 前売り券（当日持ち越し）":"シグマ祭 当日券",
+        text:`${currentIssue.buyer_name}さんのシグマ祭 ${isCarry?"前売り券（当日持ち越し）":"当日券"}\nオンライン同期後の正式券：${officialUrl}`
+      });
       return;
     }
     const url=URL.createObjectURL(blob);
