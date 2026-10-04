@@ -1,6 +1,6 @@
 (function(){
   const DB_NAME='sigma-offline-v1';
-  const DB_VERSION=2;
+  // 固定バージョン番号は使わない。既存DBがより新しい版でも開けるよう動的に処理する。
   const STORE_TICKETS='tickets';
   const STORE_USES='uses';
   const STORE_META='meta';
@@ -10,31 +10,70 @@
   function reqToPromise(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('IndexedDB error'));});}
   function txDone(tx){return new Promise((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('IndexedDB transaction error'));tx.onabort=()=>reject(tx.error||new Error('IndexedDB transaction aborted'));});}
 
+  function applySchema(d){
+    if(!d.objectStoreNames.contains(STORE_TICKETS)) d.createObjectStore(STORE_TICKETS,{keyPath:'ticket_code'});
+
+    let s;
+    if(!d.objectStoreNames.contains(STORE_USES)){
+      s=d.createObjectStore(STORE_USES,{keyPath:'local_id'});
+      s.createIndex('sync_status','sync_status',{unique:false});
+      s.createIndex('ticket_code','ticket_code',{unique:false});
+    }else{
+      s=d.transaction.objectStore(STORE_USES);
+      if(!s.indexNames.contains('sync_status')) s.createIndex('sync_status','sync_status',{unique:false});
+      if(!s.indexNames.contains('ticket_code')) s.createIndex('ticket_code','ticket_code',{unique:false});
+    }
+
+    if(!d.objectStoreNames.contains(STORE_META)) d.createObjectStore(STORE_META,{keyPath:'key'});
+
+    if(!d.objectStoreNames.contains(STORE_DAY_RESERVES)){
+      s=d.createObjectStore(STORE_DAY_RESERVES,{keyPath:'ticket_code'});
+      s.createIndex('seller_user_id','seller_user_id',{unique:false});
+    }else{
+      s=d.transaction.objectStore(STORE_DAY_RESERVES);
+      if(!s.indexNames.contains('seller_user_id')) s.createIndex('seller_user_id','seller_user_id',{unique:false});
+    }
+
+    if(!d.objectStoreNames.contains(STORE_DAY_ISSUES)){
+      s=d.createObjectStore(STORE_DAY_ISSUES,{keyPath:'local_id'});
+      s.createIndex('sync_status','sync_status',{unique:false});
+      s.createIndex('ticket_code','ticket_code',{unique:true});
+      s.createIndex('seller_user_id','seller_user_id',{unique:false});
+    }else{
+      s=d.transaction.objectStore(STORE_DAY_ISSUES);
+      if(!s.indexNames.contains('sync_status')) s.createIndex('sync_status','sync_status',{unique:false});
+      if(!s.indexNames.contains('ticket_code')) s.createIndex('ticket_code','ticket_code',{unique:true});
+      if(!s.indexNames.contains('seller_user_id')) s.createIndex('seller_user_id','seller_user_id',{unique:false});
+    }
+  }
+
+  function schemaNeedsUpgrade(d){
+    const required=[STORE_TICKETS,STORE_USES,STORE_META,STORE_DAY_RESERVES,STORE_DAY_ISSUES];
+    for(const name of required) if(!d.objectStoreNames.contains(name)) return true;
+    return false;
+  }
+
   async function db(){
-    return new Promise((resolve,reject)=>{
-      const req=indexedDB.open(DB_NAME,DB_VERSION);
-      req.onupgradeneeded=()=>{
-        const d=req.result;
-        if(!d.objectStoreNames.contains(STORE_TICKETS)) d.createObjectStore(STORE_TICKETS,{keyPath:'ticket_code'});
-        if(!d.objectStoreNames.contains(STORE_USES)){
-          const s=d.createObjectStore(STORE_USES,{keyPath:'local_id'});
-          s.createIndex('sync_status','sync_status',{unique:false});
-          s.createIndex('ticket_code','ticket_code',{unique:false});
-        }
-        if(!d.objectStoreNames.contains(STORE_META)) d.createObjectStore(STORE_META,{keyPath:'key'});
-        if(!d.objectStoreNames.contains(STORE_DAY_RESERVES)){
-          const s=d.createObjectStore(STORE_DAY_RESERVES,{keyPath:'ticket_code'});
-          s.createIndex('seller_user_id','seller_user_id',{unique:false});
-        }
-        if(!d.objectStoreNames.contains(STORE_DAY_ISSUES)){
-          const s=d.createObjectStore(STORE_DAY_ISSUES,{keyPath:'local_id'});
-          s.createIndex('sync_status','sync_status',{unique:false});
-          s.createIndex('ticket_code','ticket_code',{unique:true});
-          s.createIndex('seller_user_id','seller_user_id',{unique:false});
-        }
-      };
+    // まずバージョン指定なしで「現在端末にある最新版」を開く。
+    // これにより、過去の更新でDB versionが3以上になっていても VersionError にならない。
+    const current=await new Promise((resolve,reject)=>{
+      const req=indexedDB.open(DB_NAME);
+      req.onupgradeneeded=()=>applySchema(req.result);
       req.onsuccess=()=>resolve(req.result);
       req.onerror=()=>reject(req.error||new Error('IndexedDBを開けませんでした'));
+    });
+
+    if(!schemaNeedsUpgrade(current)) return current;
+
+    // ストア不足がある古い端末だけ、現在version+1へ安全にアップグレード。
+    const nextVersion=Math.max(1,Number(current.version||1)+1);
+    current.close();
+    return await new Promise((resolve,reject)=>{
+      const req=indexedDB.open(DB_NAME,nextVersion);
+      req.onupgradeneeded=()=>applySchema(req.result);
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('IndexedDBの更新に失敗しました'));
+      req.onblocked=()=>reject(new Error('別タブで古い画面が開いています。すべて閉じてから再読み込みしてください'));
     });
   }
 
