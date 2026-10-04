@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-pre-event-offline-reset-v38";
+const CACHE_NAME = "sigma-ticket-admin-only-pre-event-reset-v39";
 
 const CORE_ASSETS = [
   "./home.html",
