@@ -283,6 +283,17 @@ async function copyTicketUrl(encodedCode){
   }
 }
 
+
+function displayProductName(v){
+  const raw=String(v??"");
+  return raw
+    .replace(/前売り券（炒飯1個\s*\/\s*胡麻団子2個）/g,"前売り券（炒飯1個 または 胡麻団子2個）")
+    .replace(/炒飯1個\s*\/\s*胡麻団子2個/g,"炒飯1個 または 胡麻団子2個");
+}
+function isChoiceTicketName(v){
+  return /炒飯1個/.test(String(v??"")) && /胡麻団子2個/.test(String(v??""));
+}
+
 async function renderTicket(t){
   const ticketKind=t.sale_type==="same_day" ? "当日券" : "前売り券";
   document.title=`第15回紫熊祭 ${ticketKind}`;
@@ -296,7 +307,8 @@ async function renderTicket(t){
   main.innerHTML=`
     <div class="card ticket">
       <div class="ticket-title">第15回紫熊祭 ${esc(ticketKind)}</div>
-      <div class="product">${esc(t.product_name)}</div>
+      <div class="product">${esc(displayProductName(t.product_name))}</div>
+      ${isChoiceTicketName(t.product_name)?`<div class="product-choice-note">どちらか1つと交換できます</div>`:""}
 
       <div style="text-align:center;margin-bottom:14px">
         ${used

@@ -19,7 +19,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 .control h2,.status h2{margin:0 0 10px}.control label{display:block;margin-top:12px;font-size:13px;font-weight:800;color:#4e4947}.control input{width:100%;padding:13px 14px;margin-top:6px;border:1px solid #ddd2ce;border-radius:13px;background:#fff;font:inherit;font-size:16px}
 button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;background:var(--red);color:#fff;font:inherit;font-weight:900;text-decoration:none;text-align:center;margin-top:12px;cursor:pointer}.secondary{background:var(--soft);color:var(--red)}.ghost{background:#fff;color:var(--red);border:1px solid #e7bcc0}
 .notice{padding:14px 15px;border-radius:16px;background:#fff4df;border:1px solid #f0d8ab;font-size:13px;line-height:1.65;color:#624a1f;font-weight:700}
-.ticket{background:linear-gradient(180deg,#fff,#fffaf8);padding-top:26px}.ticket-title{text-align:center;font-size:14px;color:var(--muted);font-weight:800}.product{text-align:center;font-size:25px;font-weight:950;margin:6px 0 14px;line-height:1.35}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.info{background:#faf7f5;border-radius:14px;padding:12px}.info span{display:block;font-size:11px;color:var(--muted)}.info b{display:block;margin-top:3px;font-size:15px;word-break:break-word}
+.ticket{background:linear-gradient(180deg,#fff,#fffaf8);padding-top:26px}.ticket-title{text-align:center;font-size:14px;color:var(--muted);font-weight:800}.product{text-align:center;font-size:25px;font-weight:950;margin:6px 0 14px;line-height:1.35}.product-choice-note{text-align:center;margin:-4px 0 14px;font-size:14px;font-weight:800;color:var(--muted)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.info{background:#faf7f5;border-radius:14px;padding:12px}.info span{display:block;font-size:11px;color:var(--muted)}.info b{display:block;margin-top:3px;font-size:15px;word-break:break-word}
 .sample-ribbon{position:absolute;top:19px;right:-44px;width:180px;transform:rotate(38deg);padding:7px 0;background:#b5121b;color:#fff;text-align:center;font-size:12px;font-weight:950;letter-spacing:.16em;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .sample-watermark{pointer-events:none;position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) rotate(-18deg);font-size:70px;font-weight:950;letter-spacing:.08em;color:rgba(181,18,27,.07);white-space:nowrap}
 .badge{display:inline-block;padding:7px 11px;border-radius:999px;background:#fff0f0;color:#b5121b;font-size:12px;font-weight:900}.badge-wrap{text-align:center;margin:0 0 12px}
@@ -235,7 +235,8 @@ async function renderSample(seller,buyer,code){
     <div class="card ticket">
       <div class="sample-ribbon">SAMPLE</div><div class="sample-watermark">SAMPLE</div>
       <div class="ticket-title">シグマ祭 前売り券</div>
-      <div class="product">前売り券（炒飯1個 / 胡麻団子2個）</div>
+      <div class="product">前売り券（炒飯1個 または 胡麻団子2個）</div>
+      <div class="product-choice-note">どちらか1つと交換できます</div>
       <div class="badge-wrap"><span class="badge">見本・利用不可</span></div>
       <div class="grid"><div class="info"><span>販売者</span><b>${esc(seller)}</b></div><div class="info"><span>購入者</span><b>${esc(buyer)}</b></div></div>
       <div id="qrcode"></div><div class="code">${esc(code)}</div>
