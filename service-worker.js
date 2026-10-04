@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-offline-history-v35";
+const CACHE_NAME = "sigma-ticket-auto-carryover-v36";
 
 const CORE_ASSETS = [
   "./home.html",

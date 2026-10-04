@@ -1,13 +1,11 @@
 (function(){
   const DB_NAME='sigma-offline-v1';
-  const DB_VERSION=3;
+  const DB_VERSION=2;
   const STORE_TICKETS='tickets';
   const STORE_USES='uses';
   const STORE_META='meta';
   const STORE_DAY_RESERVES='day_reserves';
   const STORE_DAY_ISSUES='day_issues';
-  const STORE_COLLECTION_STAFF='presale_collection_staff';
-  const STORE_COLLECTION_EVENTS='presale_collection_events';
 
   function reqToPromise(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('IndexedDB error'));});}
   function txDone(tx){return new Promise((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('IndexedDB transaction error'));tx.onabort=()=>reject(tx.error||new Error('IndexedDB transaction aborted'));});}
@@ -33,17 +31,6 @@
           s.createIndex('sync_status','sync_status',{unique:false});
           s.createIndex('ticket_code','ticket_code',{unique:true});
           s.createIndex('seller_user_id','seller_user_id',{unique:false});
-        }
-        if(!d.objectStoreNames.contains(STORE_COLLECTION_STAFF)){
-          const s=d.createObjectStore(STORE_COLLECTION_STAFF,{keyPath:'token'});
-          s.createIndex('staff_user_id','staff_user_id',{unique:true});
-          s.createIndex('staff_name','staff_name',{unique:false});
-        }
-        if(!d.objectStoreNames.contains(STORE_COLLECTION_EVENTS)){
-          const s=d.createObjectStore(STORE_COLLECTION_EVENTS,{keyPath:'local_id'});
-          s.createIndex('sync_status','sync_status',{unique:false});
-          s.createIndex('staff_user_id','staff_user_id',{unique:false});
-          s.createIndex('token','token',{unique:false});
         }
       };
       req.onsuccess=()=>resolve(req.result);
@@ -105,6 +92,7 @@
         seller_user_id:row.seller_user_id,
         seller_name:row.seller_name||'',
         unit_price:Number(row.unit_price||0),
+        issue_kind:row.issue_kind==='quota_residual'?'quota_residual':'day',
         server_issued_at:row.issued_at||null,
         local_issued_at:localIssue?.issued_at||null,
         snapshot_at:snapshot?.snapshot_at||new Date().toISOString()
@@ -114,7 +102,7 @@
         status:localUse?'used':'active',
         product_name:'非常用オフライン当日券（炒飯1個 / 胡麻団子2個）',
         presale_price:Number(row.unit_price||0),
-        sales_channel_v2:'offline_day_reserved',
+        sales_channel_v2:row.issue_kind==='quota_residual'?'quota_residual':'offline_day_reserved',
         redemption_item:localUse?.item||null,
         used_at:localUse?.used_at||null,
         snapshot_status:'reserved',
@@ -171,7 +159,7 @@
   async function getDayReservesForSeller(sellerUserId){
     const d=await db();const tx=d.transaction(STORE_DAY_RESERVES,'readonly');const all=await reqToPromise(tx.objectStore(STORE_DAY_RESERVES).getAll());
     const issues=await getAllDayIssues(),used=new Set(issues.map(x=>x.ticket_code));
-    return all.filter(x=>String(x.seller_user_id)===String(sellerUserId)).filter(x=>!x.server_issued_at&&!used.has(x.ticket_code)).sort((a,b)=>String(a.ticket_code).localeCompare(String(b.ticket_code)));
+    return all.filter(x=>String(x.seller_user_id)===String(sellerUserId)).filter(x=>!x.server_issued_at&&!used.has(x.ticket_code)).sort((a,b)=>((a.issue_kind==='quota_residual'?0:1)-(b.issue_kind==='quota_residual'?0:1))||String(a.ticket_code).localeCompare(String(b.ticket_code)));
   }
 
   async function issueOfflineDayTicket(sellerUserId,sellerName,buyerName){
@@ -180,10 +168,12 @@
     if(!buyer)throw new Error('購入者名を入力してください');
     const reserves=await getDayReservesForSeller(sellerUserId);
     if(!reserves.length)throw new Error('この発行者のオフライン当日券残数がありません');
+    const carry=reserves.filter(x=>x.issue_kind==='quota_residual');
+    const pool=carry.length?carry:reserves;
     let idx=0;
-    if(globalThis.crypto?.getRandomValues){const a=new Uint32Array(1);crypto.getRandomValues(a);idx=a[0]%reserves.length;}else idx=Math.floor(Math.random()*reserves.length);
-    const r=reserves[idx],localId=randomId(),issuedAt=new Date().toISOString();
-    const issue={local_id:localId,ticket_code:r.ticket_code,seller_user_id:sellerUserId,seller_name:sellerName||r.seller_name||'',buyer_name:buyer,unit_price:Number(r.unit_price||0),issued_at:issuedAt,device_id:getDeviceId(),sync_status:'pending',sync_error:null,synced_at:null,server_result:null};
+    if(globalThis.crypto?.getRandomValues){const a=new Uint32Array(1);crypto.getRandomValues(a);idx=a[0]%pool.length;}else idx=Math.floor(Math.random()*pool.length);
+    const r=pool[idx],localId=randomId(),issuedAt=new Date().toISOString();
+    const issue={local_id:localId,ticket_code:r.ticket_code,seller_user_id:sellerUserId,seller_name:sellerName||r.seller_name||'',buyer_name:buyer,unit_price:Number(r.unit_price||0),issue_kind:r.issue_kind==='quota_residual'?'quota_residual':'day',issued_at:issuedAt,device_id:getDeviceId(),sync_status:'pending',sync_error:null,synced_at:null,server_result:null};
     const d=await db();const tx=d.transaction([STORE_DAY_ISSUES,STORE_DAY_RESERVES],'readwrite');
     tx.objectStore(STORE_DAY_ISSUES).put(issue);
     const reserve=await reqToPromise(tx.objectStore(STORE_DAY_RESERVES).get(r.ticket_code));
@@ -196,189 +186,6 @@
 
   async function setManagerOrders(orders,source='manager'){await setMeta('manager_order_snapshot',{saved_at:new Date().toISOString(),source,orders:Array.isArray(orders)?orders:[]});}
   async function getManagerOrders(){return await getMeta('manager_order_snapshot',{saved_at:null,source:null,orders:[]});}
-
-
-  async function saveCollectionBootstrap(payload){
-    if(!payload||!payload.authorized)throw new Error('集金担当データがありません');
-    const staff=Array.isArray(payload.staff)?payload.staff:[];
-    const events=await getAllCollectionEvents();
-    const localMap=new Map();
-    for(const e of events){
-      if(e?.staff_user_id && ['pending','conflict'].includes(e.sync_status)){
-        localMap.set(String(e.staff_user_id),e);
-      }
-    }
-
-    const d=await db();
-    const tx=d.transaction([STORE_COLLECTION_STAFF,STORE_META],'readwrite');
-    const ss=tx.objectStore(STORE_COLLECTION_STAFF),ms=tx.objectStore(STORE_META);
-    ss.clear();
-
-    for(const row of staff){
-      const local=localMap.get(String(row.user_id));
-      ss.put({
-        token:String(row.token||''),
-        staff_user_id:String(row.user_id||''),
-        staff_name:row.staff_name||'',
-        confirmed_quota:Number(row.confirmed_quota||0),
-        amount:Number(row.amount||0),
-        collected_at:local?.collected_at||row.collected_at||null,
-        collector_name:local?.collector_name||row.collector_name||null,
-        local_pending:!!local && local.sync_status==='pending',
-        local_conflict:!!local && local.sync_status==='conflict'
-      });
-    }
-
-    const auth={
-      collection_date:payload.collection_date,
-      collector_user_id:payload.collector_user_id,
-      collector_name:payload.collector_name||'',
-      valid_until:payload.valid_until,
-      saved_at:new Date().toISOString()
-    };
-    ms.put({key:'presale_collection_auth',value:auth});
-    ms.put({key:'presale_collection_saved_at',value:auth.saved_at});
-    ms.put({key:'device_id',value:getDeviceId()});
-    await txDone(tx);
-    return {staff_count:staff.length,...auth};
-  }
-
-  async function getCollectionAuth(){
-    return await getMeta('presale_collection_auth',null);
-  }
-
-  async function clearCollectionBootstrap(){
-    const d=await db();
-    const tx=d.transaction([STORE_COLLECTION_STAFF,STORE_META],'readwrite');
-    tx.objectStore(STORE_COLLECTION_STAFF).clear();
-    const ms=tx.objectStore(STORE_META);
-    ms.delete('presale_collection_auth');
-    ms.delete('presale_collection_saved_at');
-    await txDone(tx);
-    return true;
-  }
-
-  async function getAllCollectionStaff(){
-    const d=await db();
-    const tx=d.transaction(STORE_COLLECTION_STAFF,'readonly');
-    return await reqToPromise(tx.objectStore(STORE_COLLECTION_STAFF).getAll());
-  }
-
-  async function getCollectionStaffByToken(value){
-    const token=String(value||'').trim().replace(/^SIGMA-COLLECT:/i,'');
-    if(!token)return null;
-    const d=await db();
-    const tx=d.transaction(STORE_COLLECTION_STAFF,'readonly');
-    return await reqToPromise(tx.objectStore(STORE_COLLECTION_STAFF).get(token));
-  }
-
-  async function findCollectionStaff(query){
-    const q=String(query||'').trim().toLowerCase();
-    const rows=await getAllCollectionStaff();
-    if(!q)return rows.sort((a,b)=>String(a.staff_name).localeCompare(String(b.staff_name),'ja'));
-    return rows.filter(r=>
-      String(r.staff_name||'').toLowerCase().includes(q)
-      || String(r.staff_user_id||'').toLowerCase().includes(q)
-    ).sort((a,b)=>String(a.staff_name).localeCompare(String(b.staff_name),'ja'));
-  }
-
-  async function getAllCollectionEvents(){
-    const d=await db();
-    const tx=d.transaction(STORE_COLLECTION_EVENTS,'readonly');
-    return await reqToPromise(tx.objectStore(STORE_COLLECTION_EVENTS).getAll());
-  }
-
-  async function markCollectionPaid(staffRow,collector){
-    if(!staffRow?.staff_user_id||!staffRow?.token)throw new Error('スタッフ情報が不正です');
-    if(staffRow.collected_at && !staffRow.local_pending)throw new Error('すでに回収済みです');
-
-    const d=await db();
-    const tx=d.transaction([STORE_COLLECTION_STAFF,STORE_COLLECTION_EVENTS],'readwrite');
-    const ss=tx.objectStore(STORE_COLLECTION_STAFF),es=tx.objectStore(STORE_COLLECTION_EVENTS);
-    const current=await reqToPromise(ss.get(String(staffRow.token)));
-    if(!current)throw new Error('この端末に保存されていないスタッフです');
-    if(current.collected_at && !current.local_pending)throw new Error('すでに回収済みです');
-
-    const existing=(await reqToPromise(es.getAll())).find(e=>
-      String(e.staff_user_id)===String(current.staff_user_id)
-      && ['pending','synced'].includes(e.sync_status)
-    );
-    if(existing)return existing;
-
-    const localId=randomId();
-    const collectedAt=new Date().toISOString();
-    const event={
-      local_id:localId,
-      client_event_id:localId,
-      staff_user_id:current.staff_user_id,
-      token:current.token,
-      staff_name:current.staff_name,
-      confirmed_quota:Number(current.confirmed_quota||0),
-      amount:Number(current.amount||0),
-      collector_user_id:collector?.collector_user_id||null,
-      collector_name:collector?.collector_name||'',
-      collected_at:collectedAt,
-      device_id:getDeviceId(),
-      was_offline:!navigator.onLine,
-      sync_status:'pending',
-      sync_error:null,
-      synced_at:null,
-      server_result:null
-    };
-    current.collected_at=collectedAt;
-    current.collector_name=event.collector_name;
-    current.local_pending=true;
-    current.local_conflict=false;
-    ss.put(current);
-    es.put(event);
-    await txDone(tx);
-    return event;
-  }
-
-  async function listCollectionEventsByStatus(statuses){
-    const wanted=new Set(Array.isArray(statuses)?statuses:[statuses]);
-    const rows=await getAllCollectionEvents();
-    return rows.filter(x=>wanted.has(x.sync_status)).sort((a,b)=>String(a.collected_at).localeCompare(String(b.collected_at)));
-  }
-
-  async function updateCollectionEvent(localId,patch){
-    const d=await db();
-    const tx=d.transaction([STORE_COLLECTION_EVENTS,STORE_COLLECTION_STAFF],'readwrite');
-    const es=tx.objectStore(STORE_COLLECTION_EVENTS),ss=tx.objectStore(STORE_COLLECTION_STAFF);
-    const row=await reqToPromise(es.get(localId));
-    if(!row)return null;
-    Object.assign(row,patch||{});
-    es.put(row);
-    const staff=await reqToPromise(ss.get(String(row.token)));
-    if(staff){
-      if(row.sync_status==='conflict'){
-        staff.local_pending=false;
-        staff.local_conflict=true;
-      }else if(row.sync_status==='synced'){
-        staff.local_pending=false;
-        staff.local_conflict=false;
-        if(row.server_result?.collected_at)staff.collected_at=row.server_result.collected_at;
-        if(row.server_result?.collector_name)staff.collector_name=row.server_result.collector_name;
-      }
-      ss.put(staff);
-    }
-    await txDone(tx);
-    return row;
-  }
-
-  async function collectionStats(){
-    const [staff,events,auth]=await Promise.all([
-      getAllCollectionStaff(),getAllCollectionEvents(),getCollectionAuth()
-    ]);
-    return {
-      auth,
-      staffCount:staff.length,
-      collected:staff.filter(x=>!!x.collected_at).length,
-      pending:events.filter(x=>x.sync_status==='pending').length,
-      conflicts:events.filter(x=>x.sync_status==='conflict').length,
-      synced:events.filter(x=>x.sync_status==='synced').length
-    };
-  }
 
   async function stats(){
     const [ticketCount,savedAt,snapshotAt,uses,issues,reserveCount]=await Promise.all([
@@ -398,5 +205,5 @@
     };
   }
 
-  window.SigmaOfflineStore={normalizeTicketCode,getDeviceId,saveSnapshot,getTicket,markUsed,stats,listUsesByStatus,updateUse,getMeta,setMeta,getStaffList,getDayReservesForSeller,issueOfflineDayTicket,listDayIssuesByStatus,updateDayIssue,setManagerOrders,getManagerOrders,saveCollectionBootstrap,getCollectionAuth,clearCollectionBootstrap,getAllCollectionStaff,getCollectionStaffByToken,findCollectionStaff,markCollectionPaid,listCollectionEventsByStatus,updateCollectionEvent,collectionStats};
+  window.SigmaOfflineStore={normalizeTicketCode,getDeviceId,saveSnapshot,getTicket,markUsed,stats,listUsesByStatus,updateUse,getMeta,setMeta,getStaffList,getDayReservesForSeller,issueOfflineDayTicket,listDayIssuesByStatus,updateDayIssue,setManagerOrders,getManagerOrders};
 })();

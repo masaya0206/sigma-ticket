@@ -229,6 +229,7 @@ function renderHistory(rows){
     const item=row.redemption_item==="fried_rice"?"炒飯1個":row.redemption_item==="sesame_pair"?"胡麻団子2個":"";
     return `<div class="history-item">
       <div class="history-name">${esc(row.buyer_name||"オフライン当日券")}</div>
+      <div class="history-meta"><strong>${row.issue_kind==="quota_residual"?"前売り券（当日持ち越し）":"オフライン当日券"}</strong></div>
       <div class="history-meta">${esc(fmt(row.issued_at))}<br>${esc(row.ticket_code)}${item?`<br>交換：${esc(item)}`:""}</div>
       <div class="history-badges">${syncBadge}${useBadge}</div>
       <div class="history-actions"><button type="button" onclick="redisplayHistoryTicket('${encodeURIComponent(row.ticket_code)}')">券を再表示</button></div>
@@ -276,6 +277,7 @@ async function refreshHistory(){
               ticket_status:x.ticket_status||prev.ticket_status||null,
               used_at:x.used_at||prev.used_at||null,
               redemption_item:x.redemption_item||prev.redemption_item||null,
+              issue_kind:x.issue_kind||prev.issue_kind||"day",
               source:"server"
             });
           }
@@ -302,7 +304,8 @@ async function redisplayHistoryTicket(encodedCode){
     buyer_name:row.buyer_name||"オフライン当日券",
     seller_name:row.seller_name||"",
     issued_at:row.issued_at,
-    unit_price:Number(row.unit_price||0)
+    unit_price:Number(row.unit_price||0),
+    issue_kind:row.issue_kind==="quota_residual"?"quota_residual":"day"
   };
   await renderTicket(currentIssue);
   const status=row.ticket_status==="used"?"使用済み":row.sync_status==="pending"?"未同期":"同期済み";
@@ -317,6 +320,12 @@ async function refreshCounts(){
   availableCount.textContent=reserves.length;
   pendingCount.textContent=pending.length;
   issueBtn.disabled=!uid || reserves.length===0;
+  if(uid && reserves.length){
+    const next=reserves[0];
+    issueBtn.textContent=next.issue_kind==="quota_residual" ? "前売り券（当日持ち越し）を1枚発行" : "オフライン当日券を1枚発行";
+  }else{
+    issueBtn.textContent="当日券を1枚発行";
+  }
   syncPill.textContent=`未同期 ${pending.length}件`;
   syncPill.className="pill "+(pending.length?"warn":"ok");
 }
@@ -328,7 +337,9 @@ async function issueOne(){
   const buyer=buyerName.value.trim();
   if(!uid)return;
   if(!buyer){message.textContent="購入者名を入力してください。";buyerName.focus();return;}
-  if(!confirm(`${name}として「${buyer}」さんのオフライン当日券を1枚発行しますか？`))return;
+  const reserves=await SigmaOfflineStore.getDayReservesForSeller(uid);
+  const nextKind=reserves[0]?.issue_kind==="quota_residual"?"前売り券（当日持ち越し）":"オフライン当日券";
+  if(!confirm(`${name}として「${buyer}」さんの${nextKind}を1枚発行しますか？`))return;
   try{
     const x=await SigmaOfflineStore.issueOfflineDayTicket(uid,name,buyer);
     currentIssue=x;
@@ -365,7 +376,8 @@ async function renderTicket(x){
   ctx.fillStyle="#ffffff";
   ctx.textAlign="center";
   ctx.font='900 58px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
-  ctx.fillText("シグマ祭 当日券",400,96);
+  const isCarry=x.issue_kind==="quota_residual";
+  ctx.fillText(isCarry?"シグマ祭 前売り券":"シグマ祭 当日券",400,96);
 
   ctx.fillStyle="#1c1c1e";
   ctx.font='700 30px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
@@ -392,10 +404,10 @@ async function renderTicket(x){
 
   ctx.fillStyle="#b5121b";
   ctx.font='800 24px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif';
-  ctx.fillText("炒飯1個 または 胡麻団子2個 / 1回限り",400,1055);
+  ctx.fillText(isCarry?"当日持ち越し・オフライン発行":"炒飯1個 または 胡麻団子2個 / 1回限り",400,1055);
 
   ticketCode.textContent=x.ticket_code;
-  ticketMeta.textContent=`購入者：${x.buyer_name} / 発行者：${x.seller_name} / 発行時刻：${fmt(x.issued_at)} / ${Number(x.unit_price||0).toLocaleString()}円`;
+  ticketMeta.textContent=`${isCarry?"前売り券（当日持ち越し）":"オフライン当日券"} / 購入者：${x.buyer_name} / 発行者：${x.seller_name} / 発行時刻：${fmt(x.issued_at)} / ${Number(x.unit_price||0).toLocaleString()}円`;
   ticketCard.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
@@ -449,11 +461,11 @@ async function syncIssues(manual=false){
     let ok=0,ng=0;
     for(const x of rows){
       try{
-        const {data,error}=await sb.rpc("sync_offline_day_issue_v2",{
-          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_buyer_name:x.buyer_name||null,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
+        const {data,error}=await sb.rpc("sync_offline_day_issue_v3",{
+          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_buyer_name:x.buyer_name||null,p_issue_kind:x.issue_kind||"day",p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
         });
         if(error)throw error;
-        await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:"synced",synced_at:new Date().toISOString(),server_result:data,sync_error:null});
+        await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:"synced",synced_at:new Date().toISOString(),server_result:data,issue_kind:data?.issue_kind||x.issue_kind||"day",sync_error:null});
         ok++;
       }catch(e){
         await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_error:e?.message||String(e)});

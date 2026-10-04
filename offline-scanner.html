@@ -105,7 +105,7 @@
 
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function fmtDate(v){if(!v)return '未保存';try{return new Date(v).toLocaleString('ja-JP');}catch(_){return String(v)}}
-  function channelLabel(v){return v==='presale'?'前売り券':v==='quota_residual'?'ノルマ残券':v==='day'?'当日券':'チケット';}
+  function channelLabel(v){return v==='presale'?'前売り券':v==='quota_residual'?'前売り券（当日持ち越し）':v==='day'?'当日券':'チケット';}
   function itemLabel(v){return v==='fried_rice'?'炒飯1個':v==='sesame_pair'?'胡麻団子2個':v||'';}
 
   async function renderStats(){
@@ -144,11 +144,11 @@
     if(!user)return;
     for(const x of rows){
       try{
-        const {data,error}=await supabaseClient.rpc('sync_offline_day_issue_v2',{
-          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_buyer_name:x.buyer_name||null,p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
+        const {data,error}=await supabaseClient.rpc('sync_offline_day_issue_v3',{
+          p_ticket_code:x.ticket_code,p_seller_user_id:x.seller_user_id,p_buyer_name:x.buyer_name||null,p_issue_kind:x.issue_kind||"day",p_issued_at:x.issued_at,p_device_id:x.device_id,p_local_id:x.local_id
         });
         if(error)throw error;
-        await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,sync_error:null});
+        await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,issue_kind:data?.issue_kind||x.issue_kind||'day',sync_error:null});
       }catch(e){await SigmaOfflineStore.updateDayIssue(x.local_id,{sync_error:e?.message||String(e)});}
     }
   }
@@ -361,7 +361,7 @@
 
           const status=data?.status||'error';
           if(status==='synced'){
-            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,sync_error:null});
+            await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:data,issue_kind:data?.issue_kind||x.issue_kind||'day',sync_error:null});
             ok++;
           }else if(status==='awaiting_issue'){
             await SigmaOfflineStore.updateUse(u.local_id,{sync_status:'pending',server_result:data,sync_error:'売り子側の発行履歴同期待ち'});

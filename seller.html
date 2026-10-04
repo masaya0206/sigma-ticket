@@ -561,9 +561,10 @@ input[type="time"]::-webkit-datetime-edit{
       >
 
       <div id="saleChoice" style="display:none">
-        <label for="ticketKind">販売する券</label>
-        <select id="ticketKind" onchange="refreshIssueButton()"></select>
-        <p id="ticketKindNote" class="small"></p>
+        <div class="subcard">
+          <strong id="autoTicketKindLabel">販売区分を確認中...</strong>
+          <p id="ticketKindNote" class="small"></p>
+        </div>
       </div>
       <button id="issueButton" onclick="issueTicket()">チケットを1枚発行</button>
 
@@ -964,23 +965,38 @@ input[type="time"]::-webkit-datetime-edit{
       const { data, error } = await supabaseClient.rpc("my_presale_status");
       if (error) { document.getElementById("ticketResult").textContent = "販売設定の取得エラー：" + error.message; return; }
       currentSalesStatus = data;
-      const sel = document.getElementById("ticketKind");
-      sel.innerHTML = "";
-      if (data.presale_enabled) sel.insertAdjacentHTML("beforeend", `<option value="presale">前売り券（${data.presale_price}円）</option>`);
-      if (data.day_enabled) sel.insertAdjacentHTML("beforeend", `<option value="day">当日券（${data.day_price}円）</option>`);
-      if (data.day_enabled && Number(data.residual_remaining||0)>0) sel.insertAdjacentHTML("beforeend", `<option value="quota_residual">ノルマ残券（残り${data.residual_remaining}枚）</option>`);
       document.getElementById("saleChoice").style.display = "block";
-      document.getElementById("issueButton").disabled = sel.options.length===0;
       refreshIssueButton();
     }
 
+    function autoTicketKind(){
+      const d=currentSalesStatus||{};
+      if(d.day_enabled){
+        return Number(d.residual_remaining||0)>0 ? "quota_residual" : "day";
+      }
+      return d.presale_enabled ? "presale" : "";
+    }
+
     function refreshIssueButton(){
-      const sel=document.getElementById("ticketKind"); const k=sel.value;
-      const b=document.getElementById("issueButton"),n=document.getElementById("ticketKindNote");
-      if(k==="presale"){b.textContent=`前売り券を1枚発行（${currentSalesStatus?.presale_price??450}円）`;n.textContent="前売り実績・前売りptの対象です。";}
-      else if(k==="day"){b.textContent=`当日券を1枚発行（${currentSalesStatus?.day_price??450}円）`;n.textContent="当日の売り子実績・当日ptの対象です。";}
-      else if(k==="quota_residual"){b.textContent="ノルマ残券を1枚販売";n.textContent="残券を1枚減らします。当日売り子ptには加算されません。";}
-      else {b.textContent="現在販売できる券はありません";n.textContent="";}
+      const k=autoTicketKind();
+      const b=document.getElementById("issueButton"),n=document.getElementById("ticketKindNote"),l=document.getElementById("autoTicketKindLabel");
+      b.disabled=!k;
+      if(k==="presale"){
+        l.textContent=`前売り券（${currentSalesStatus?.presale_price??450}円）`;
+        b.textContent=`前売り券を1枚発行（${currentSalesStatus?.presale_price??450}円）`;
+        n.textContent="前売り実績・前売りptの対象です。";
+      }else if(k==="quota_residual"){
+        l.textContent=`前売り券（当日持ち越し） 残り${Number(currentSalesStatus?.residual_remaining||0)}枚`;
+        b.textContent="前売り券（当日持ち越し）を1枚発行";
+        n.textContent="当日は残っているノルマ分を自動で先に消化します。当日売り子ptには加算されません。";
+      }else if(k==="day"){
+        l.textContent=`オンライン当日券（${currentSalesStatus?.day_price??450}円）`;
+        b.textContent=`オンライン当日券を1枚発行（${currentSalesStatus?.day_price??450}円）`;
+        n.textContent="ノルマ残数は0枚です。当日の売り子実績・当日ptの対象です。";
+      }else{
+        l.textContent="現在販売できる券はありません";
+        b.textContent="現在販売できる券はありません";n.textContent="";
+      }
     }
 
 
@@ -1051,9 +1067,9 @@ input[type="time"]::-webkit-datetime-edit{
           );
         }
 
-        const kind = document.getElementById("ticketKind").value;
+        const kind = autoTicketKind();
         if (!kind) throw new Error("現在販売できる券がありません。");
-        const { data, error } = await supabaseClient.rpc("issue_managed_ticket", { p_buyer: buyerName, p_kind: kind });
+        const { data, error } = await supabaseClient.rpc("issue_managed_ticket_auto_v36", { p_buyer: buyerName });
         if (error) throw error;
 
         const logError = null;
@@ -1154,7 +1170,6 @@ input[type="time"]::-webkit-datetime-edit{
           "buyerName"
         ).value = "";
         await loadSalesStatus();
-
         await loadMySummary();
 
       } catch (error) {
@@ -1277,7 +1292,7 @@ input[type="time"]::-webkit-datetime-edit{
         supabaseClient
           .from("tickets")
           .select(
-            "ticket_code,status,created_at,buyer_name,product_name,claim_token,seller_team_id,seller_share_ratio"
+            "ticket_code,status,created_at,buyer_name,product_name,claim_token,seller_team_id,seller_share_ratio,sales_channel_v2,issue_mode"
           )
           .eq("seller_id", user.id);
 
@@ -1342,125 +1357,47 @@ input[type="time"]::-webkit-datetime-edit{
         }
       }
 
+      const presaleRows = filteredData.filter(t => ["presale","quota_residual"].includes(t.sales_channel_v2));
+      const onlineDayRows = filteredData.filter(t => t.sales_channel_v2 === "day" && (t.issue_mode||"online") !== "offline");
+      const offlineDayRows = filteredData.filter(t => t.sales_channel_v2 === "day" && t.issue_mode === "offline");
+
+      const cardHtml = (ticket) => {
+        const claimUrl = ticket.claim_token
+          ? "https://masaya0206.github.io/sigma-ticket/claim.html?token=" + encodeURIComponent(ticket.claim_token)
+          : "";
+        const carry = ticket.sales_channel_v2 === "quota_residual";
+        const offlineCarry = carry && ticket.issue_mode === "offline";
+        return `<div class="subcard">
+          <strong>${ticket.product_name}</strong><br>
+          ${carry ? `<span class="small">${offlineCarry ? "当日持ち越し・オフライン発行" : "当日持ち越し"}</span><br>` : ""}
+          購入者：${ticket.buyer_name ?? "未登録"}<br>
+          状態：${statusText(ticket.status)}<br>
+          チケットID：${ticket.ticket_code}<br>
+          発行日時：${dateText(ticket.created_at)}<br>
+          ${claimUrl ? `<button onclick="reshowClaim('${ticket.claim_token}',decodeURIComponent('${encodeURIComponent(ticket.buyer_name || '')}'))">受け取りQRを再表示</button><button onclick="copyClaimUrl('${claimUrl}')">URLをコピー</button>` : ""}
+          ${ticket.status === "pending" ? `<button onclick="cancelTicket('${ticket.ticket_code}')">このチケットをキャンセル</button>` : ""}
+        </div>`;
+      };
+
+      const sectionHtml = (title, rows, emptyText) => {
+        const shown=rows.slice(0,50);
+        return `<h3>${title} <span class="small">${rows.length}枚</span></h3>` +
+          (shown.length ? shown.map(cardHtml).join("") : `<p class="small">${emptyText}</p>`) +
+          (rows.length>50 ? `<p class="small">最新50件を表示しています。</p>` : "");
+      };
+
       let html = `
         <div class="summary-grid">
-          <div class="summary-box">
-            発行<br>
-            <strong>${total}枚</strong>
-          </div>
-
-          <div class="summary-box">
-            🟡 受け取り待ち<br>
-            <strong>${pending}枚</strong>
-          </div>
-
-          <div class="summary-box">
-            🟢 有効<br>
-            <strong>${active}枚</strong>
-          </div>
-
-          <div class="summary-box">
-            🔴 使用済み<br>
-            <strong>${used}枚</strong>
-          </div>
+          <div class="summary-box">前売り券<br><strong>${presaleRows.length}枚</strong></div>
+          <div class="summary-box">オンライン当日券<br><strong>${onlineDayRows.length}枚</strong></div>
+          <div class="summary-box">オフライン当日券<br><strong>${offlineDayRows.length}枚</strong></div>
+          <div class="summary-box">合計<br><strong>${filteredData.length}枚</strong></div>
         </div>
-
-        <p>
-          ⛔ 無効：${invalid}枚
-        </p>
-
-        <h3>発行履歴</h3>
-        <p class="small">${
-          filteredData.length > 50
-            ? `該当 ${filteredData.length}件中、最新50件を表示`
-            : `該当 ${filteredData.length}件`
-        }</p>
+        <p class="small">前売り券には「当日持ち越し」のノルマ消化分を含みます。</p>
+        ${sectionHtml("前売り券",presaleRows,"前売り券の履歴はありません。")}
+        ${sectionHtml("オンライン当日券",onlineDayRows,"オンライン当日券の履歴はありません。")}
+        ${sectionHtml("オフライン当日券",offlineDayRows,"オフライン当日券の履歴はありません。")}
       `;
-
-      if (
-        visibleData.length === 0
-      ) {
-
-        html +=
-          "<p>まだ発行履歴はありません。</p>";
-
-      } else {
-
-        for (const ticket of visibleData) {
-
-          const claimUrl = ticket.claim_token
-            ? "https://masaya0206.github.io/sigma-ticket/claim.html?token=" + encodeURIComponent(ticket.claim_token)
-            : "";
-
-          html += `
-            <div class="subcard">
-
-              <strong>
-                ${ticket.product_name}
-              </strong>
-
-              <br>
-
-              購入者：
-              ${ticket.buyer_name ?? "未登録"}
-
-              <br>
-
-              状態：
-              ${statusText(
-                ticket.status
-              )}
-
-              <br>
-
-              チケットID：
-              ${ticket.ticket_code}
-
-              <br>
-
-              発行日時：
-              ${dateText(
-                ticket.created_at
-              )}
-
-              <br>
-
-              ${
-                claimUrl
-                  ? `
-                    <button
-                      onclick="reshowClaim('${ticket.claim_token}',decodeURIComponent('${encodeURIComponent(ticket.buyer_name || '')}'))"
-                    >
-                      受け取りQRを再表示
-                    </button>
-
-                    <button onclick="copyClaimUrl('${claimUrl}')">
-                      URLをコピー
-                    </button>
-                  `
-                  : ""
-              }
-
-              ${
-                ticket.status ===
-                "pending"
-                  ? `
-                    <button
-                      onclick="
-                        cancelTicket(
-                          '${ticket.ticket_code}'
-                        )
-                      "
-                    >
-                      このチケットをキャンセル
-                    </button>
-                  `
-                  : ""
-              }
-            </div>
-          `;
-        }
-      }
 
       area.className = "";
       area.innerHTML = html;
