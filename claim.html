@@ -79,6 +79,10 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .small{font-size:12px;color:var(--muted);line-height:1.65}
 .used-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#fff0f0;color:#b5121b;font-size:12px;font-weight:900}
 .active-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#e9f8eb;color:#147a2c;font-size:12px;font-weight:900}
+
+.instagram-main-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:14px 16px;border-radius:14px;text-decoration:none!important;font-weight:800;background:#fff0f5;color:#b5121b!important;border:1px solid #f2c9d5;box-sizing:border-box}
+.instagram-main-link:active{transform:scale(.985)}
+
 </style>
 
 <style id="responsiveOverflowFixV1">
@@ -310,6 +314,8 @@ async function renderTicket(t){
       <button class="secondary" onclick="copyTicketUrl('${encodeURIComponent(t.ticket_code)}')">
         券URLをコピー
       </button>
+      <a class="instagram-main-link" href="https://www.instagram.com/kumadai.bado_mp?stkn=YWp0c3Q4YXVndmRr" target="_blank" rel="noopener noreferrer">📷 Match Point公式Instagramを見る</a>
+
       <p class="note">
         利用期間：11/1〜11/3（シグマ祭期間中）<br><br>当日はこのQRコードを店舗スタッフに提示してください。<br>
         スクリーンショットを保存しておくと安心です。

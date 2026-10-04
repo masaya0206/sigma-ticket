@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-auto-carryover-v36";
+const CACHE_NAME = "sigma-ticket-instagram-link-v37";
 
 const CORE_ASSETS = [
   "./home.html",

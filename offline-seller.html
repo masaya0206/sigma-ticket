@@ -20,6 +20,10 @@ label{display:block;font-weight:800;margin-bottom:7px}select,input,button{width:
 .big{font-size:34px;font-weight:900}.qr{display:flex;justify-content:center;padding:14px;background:#fff;border-radius:16px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;word-break:break-all;text-align:center}
 .notice{background:#fff8e8;border-color:#efd39a}.success{background:#ecfdf3;border-color:#b7e7c5}.hidden{display:none}.ticket-preview{display:block;width:100%;height:auto;border-radius:16px;background:#fff;border:1px solid #e5e7eb}
 .history-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.history-head h2{margin:0}.history-head button{width:auto;margin:0;padding:9px 12px}.history-list{display:grid;gap:10px;margin-top:12px}.history-item{border:1px solid var(--line);border-radius:16px;padding:13px;background:#fff}.history-name{font-size:17px;font-weight:900}.history-meta{margin-top:5px;font-size:12px;color:var(--muted);line-height:1.6}.history-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.history-badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:900;background:#f1f1f1}.history-badge.pending{background:#fff7df;color:#9a6700}.history-badge.synced{background:#ecfdf3;color:#15803d}.history-badge.used{background:#fff0f0;color:#b5121b}.history-badge.active{background:#eef5ff;color:#1d4f91}.history-actions{display:flex;gap:8px;margin-top:10px}.history-actions button{margin:0;flex:1;padding:10px}.history-empty{padding:18px 8px;text-align:center;color:var(--muted);font-size:13px}
+
+.instagram-main-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:14px 16px;border-radius:14px;text-decoration:none!important;font-weight:800;background:#fff0f5;color:#b5121b!important;border:1px solid #f2c9d5;box-sizing:border-box}
+.instagram-main-link:active{transform:scale(.985)}
+
 </style>
 </head>
 <body>
@@ -56,6 +60,7 @@ label{display:block;font-weight:800;margin-bottom:7px}select,input,button{width:
   <canvas id="ticketCanvas" class="ticket-preview" width="800" height="1100"></canvas>
   <p id="ticketCode" class="code"></p>
   <p id="ticketMeta" class="small"></p>
+  <a class="instagram-main-link" href="https://www.instagram.com/kumadai.bado_mp?stkn=YWp0c3Q4YXVndmRr" target="_blank" rel="noopener noreferrer">📷 Match Point公式Instagramを見る</a>
   <button class="dark" onclick="shareQr()">名前入り当日券画像を共有（AirDrop等）</button>
   <button onclick="issueOne()">次の当日券を1枚発行</button>
 </section>
