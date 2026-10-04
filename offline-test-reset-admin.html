@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>本番前オフラインテスト初期化 | シグマ祭</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./offline-store.js"></script>
+<style>
+:root{--red:#b5121b;--dark:#8f0e15;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--green:#15803d;--amber:#9a6700}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:26px 18px 22px;background:linear-gradient(145deg,var(--red),var(--dark));color:#fff;border-radius:0 0 26px 26px}header h1{margin:0;font-size:25px}header p{margin:6px 0 0;color:#ffdede;font-size:13px}
+main{max-width:620px;margin:auto;padding:16px 16px 40px}.card{background:#fff;border:1px solid var(--line);border-radius:19px;padding:16px;margin:12px 0}.notice{background:#fff8e8;border-color:#efd39a}.danger{background:#fff0f0;border-color:#f2c5c5}.okbox{background:#ecfdf3;border-color:#b7e7c5}
+button{width:100%;padding:13px;border:0;border-radius:13px;font-size:16px;font-weight:900;background:#fff1f2;color:var(--red);margin-top:10px}.danger-btn{background:var(--red);color:#fff}.dark{background:#2c2c2e;color:#fff}.small{font-size:12px;color:var(--muted);line-height:1.6}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{padding:12px;border-radius:14px;background:#f7f7f7}.metric b{display:block;font-size:25px;margin-top:3px}.status{display:flex;gap:7px;flex-wrap:wrap}.pill{display:inline-block;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:900;background:#eee}.pill.ok{background:#ecfdf3;color:var(--green)}.pill.warn{background:#fff7df;color:var(--amber)}.pill.bad{background:#fff0f0;color:var(--red)}
+.checkrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}.checkrow:last-child{border-bottom:0}.checkrow strong{font-size:14px}.checkvalue{font-weight:900}.back{background:#fff;color:var(--red);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header><h1>本番前オフラインテスト初期化</h1><p>テスト発行券・関連履歴・ポイントを本番前に整理</p></header>
+<main>
+<section class="card notice">
+  <strong>削除対象は本番開始前のオフライン発行券だけです</strong>
+  <p class="small">通常の前売り券、オンライン当日券、本番開始後のオフライン券は削除しません。発行済みの古いOFFコードは無効化し、新しい本番用予約コードへ補充します。</p>
+</section>
+
+<section class="card">
+  <h2 style="margin-top:0">本番準備チェック</h2>
+  <div class="status"><span id="serverPill" class="pill">サーバー確認中</span><span id="devicePill" class="pill">この端末を確認中</span></div>
+  <div id="eventInfo" class="small" style="margin-top:10px">本番開始日時を確認しています...</div>
+  <div id="checks" style="margin-top:10px"></div>
+  <button onclick="refreshAll()">状態を更新</button>
+</section>
+
+<section class="card danger">
+  <h2 style="margin-top:0">サーバー側テストデータ削除</h2>
+  <p class="small">対象券に紐づく注文、利用履歴、同期競合、提携特典利用、チケットログ、直接紐づくポイントを削除します。当日持ち越しテストで減った残ノルマも戻します。</p>
+  <div class="grid">
+    <div class="metric"><span class="small">テスト券</span><b id="ticketCount">-</b></div>
+    <div class="metric"><span class="small">影響スタッフ</span><b id="staffCount">-</b></div>
+    <div class="metric"><span class="small">関連注文</span><b id="orderCount">-</b></div>
+    <div class="metric"><span class="small">復元ノルマ</span><b id="quotaCount">-</b></div>
+  </div>
+  <button id="serverResetBtn" class="danger-btn" onclick="runServerReset()" disabled>テストオフライン券を一括削除</button>
+  <p id="serverMessage" class="small"></p>
+</section>
+
+<section class="card">
+  <h2 style="margin-top:0">この端末を本番用に初期化</h2>
+  <p class="small">IndexedDBに残っているテスト発行・未同期QR受付・古い予約券を消して、本番用バックアップを取り直します。ログイン情報と端末IDは保持します。</p>
+  <div class="grid">
+    <div class="metric"><span class="small">未同期</span><b id="localPending">-</b></div>
+    <div class="metric"><span class="small">予約券</span><b id="localReserve">-</b></div>
+  </div>
+  <div id="localBackup" class="small" style="margin-top:10px"></div>
+  <button class="dark" onclick="resetThisDevice()">この端末を初期化して本番用バックアップ取得</button>
+  <p id="deviceMessage" class="small"></p>
+</section>
+
+<section class="card">
+  <button class="back" onclick="location.href='admin-menu.html'">管理者メニューへ戻る</button>
+</section>
+</main>
+<script>
+const SUPABASE_URL='https://gsniytemgrbtgfywhqlu.supabase.co';
+const SUPABASE_KEY='sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let preview=null;
+function fmt(v){return v?new Date(v).toLocaleString('ja-JP'):'-';}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function checkRow(label,value,ok){return `<div class="checkrow"><strong>${esc(label)}</strong><span class="checkvalue">${ok?'✅':'⚠️'} ${esc(value)}</span></div>`;}
+async function requireAdmin(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='home.html';return false;}
+  const {data,error}=await sb.rpc('is_admin');
+  if(error||!data){document.body.innerHTML='<main><section class="card danger"><h2>管理者のみ利用できます</h2><button onclick="location.href=\'home.html\'">戻る</button></section></main>';return false;}
+  return true;
+}
+async function loadServer(){
+  const pill=document.getElementById('serverPill'),msg=document.getElementById('serverMessage');
+  try{
+    const {data,error}=await sb.rpc('admin_offline_test_reset_preview');
+    if(error)throw error;
+    preview=data||{};
+    eventInfo.textContent=`本番開始：${fmt(preview.event_start_at)}`;
+    ticketCount.textContent=Number(preview.ticket_count||0);
+    staffCount.textContent=Number(preview.affected_staff_count||0);
+    orderCount.textContent=Number(preview.service_order_count||0);
+    quotaCount.textContent=Number(preview.quota_restore_count||0);
+    const n=Number(preview.ticket_count||0)+Number(preview.reservation_count||0);
+    pill.textContent=n===0?'テスト券 0件':'テストデータあり';
+    pill.className='pill '+(n===0?'ok':'warn');
+    serverResetBtn.disabled=!preview.can_reset||n===0;
+    checks.innerHTML=
+      checkRow('サーバー上のテスト券',`${preview.ticket_count||0}件`,Number(preview.ticket_count||0)===0)+
+      checkRow('発行済みテスト予約',`${preview.reservation_count||0}件`,Number(preview.reservation_count||0)===0)+
+      checkRow('関連注文',`${preview.service_order_count||0}件`,Number(preview.service_order_count||0)===0)+
+      checkRow('関連ポイント行',`${preview.point_row_count||0}件`,Number(preview.point_row_count||0)===0)+
+      checkRow('同期競合',`${preview.sync_conflict_count||0}件`,Number(preview.sync_conflict_count||0)===0);
+    msg.textContent=preview.can_reset?'本番開始前のみ実行できます。':'本番開始後のため一括削除はロックされています。';
+  }catch(e){pill.textContent='確認エラー';pill.className='pill bad';msg.textContent=e?.message||e;serverResetBtn.disabled=true;}
+}
+async function loadDevice(){
+  try{
+    const st=await SigmaOfflineStore.stats();
+    const pending=Number(st.pending||0)+Number(st.pendingIssues||0)+Number(st.conflicts||0);
+    localPending.textContent=pending;localReserve.textContent=Number(st.reserveCount||0);
+    localBackup.textContent=st.savedAt?`最終バックアップ：${fmt(st.savedAt)}`:'本番用バックアップ未取得';
+    devicePill.textContent=pending===0&&st.savedAt?'端末確認OK':pending>0?'未同期あり':'バックアップ要確認';
+    devicePill.className='pill '+(pending===0&&st.savedAt?'ok':'warn');
+  }catch(e){devicePill.textContent='端末確認エラー';devicePill.className='pill bad';}
+}
+async function refreshAll(){await Promise.all([loadServer(),loadDevice()]);}
+async function runServerReset(){
+  if(!preview?.can_reset)return;
+  const total=Number(preview.ticket_count||0)+Number(preview.reservation_count||0);
+  if(!confirm(`本番開始前のオフラインテストデータ ${total}件を初期化します。通常前売り券・オンライン券は削除しません。続けますか？`))return;
+  if(prompt('最終確認です。「テスト削除」と入力してください。')!=='テスト削除'){serverMessage.textContent='キャンセルしました。';return;}
+  serverResetBtn.disabled=true;serverMessage.textContent='削除処理中...';
+  try{
+    const {data,error}=await sb.rpc('admin_reset_pre_event_offline_tests');
+    if(error)throw error;
+    serverMessage.textContent=`完了：券 ${data.ticket_count||0}件 / 注文 ${data.service_order_count||0}件 / ポイント ${data.point_row_count||0}行を整理し、残ノルマ ${data.restored_quota_count||0}枚を復元しました。`;
+    await refreshAll();
+  }catch(e){serverMessage.textContent='エラー：'+(e?.message||e);serverResetBtn.disabled=false;}
+}
+async function resetThisDevice(){
+  if(!navigator.onLine){deviceMessage.textContent='オンライン状態で実行してください。';return;}
+  if(!confirm('この端末内のテスト用オフラインデータと未同期履歴を削除し、本番用バックアップを取り直します。続けますか？'))return;
+  if(prompt('確認のため「本番準備」と入力してください。')!=='本番準備'){deviceMessage.textContent='キャンセルしました。';return;}
+  try{
+    deviceMessage.textContent='端末を初期化しています...';
+    const cleared=await SigmaOfflineStore.resetPreEventOfflineTestData();
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user)throw new Error('ログイン状態を確認できません');
+    const {data,error}=await sb.rpc('offline_ticket_backup_snapshot');
+    if(error)throw error;
+    const saved=await SigmaOfflineStore.saveSnapshot(data,{user_id:user.id,source:'pre-event-admin-reset'});
+    deviceMessage.textContent=`完了：テスト発行 ${cleared.issue_count}件・受付履歴 ${cleared.use_count}件を消去。最終バックアップ ${fmt(saved.saved_at)}`;
+    await loadDevice();
+  }catch(e){deviceMessage.textContent='エラー：'+(e?.message||e)+'。初期化後の場合はログインしてバックアップを再取得してください。';await loadDevice();}
+}
+window.addEventListener('load',async()=>{if(await requireAdmin())await refreshAll();});
+</script>
+</body>
+</html>

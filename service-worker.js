@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-instagram-link-v37";
+const CACHE_NAME = "sigma-ticket-pre-event-offline-reset-v38";
 
 const CORE_ASSETS = [
   "./home.html",
@@ -8,6 +8,7 @@ const CORE_ASSETS = [
   "./presale-collection.html",
   "./presale-collection-admin.html",
   "./admin-menu.html",
+  "./offline-test-reset-admin.html",
   "./manager.html",
   "./offline-store.js",
   "./benefits.html",

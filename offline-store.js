@@ -187,6 +187,45 @@
   async function setManagerOrders(orders,source='manager'){await setMeta('manager_order_snapshot',{saved_at:new Date().toISOString(),source,orders:Array.isArray(orders)?orders:[]});}
   async function getManagerOrders(){return await getMeta('manager_order_snapshot',{saved_at:null,source:null,orders:[]});}
 
+  async function resetPreEventOfflineTestData(){
+    const d=await db();
+    const keepKeys=['offline_login_identity','offline_selected_seller','operator','device_id','offline_register_label'];
+    const keep={};
+    {
+      const tx=d.transaction(STORE_META,'readonly');
+      const st=tx.objectStore(STORE_META);
+      for(const key of keepKeys){
+        const row=await reqToPromise(st.get(key));
+        if(row)keep[key]=row.value;
+      }
+    }
+
+    const [uses,issues,ticketsCount,reserveCount]=await Promise.all([
+      getAllUses(),getAllDayIssues(),countTickets(),
+      (async()=>{const tx=d.transaction(STORE_DAY_RESERVES,'readonly');return await reqToPromise(tx.objectStore(STORE_DAY_RESERVES).count());})()
+    ]);
+
+    const tx=d.transaction([STORE_TICKETS,STORE_USES,STORE_DAY_RESERVES,STORE_DAY_ISSUES,STORE_META],'readwrite');
+    tx.objectStore(STORE_TICKETS).clear();
+    tx.objectStore(STORE_USES).clear();
+    tx.objectStore(STORE_DAY_RESERVES).clear();
+    tx.objectStore(STORE_DAY_ISSUES).clear();
+    const ms=tx.objectStore(STORE_META);
+    ms.clear();
+    for(const [key,value] of Object.entries(keep))ms.put({key,value});
+    ms.put({key:'device_id',value:getDeviceId()});
+    ms.put({key:'pre_event_reset_at',value:new Date().toISOString()});
+    await txDone(tx);
+
+    return {
+      ticket_count:ticketsCount,
+      use_count:uses.length,
+      issue_count:issues.length,
+      reserve_count:reserveCount,
+      reset_at:new Date().toISOString()
+    };
+  }
+
   async function stats(){
     const [ticketCount,savedAt,snapshotAt,uses,issues,reserveCount]=await Promise.all([
       countTickets(),getMeta('saved_at',null),getMeta('snapshot_at',null),getAllUses(),getAllDayIssues(),
@@ -205,5 +244,5 @@
     };
   }
 
-  window.SigmaOfflineStore={normalizeTicketCode,getDeviceId,saveSnapshot,getTicket,markUsed,stats,listUsesByStatus,updateUse,getMeta,setMeta,getStaffList,getDayReservesForSeller,issueOfflineDayTicket,listDayIssuesByStatus,updateDayIssue,setManagerOrders,getManagerOrders};
+  window.SigmaOfflineStore={normalizeTicketCode,getDeviceId,saveSnapshot,getTicket,markUsed,stats,resetPreEventOfflineTestData,listUsesByStatus,updateUse,getMeta,setMeta,getStaffList,getDayReservesForSeller,issueOfflineDayTicket,listDayIssuesByStatus,updateDayIssue,setManagerOrders,getManagerOrders};
 })();
