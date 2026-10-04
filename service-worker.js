@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-choice-label-v41";
+const CACHE_NAME = "sigma-ticket-choice-label-v42";
 
 const CORE_ASSETS = [
   "./home.html",

@@ -22,6 +22,16 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .ticket{background:linear-gradient(180deg,#fff,#fffaf8)}
 .ticket-title{text-align:center;font-size:14px;color:var(--muted);font-weight:800}
 .product{text-align:center;font-size:28px;font-weight:950;margin:6px 0 14px}
+
+.product-choice-wrap{margin:8px 0 16px;text-align:center}
+.product-choice-title{font-size:32px;font-weight:950;letter-spacing:-.02em;margin-bottom:14px}
+.product-choice-grid{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;gap:10px}
+.product-choice-option{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:94px;padding:14px 10px;border:1px solid #eadfdb;border-radius:18px;background:#faf7f5}
+.product-choice-option .choice-name{font-size:18px;font-weight:900;line-height:1.35}
+.product-choice-option .choice-qty{margin-top:3px;font-size:24px;font-weight:950;line-height:1.2}
+.product-choice-or{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;font-weight:900;white-space:nowrap}
+.product-choice-note{text-align:center;margin:10px 0 14px;color:#3e3e3e;font-size:14px;font-weight:800}
+@media(max-width:420px){.product-choice-grid{gap:7px}.product-choice-option{min-height:88px;padding:12px 7px}.product-choice-option .choice-name{font-size:16px}.product-choice-option .choice-qty{font-size:22px}.product-choice-or{font-size:12px}.product-choice-title{font-size:30px}}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .info{background:#faf7f5;border-radius:14px;padding:12px}.info span{display:block;font-size:11px;color:var(--muted)}.info b{display:block;margin-top:3px;font-size:15px}
 #qrcode{display:flex;justify-content:center;margin:20px auto 12px;padding:14px;background:#fff;width:max-content;border-radius:18px;border:1px solid #eee}
@@ -294,6 +304,19 @@ function isChoiceTicketName(v){
   return /炒飯1個/.test(String(v??"")) && /胡麻団子2個/.test(String(v??""));
 }
 
+
+function choiceTicketHtml(ticketKind){
+  return `<div class="product-choice-wrap">
+    <div class="product-choice-title">${esc(ticketKind)}</div>
+    <div class="product-choice-grid" aria-label="交換商品をどちらか1つ選択">
+      <div class="product-choice-option"><span class="choice-name">炒飯</span><span class="choice-qty">1個</span></div>
+      <div class="product-choice-or">または</div>
+      <div class="product-choice-option"><span class="choice-name">胡麻団子</span><span class="choice-qty">2個</span></div>
+    </div>
+    <div class="product-choice-note">どちらか1つと交換できます</div>
+  </div>`;
+}
+
 async function renderTicket(t){
   const ticketKind=t.sale_type==="same_day" ? "当日券" : "前売り券";
   document.title=`シグマ祭 ${ticketKind}`;
@@ -307,8 +330,9 @@ async function renderTicket(t){
   main.innerHTML=`
     <div class="card ticket">
       <div class="ticket-title">第15回紫熊祭 ${esc(ticketKind)}</div>
-      <div class="product">${esc(displayProductName(t.product_name))}</div>
-      ${isChoiceTicketName(t.product_name)?`<div class="product-choice-note">どちらか1つと交換できます</div>`:""}
+      ${isChoiceTicketName(t.product_name)
+        ? choiceTicketHtml(ticketKind)
+        : `<div class="product">${esc(displayProductName(t.product_name))}</div>`}
 
       <div style="text-align:center;margin-bottom:14px">
         ${used
