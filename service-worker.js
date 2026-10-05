@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-ticket-choice-clean-v44";
+const CACHE_NAME = "sigma-quota-collection-fix-v45";
 
 const CORE_ASSETS = [
   "./home.html",

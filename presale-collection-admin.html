@@ -33,7 +33,8 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 </div>
 
 <div class="card">
-  <h2>回収状況</h2>
+  <h2>回収状況（全体）</h2>
+  <p class="muted">一度回収済みにした人は、集金日が変わっても回収済みのまま表示します。上の「集金日」は担当者指定と日別集計に使います。</p>
   <div class="metrics">
     <div class="metric"><span>対象</span><b id="targetCount">--</b></div>
     <div class="metric"><span>回収済み</span><b id="collectedCount">--</b></div>
@@ -45,7 +46,7 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 
 
 <div class="card">
-  <h2>徴収担当者ごとの管理</h2>
+  <h2>徴収担当者ごとの管理（選択日）</h2>
   <p class="muted">誰が何人からいくら徴収し、現在いくら手元で預かっているかを確認できます。</p>
   <div id="collectorSummaryList">読み込み中...</div>
 </div>
@@ -108,7 +109,7 @@ async function loadSummary(){
     <div class="row">
       <b>${esc(x.staff_name)}</b> / ${Number(x.confirmed_quota||0)}枚 / ${Number(x.amount||0).toLocaleString()}円<br>
       ${x.collected_at
-        ? `<span class="ok">✅ 徴収済み</span> <span class="muted">${new Date(x.collected_at).toLocaleString('ja-JP')} / 徴収担当: ${esc(x.collector_name||'')}</span><br>${x.submitted_to_box_at?`<span class="submitted">回収箱提出済み</span> <span class="muted">${new Date(x.submitted_to_box_at).toLocaleString('ja-JP')}</span>`:`<span class="holding">手元保管中</span>`}`
+        ? `<span class="ok">✅ 徴収済み</span> <span class="muted">${new Date(x.collected_at).toLocaleString('ja-JP')} / 徴収担当: ${esc(x.collector_name||'')}${x.collection_date?` / 集金日: ${esc(x.collection_date)}`:''}</span><br>${x.submitted_to_box_at?`<span class="submitted">回収箱提出済み</span> <span class="muted">${new Date(x.submitted_to_box_at).toLocaleString('ja-JP')}</span>`:`<span class="holding">手元保管中</span>`}`
         : `<span class="warn">未徴収</span>`}
     </div>`).join('');
 

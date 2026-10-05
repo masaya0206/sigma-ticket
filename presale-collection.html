@@ -40,6 +40,7 @@ input,button{width:100%;padding:13px;border-radius:12px;font-size:16px}input{bor
       <div class="stat"><span>対象</span><b id="staffCount">--</b></div>
       <div class="stat"><span>回収済み</span><b id="collectedCount">--</b></div>
       <div class="stat"><span>未同期</span><b id="pendingCount">--</b></div>
+      <div class="muted" style="grid-column:1/-1;margin-top:4px;">集金額はノルマ確定時の枚数で固定します。集金前にノルマ譲渡があっても金額は変わりません。</div>
       <div class="stat"><span>自分の徴収額</span><b id="myCollectedAmount">--</b></div>
     </div>
     <p id="syncStatus" class="muted"></p>
@@ -75,7 +76,7 @@ input,button{width:100%;padding:13px;border-radius:12px;font-size:16px}input{bor
     <h2>集金確認</h2>
     <div class="person">
       <b id="personName">--</b>
-      <div class="muted">確定ノルマ：<span id="personQuota">--</span>枚</div>
+      <div class="muted">集金基準ノルマ（確定時）：<span id="personQuota">--</span>枚</div>
       <div class="amount" id="personAmount">--円</div>
       <div id="personStatus"></div>
     </div>

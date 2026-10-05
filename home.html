@@ -1152,6 +1152,29 @@ table{
       const button = document.getElementById("collectionButton");
       if (!button) return;
 
+      // 管理者は集金担当の指定有無に関係なく、常にノルマ集金へ入れる。
+      // RPC取得に一時的に失敗しても管理者ボタン自体は消さない。
+      if (portalIsAdmin) {
+        button.style.display = "block";
+
+        if (!navigator.onLine) return;
+
+        try {
+          const { data, error } =
+            await supabaseClient.rpc("presale_collection_bootstrap");
+
+          if (error) throw error;
+
+          if (data?.authorized && window.SigmaOfflineStore) {
+            await window.SigmaOfflineStore.saveCollectionBootstrap(data);
+          }
+        } catch (error) {
+          console.warn("管理者用集金データの更新に失敗しました:", error);
+        }
+        return;
+      }
+
+      // 一般スタッフは「本日の集金担当」に指定されている場合だけ表示。
       if (!navigator.onLine) {
         const saved = await getSavedCollectionAuth();
         button.style.display = collectionAuthValid(saved) ? "block" : "none";
@@ -1182,7 +1205,7 @@ table{
           return;
         }
 
-        // サーバーが「担当ではない」と返した場合は、古いオフライン権限を破棄。
+        // 一般スタッフでサーバーが権限を否定した場合だけ保存済み権限を破棄。
         await clearSavedCollectionAuth();
         button.style.display = "none";
       }
