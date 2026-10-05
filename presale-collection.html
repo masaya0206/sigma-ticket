@@ -95,6 +95,16 @@ const S=window.SigmaOfflineStore;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 let authCache=null,currentStaff=null,scanner=null;
 
+function showFatalError(message){
+  appArea.classList.add('hidden');
+  loginCard.classList.remove('hidden');
+  loginCard.innerHTML=`
+    <h2>集金画面を読み込めませんでした</h2>
+    <p class="muted">${esc(message||'必要なデータを読み込めませんでした。')}</p>
+    <button class="secondary" onclick="location.reload()">再読み込み</button>
+    <button class="secondary" onclick="location.href='home.html'">ホームへ戻る</button>`;
+}
+
 function setMode(){
   modeLabel.textContent=navigator.onLine?'オンライン':'オフライン';
   modeLabel.className='mode '+(navigator.onLine?'online':'offline');
@@ -192,7 +202,22 @@ async function clearRevokedCollectionAccess(){
 
 async function initialize(){
   setMode();
-  authCache=await S.getCollectionAuth();
+
+  if(!S
+    || typeof S.getCollectionAuth!=='function'
+    || typeof S.saveCollectionBootstrap!=='function'
+    || typeof S.collectionStats!=='function'
+    || typeof S.findCollectionStaff!=='function'){
+    showFatalError('オフライン保存機能（offline-store.js）が古いか、読み込めていません。ファイルを更新してから再読み込みしてください。');
+    return;
+  }
+
+  try{
+    authCache=await S.getCollectionAuth();
+  }catch(e){
+    showFatalError('端末保存データの読み込みに失敗しました：'+(e?.message||e));
+    return;
+  }
 
   if(!navigator.onLine){
     if(!authValid(authCache)){
@@ -400,6 +425,9 @@ async function renderConflicts(){
     </div>`).join('');
 }
 
-initialize();
+initialize().catch(e=>{
+  console.error(e);
+  showFatalError('初期化エラー：'+(e?.message||e));
+});
 </script>
 </main></body></html>
