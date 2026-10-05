@@ -4,7 +4,7 @@
 <title>ノルマ集金</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
-<script src="./offline-store.js"></script>
+<script src="./offline-store.js?v=45.2"></script>
 <style>
 :root{--red:#b5121b;--soft:#fff1f2;--ink:#1c1c1e;--muted:#6e6e73;--line:#ece7e4;--bg:#f7f4f2;--green:#147b31;--orange:#a86000}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
@@ -203,12 +203,23 @@ async function clearRevokedCollectionAccess(){
 async function initialize(){
   setMode();
 
-  if(!S
-    || typeof S.getCollectionAuth!=='function'
-    || typeof S.saveCollectionBootstrap!=='function'
-    || typeof S.collectionStats!=='function'
-    || typeof S.findCollectionStaff!=='function'){
-    showFatalError('オフライン保存機能（offline-store.js）が古いか、読み込めていません。ファイルを更新してから再読み込みしてください。');
+  const requiredOfflineFns=[
+    'getCollectionAuth',
+    'saveCollectionBootstrap',
+    'collectionStats',
+    'findCollectionStaff',
+    'markCollectionPaid',
+    'listCollectionEventsByStatus',
+    'updateCollectionEvent'
+  ];
+  const missingOfflineFns=requiredOfflineFns.filter(name=>!S || typeof S[name]!=='function');
+
+  if(missingOfflineFns.length){
+    showFatalError(
+      'offline-store.js の更新が反映されていません。'
+      +'不足機能: '+missingOfflineFns.join(', ')
+      +'。GitHubへ offline-store.js も上書きしてから再読み込みしてください。'
+    );
     return;
   }
 

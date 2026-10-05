@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-quota-collection-fix-v45-1";
+const CACHE_NAME = "sigma-quota-collection-fix-v45-2";
 
 const CORE_ASSETS = [
   "./home.html",
@@ -81,6 +81,25 @@ self.addEventListener("fetch", event => {
   }
 
   if (url.origin !== location.origin) return;
+
+  // offline-store.js は更新頻度が高く、古いキャッシュだと集金画面が起動できない。
+  // クエリ文字列の有無に関係なく常にネットワークを優先し、成功時だけ最新をキャッシュ。
+  if (url.pathname.endsWith("/offline-store.js")) {
+    event.respondWith(
+      fetch(request)
+        .then(async response => {
+          try {
+            if (response && response.ok) {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put(request, response.clone());
+            }
+          } catch (_) {}
+          return response;
+        })
+        .catch(() => caches.match(request).then(cached => cached || caches.match("./offline-store.js")))
+    );
+    return;
+  }
 
   // HTMLは常にオンラインの最新版を優先。
   // これによりノルマ集金担当解除などの権限変更が古いキャッシュに邪魔されにくくなる。

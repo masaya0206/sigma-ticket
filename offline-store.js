@@ -1,4 +1,5 @@
 (function(){
+  window.SigmaOfflineStoreVersion='45.2';
   const DB_NAME='sigma-offline-v1';
   const DB_VERSION=3;
   const STORE_TICKETS='tickets';
