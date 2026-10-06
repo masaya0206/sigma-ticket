@@ -39,6 +39,24 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 .collector-totalbar b{font-size:19px}
 @media(max-width:520px){.collector-grid{grid-template-columns:1fr 1fr}.collector-totalbar{grid-template-columns:1fr 1fr}.collector-totalbar>div:last-child{grid-column:1/-1}}
 @media(max-width:520px){.metrics{grid-template-columns:1fr 1fr}.metric:last-child{grid-column:1/-1}}
+
+.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.filter-grid label{font-size:12px;color:var(--muted);font-weight:700}
+.filter-grid select{width:100%;margin-top:6px;padding:12px;border:1px solid #d9d3d0;border-radius:12px;background:#fff;font-size:15px}
+.holding-card{border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;background:#fffaf2}
+.holding-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.holding-name{font-size:17px;font-weight:900}
+.holding-amount{font-size:21px;font-weight:900;color:#9a5a00;white-space:nowrap}
+.holding-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.history-table{display:flex;flex-direction:column;gap:8px}
+.history-item{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
+.history-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.history-name{font-weight:900}
+.history-amount{font-weight:900;font-size:18px;white-space:nowrap}
+.history-meta{font-size:12px;color:var(--muted);line-height:1.55;margin-top:4px}
+.filter-note{font-size:12px;color:var(--muted);margin-top:8px}
+@media(max-width:520px){.filter-grid{grid-template-columns:1fr}}
+
 </style></head><body><main>
 <div class="top"><button class="back" onclick="history.back()">←</button><div><h1>ノルマ集金管理</h1><div class="sub">当日の集金担当を指定</div></div></div>
 
@@ -69,14 +87,51 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 
 
 <div class="card">
-  <h2>集金担当者ごとの実績（選択日）</h2>
-  <p class="muted">誰が・誰から・いくら回収したかを確認できます。担当者を開くと個人別の内訳が表示されます。</p>
-  <div class="collector-totalbar">
-    <div><span>担当者数</span><b id="collectorCount">--</b></div>
-    <div><span>回収人数</span><b id="collectorPeopleTotal">--</b></div>
-    <div><span>回収総額</span><b id="collectorAmountTotal">--</b></div>
+  <h2>現在の手元保管状況</h2>
+  <p class="muted">過去すべての集金データから、まだ回収箱へ提出されていない金額を集計します。日付では区切りません。</p>
+
+  <div class="filter-grid">
+    <label>集金担当者
+      <select id="holdingCollectorFilter" onchange="loadCollectionDashboard()">
+        <option value="">すべて</option>
+      </select>
+    </label>
   </div>
-  <div id="collectorSummaryList">読み込み中...</div>
+
+  <div class="collector-totalbar">
+    <div><span>手元保管している担当者</span><b id="holdingCollectorCount">--</b></div>
+    <div><span>未提出の回収件数</span><b id="holdingPeopleTotal">--</b></div>
+    <div><span>現在の手元総額</span><b id="holdingAmountTotal">--</b></div>
+  </div>
+
+  <div id="holdingSummaryList">読み込み中...</div>
+</div>
+
+<div class="card">
+  <h2>集金履歴</h2>
+  <p class="muted">日付・集金担当者を自由に組み合わせて確認できます。「すべて」を選ぶと全期間・全担当者を表示します。</p>
+
+  <div class="filter-grid">
+    <label>集金日
+      <select id="historyDateFilter" onchange="loadCollectionDashboard()">
+        <option value="">すべて</option>
+      </select>
+    </label>
+    <label>集金担当者
+      <select id="historyCollectorFilter" onchange="loadCollectionDashboard()">
+        <option value="">すべて</option>
+      </select>
+    </label>
+  </div>
+  <div class="filter-note">担当者の選択肢には、過去に一度でも実際に集金した人だけが表示されます。</div>
+
+  <div class="collector-totalbar">
+    <div><span>表示中の回収件数</span><b id="historyCount">--</b></div>
+    <div><span>表示中の回収総額</span><b id="historyAmountTotal">--</b></div>
+    <div><span>うち手元保管中</span><b id="historyHoldingTotal">--</b></div>
+  </div>
+
+  <div id="historyList" class="history-table">読み込み中...</div>
 </div>
 
 <div class="card">
@@ -141,58 +196,120 @@ async function loadSummary(){
         : `<span class="warn">未徴収</span>`}
     </div>`).join('');
 
-  const {data:collectorData,error:collectorError}=await db.rpc('admin_presale_collection_by_collector',{p_date:collectionDate.value});
-  if(collectorError){
-    collectorSummaryList.innerHTML='<p class="warn">'+esc(collectorError.message)+'</p>';
+  await loadCollectionDashboard();
+}
+
+
+let dashboardOptionsLoaded=false;
+
+function collectorLabel(option){
+  return option?.collector_name || '名前未登録';
+}
+
+function setSelectOptions(selectEl, options, selectedValue, firstLabel='すべて'){
+  const current=selectedValue ?? selectEl.value ?? '';
+  selectEl.innerHTML=`<option value="">${esc(firstLabel)}</option>`+
+    options.map(x=>`<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');
+  if([...selectEl.options].some(o=>o.value===current)) selectEl.value=current;
+}
+
+async function loadCollectionDashboard(){
+  const selectedHoldingCollector=holdingCollectorFilter.value||null;
+  const selectedDate=historyDateFilter.value||null;
+  const selectedHistoryCollector=historyCollectorFilter.value||null;
+
+  const {data,error}=await db.rpc('admin_presale_collection_dashboard',{
+    p_history_date:selectedDate,
+    p_history_collector_key:selectedHistoryCollector,
+    p_holding_collector_key:selectedHoldingCollector
+  });
+
+  if(error){
+    holdingSummaryList.innerHTML='<p class="warn">'+esc(error.message)+'</p>';
+    historyList.innerHTML='<p class="warn">'+esc(error.message)+'</p>';
     return;
   }
-  const collectors=collectorData?.collectors||[];
-  collectorCount.textContent=collectors.length+'人';
-  collectorPeopleTotal.textContent=collectors.reduce((s,c)=>s+Number(c.collected_count||0),0)+'人';
-  collectorAmountTotal.textContent=collectors.reduce((s,c)=>s+Number(c.total_amount||0),0).toLocaleString()+'円';
 
-  collectorSummaryList.innerHTML=collectors.length?collectors.map(c=>{
-    const details=Array.isArray(c.details)?c.details:[];
-    const detailHtml=details.length?details.map(d=>`
-      <div class="collection-person">
-        <div class="collection-person-top">
-          <div>
-            <div class="collection-person-name">${esc(d.staff_name||'')}</div>
-            <div class="collection-person-meta">
-              元ノルマ ${Number(d.confirmed_quota||0)}枚<br>
-              ${d.collected_at?new Date(d.collected_at).toLocaleString('ja-JP'):''}
-              ${d.was_offline?' / オフライン受付':''}
+  const collectorOptions=(data?.collector_options||[]).map(x=>({
+    value:x.collector_key,
+    label:x.collector_name
+  }));
+
+  const dateOptions=(data?.date_options||[]).map(d=>({
+    value:d,
+    label:d
+  }));
+
+  // 絞り込み変更後も選択値を維持する。
+  setSelectOptions(holdingCollectorFilter,collectorOptions,selectedHoldingCollector);
+  setSelectOptions(historyCollectorFilter,collectorOptions,selectedHistoryCollector);
+  setSelectOptions(historyDateFilter,dateOptions,selectedDate);
+
+  const holdings=data?.holdings||[];
+  holdingCollectorCount.textContent=holdings.length+'人';
+  holdingPeopleTotal.textContent=holdings.reduce((s,x)=>s+Number(x.holding_count||0),0)+'件';
+  holdingAmountTotal.textContent=holdings.reduce((s,x)=>s+Number(x.holding_amount||0),0).toLocaleString()+'円';
+
+  holdingSummaryList.innerHTML=holdings.length?holdings.map(c=>`
+    <div class="holding-card">
+      <div class="holding-head">
+        <div>
+          <div class="holding-name">${esc(c.collector_name||'名前未登録')}</div>
+          <div class="holding-meta">${Number(c.holding_count||0)}件を手元保管中</div>
+        </div>
+        <div class="holding-amount">${Number(c.holding_amount||0).toLocaleString()}円</div>
+      </div>
+      <details class="collector-details" style="margin:12px -14px -14px;">
+        <summary>手元の内訳を見る（${Number(c.holding_count||0)}件）</summary>
+        ${(c.details||[]).map(d=>`
+          <div class="collection-person">
+            <div class="collection-person-top">
+              <div>
+                <div class="collection-person-name">${esc(d.staff_name||'')}</div>
+                <div class="collection-person-meta">
+                  元ノルマ ${Number(d.confirmed_quota||0)}枚<br>
+                  ${d.collection_date?esc(d.collection_date)+' / ':''}
+                  ${d.collected_at?new Date(d.collected_at).toLocaleString('ja-JP'):''}
+                </div>
+              </div>
+              <div class="collection-person-amount">${Number(d.amount||0).toLocaleString()}円</div>
             </div>
-          </div>
-          <div style="text-align:right">
-            <div class="collection-person-amount">${Number(d.amount||0).toLocaleString()}円</div>
-            <div class="collection-person-meta">
-              ${d.submitted_to_box_at
-                ? `<span class="submitted">回収箱提出済み</span>`
-                : `<span class="holding">手元保管中</span>`}
-            </div>
+          </div>`).join('')}
+      </details>
+    </div>`).join(''):'<p class="muted">現在、手元保管中の集金はありません。</p>';
+
+  const rows=data?.history||[];
+  const historyTotal=rows.reduce((s,x)=>s+Number(x.amount||0),0);
+  const historyHolding=rows.filter(x=>!x.submitted_to_box_at).reduce((s,x)=>s+Number(x.amount||0),0);
+
+  historyCount.textContent=rows.length+'件';
+  historyAmountTotal.textContent=historyTotal.toLocaleString()+'円';
+  historyHoldingTotal.textContent=historyHolding.toLocaleString()+'円';
+
+  historyList.innerHTML=rows.length?rows.map(x=>`
+    <div class="history-item">
+      <div class="history-top">
+        <div>
+          <div class="history-name">${esc(x.staff_name||'')}</div>
+          <div class="history-meta">
+            集金担当: <b>${esc(x.collector_name||'名前未登録')}</b><br>
+            元ノルマ ${Number(x.confirmed_quota||0)}枚<br>
+            ${x.collection_date?esc(x.collection_date)+' / ':''}${x.collected_at?new Date(x.collected_at).toLocaleString('ja-JP'):''}
+            ${x.was_offline?' / オフライン受付':''}
           </div>
         </div>
-      </div>`).join(''):'<div class="collection-person muted">内訳データがありません。</div>';
-
-    return `
-      <div class="collector-card">
-        <div class="collector-head">
-          <div class="collector-name">${esc(c.collector_name||'名前未登録')}</div>
-          <div class="collector-grid">
-            <div><span>回収人数</span><b>${Number(c.collected_count||0)}人</b></div>
-            <div><span>回収総額</span><b>${Number(c.total_amount||0).toLocaleString()}円</b></div>
-            <div><span>手元保管中</span><b>${Number(c.holding_amount||0).toLocaleString()}円</b></div>
-            <div><span>提出済み</span><b>${Number(c.submitted_amount||0).toLocaleString()}円</b></div>
+        <div style="text-align:right">
+          <div class="history-amount">${Number(x.amount||0).toLocaleString()}円</div>
+          <div class="history-meta">
+            ${x.submitted_to_box_at
+              ? `<span class="submitted">回収箱提出済み</span>`
+              : `<span class="holding">手元保管中</span>`}
           </div>
         </div>
-        <details class="collector-details">
-          <summary>回収した人を見る（${details.length}人）</summary>
-          ${detailHtml}
-        </details>
-      </div>`;
-  }).join(''):'<p class="muted">この日の徴収記録はまだありません。</p>';
+      </div>
+    </div>`).join(''):'<p class="muted">条件に一致する集金履歴はありません。</p>';
 }
+
 
 async function loadAll(){await loadCollectors();await loadSummary()}
 loadAll();
