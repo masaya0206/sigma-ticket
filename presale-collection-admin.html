@@ -14,7 +14,30 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 .staff{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.staff:last-child{border:0}
 .staff input{width:21px;height:21px}.staff label{flex:1;font-weight:800}.pill{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red)}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.metric{padding:12px;background:#faf8f7;border-radius:14px}.metric span{display:block;font-size:11px;color:var(--muted)}.metric b{font-size:22px}
-.row{padding:10px 0;border-bottom:1px solid var(--line)}.ok{color:#157b35}.warn{color:#b36a00}.holding{color:#9a5a00}.submitted{color:#157b35}.collector-card{padding:13px;border:1px solid var(--line);border-radius:14px;margin:10px 0;background:#fcfbfa}.collector-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}.collector-grid div{background:#f7f4f2;padding:9px;border-radius:10px}.collector-grid span{display:block;font-size:10px;color:var(--muted)}.collector-grid b{font-size:17px}@media(max-width:520px){.collector-grid{grid-template-columns:1fr 1fr}}
+.row{padding:10px 0;border-bottom:1px solid var(--line)}.ok{color:#157b35}.warn{color:#b36a00}.holding{color:#9a5a00}.submitted{color:#157b35}
+.collector-card{border:1px solid var(--line);border-radius:16px;margin:10px 0;background:#fcfbfa;overflow:hidden}
+.collector-head{padding:14px}
+.collector-name{font-size:18px;font-weight:900}
+.collector-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+.collector-grid div{background:#f7f4f2;padding:9px;border-radius:10px}
+.collector-grid span{display:block;font-size:10px;color:var(--muted)}
+.collector-grid b{font-size:17px}
+.collector-details{border-top:1px solid var(--line)}
+.collector-details summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:800;color:var(--red);display:flex;align-items:center;justify-content:space-between}
+.collector-details summary::-webkit-details-marker{display:none}
+.collector-details summary::after{content:"＋";font-size:18px}
+.collector-details[open] summary::after{content:"−"}
+.collection-person{padding:12px 14px;border-top:1px solid var(--line);background:#fff}
+.collection-person:first-of-type{border-top:0}
+.collection-person-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.collection-person-name{font-weight:900}
+.collection-person-amount{font-size:18px;font-weight:900;white-space:nowrap}
+.collection-person-meta{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.55}
+.collector-totalbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 14px}
+.collector-totalbar>div{background:#faf8f7;border-radius:14px;padding:11px}
+.collector-totalbar span{display:block;font-size:10px;color:var(--muted)}
+.collector-totalbar b{font-size:19px}
+@media(max-width:520px){.collector-grid{grid-template-columns:1fr 1fr}.collector-totalbar{grid-template-columns:1fr 1fr}.collector-totalbar>div:last-child{grid-column:1/-1}}
 @media(max-width:520px){.metrics{grid-template-columns:1fr 1fr}.metric:last-child{grid-column:1/-1}}
 </style></head><body><main>
 <div class="top"><button class="back" onclick="history.back()">←</button><div><h1>ノルマ集金管理</h1><div class="sub">当日の集金担当を指定</div></div></div>
@@ -46,8 +69,13 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 
 
 <div class="card">
-  <h2>徴収担当者ごとの管理（選択日）</h2>
-  <p class="muted">誰が何人からいくら徴収し、現在いくら手元で預かっているかを確認できます。</p>
+  <h2>集金担当者ごとの実績（選択日）</h2>
+  <p class="muted">誰が・誰から・いくら回収したかを確認できます。担当者を開くと個人別の内訳が表示されます。</p>
+  <div class="collector-totalbar">
+    <div><span>担当者数</span><b id="collectorCount">--</b></div>
+    <div><span>回収人数</span><b id="collectorPeopleTotal">--</b></div>
+    <div><span>回収総額</span><b id="collectorAmountTotal">--</b></div>
+  </div>
   <div id="collectorSummaryList">読み込み中...</div>
 </div>
 
@@ -119,16 +147,51 @@ async function loadSummary(){
     return;
   }
   const collectors=collectorData?.collectors||[];
-  collectorSummaryList.innerHTML=collectors.length?collectors.map(c=>`
-    <div class="collector-card">
-      <b>${esc(c.collector_name||'')}</b>
-      <div class="collector-grid">
-        <div><span>徴収人数</span><b>${Number(c.collected_count||0)}人</b></div>
-        <div><span>徴収総額</span><b>${Number(c.total_amount||0).toLocaleString()}円</b></div>
-        <div><span>手元保管中</span><b>${Number(c.holding_amount||0).toLocaleString()}円</b></div>
-        <div><span>提出済み</span><b>${Number(c.submitted_amount||0).toLocaleString()}円</b></div>
-      </div>
-    </div>`).join(''):'<p class="muted">この日の徴収記録はまだありません。</p>';
+  collectorCount.textContent=collectors.length+'人';
+  collectorPeopleTotal.textContent=collectors.reduce((s,c)=>s+Number(c.collected_count||0),0)+'人';
+  collectorAmountTotal.textContent=collectors.reduce((s,c)=>s+Number(c.total_amount||0),0).toLocaleString()+'円';
+
+  collectorSummaryList.innerHTML=collectors.length?collectors.map(c=>{
+    const details=Array.isArray(c.details)?c.details:[];
+    const detailHtml=details.length?details.map(d=>`
+      <div class="collection-person">
+        <div class="collection-person-top">
+          <div>
+            <div class="collection-person-name">${esc(d.staff_name||'')}</div>
+            <div class="collection-person-meta">
+              元ノルマ ${Number(d.confirmed_quota||0)}枚<br>
+              ${d.collected_at?new Date(d.collected_at).toLocaleString('ja-JP'):''}
+              ${d.was_offline?' / オフライン受付':''}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="collection-person-amount">${Number(d.amount||0).toLocaleString()}円</div>
+            <div class="collection-person-meta">
+              ${d.submitted_to_box_at
+                ? `<span class="submitted">回収箱提出済み</span>`
+                : `<span class="holding">手元保管中</span>`}
+            </div>
+          </div>
+        </div>
+      </div>`).join(''):'<div class="collection-person muted">内訳データがありません。</div>';
+
+    return `
+      <div class="collector-card">
+        <div class="collector-head">
+          <div class="collector-name">${esc(c.collector_name||'名前未登録')}</div>
+          <div class="collector-grid">
+            <div><span>回収人数</span><b>${Number(c.collected_count||0)}人</b></div>
+            <div><span>回収総額</span><b>${Number(c.total_amount||0).toLocaleString()}円</b></div>
+            <div><span>手元保管中</span><b>${Number(c.holding_amount||0).toLocaleString()}円</b></div>
+            <div><span>提出済み</span><b>${Number(c.submitted_amount||0).toLocaleString()}円</b></div>
+          </div>
+        </div>
+        <details class="collector-details">
+          <summary>回収した人を見る（${details.length}人）</summary>
+          ${detailHtml}
+        </details>
+      </div>`;
+  }).join(''):'<p class="muted">この日の徴収記録はまだありません。</p>';
 }
 
 async function loadAll(){await loadCollectors();await loadSummary()}
