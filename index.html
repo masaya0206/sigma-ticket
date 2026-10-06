@@ -563,6 +563,15 @@ table{
     </div>
 
     <div id="cashTotal" class="cash-total">合計 0円</div>
+
+    <div id="newspaperCouponState" class="checkout-hint" style="display:none"></div>
+    <button type="button" class="secondary" onclick="startNewspaperCouponScanner()">
+      📰 新聞50円OFFクーポンQRを読み取る
+    </button>
+    <button id="clearNewspaperCouponButton" type="button" class="secondary" style="display:none" onclick="clearNewspaperCoupon()">
+      新聞クーポンを外す
+    </button>
+
     <button id="cashOrderButton" class="checkout-next" onclick="stageCashCheckout()">金銭やり取りを確認して次へ</button>
     <div class="tender-box">
       <label for="cashReceived">お預かり金額</label>
@@ -807,9 +816,7 @@ let scanner = null;
                 false
               );
 
-              await checkTicket(
-                normalizeTicketCode(decodedText)
-              );
+              await handleScannedQr(decodedText);
 
             } finally {
 
@@ -897,6 +904,175 @@ let scanner = null;
       if (refreshPermission) {
         await checkRegisterPermission();
       }
+    }
+
+
+    const NEWSPAPER_COUPON_PATH="/sigma-ticket/newspaper-coupon.html";
+    let newspaperCouponSelected=false;
+    let newspaperCouponDiscount=50;
+    let pendingConflictTicket=null;
+
+    function isNewspaperCouponQr(value){
+      const raw=String(value||"").trim();
+      if(!raw)return false;
+      try{
+        const u=new URL(raw,location.href);
+        return u.pathname.endsWith("/newspaper-coupon.html");
+      }catch(_){
+        return raw==="NEWSPAPER50";
+      }
+    }
+
+    async function handleScannedQr(decodedText){
+      if(isNewspaperCouponQr(decodedText)){
+        await handleNewspaperCouponScan();
+        return;
+      }
+      await checkTicket(normalizeTicketCode(decodedText));
+    }
+
+    async function startNewspaperCouponScanner(){
+      // 現金会計でも同じレジスキャナーを使えるよう、QR領域だけ一時表示。
+      const qr=document.getElementById("qrContent");
+      if(qr)qr.hidden=false;
+      await startScanner();
+    }
+
+    async function handleNewspaperCouponScan(){
+      const resultBox=document.getElementById("result");
+      const {data,error}=await supabaseClient.rpc("register_newspaper_coupon_status");
+      if(error || !data?.issued || !data?.active){
+        resultBox.className="invalid";
+        resultBox.innerHTML=`
+          <h2>⛔ 新聞クーポンは利用できません</h2>
+          <p>${error?.message||"未発行または無効です。"}</p>
+          <button onclick="startScanner()">次のQRを読み取る</button>`;
+        return;
+      }
+
+      newspaperCouponDiscount=Number(data.discount_amount||50);
+
+      if(activeTicketData && activeTicketData.status==="active"){
+        pendingConflictTicket=activeTicketData;
+        showCouponTicketConflict(activeTicketData);
+        return;
+      }
+
+      newspaperCouponSelected=true;
+      renderNewspaperCouponState();
+      resultBox.className="valid";
+      resultBox.innerHTML=`
+        <h2>📰 新聞クーポン</h2>
+        <p><strong>${newspaperCouponDiscount}円OFF</strong> をこの会計に仮適用しました。</p>
+        <p class="small">注文確定までは使用処理されません。前売り券・当日券とは併用できません。</p>
+        <button onclick="startScanner()">別のQRを読み取る</button>`;
+      renderCashOrder();
+    }
+
+    function showCouponTicketConflict(ticket){
+      const resultBox=document.getElementById("result");
+      resultBox.className="warning";
+      resultBox.innerHTML=`
+        <h2>⚠️ 併用できません</h2>
+        <p>新聞50円OFFと前売り券・当日券の両方が読み取られました。</p>
+        <p><strong>どちらをこの会計に適用しますか？</strong></p>
+        <button onclick="chooseCouponConflict('ticket')">🎫 前売り券・当日券を使う</button>
+        <button class="secondary" onclick="chooseCouponConflict('coupon')">📰 新聞50円OFFを使う</button>
+        <button class="secondary" onclick="chooseCouponConflict('cancel')">どちらも確定せず戻る</button>
+        <p class="small">選ばなかった方には使用処理を行いません。</p>`;
+    }
+
+    function applyModeWithoutReset(mode){
+      paymentMode=mode;
+      ["cash","qr","mixed"].forEach(m=>{
+        const id=m==="cash"?"modeCash":m==="qr"?"modeQr":"modeMixed";
+        document.getElementById(id)?.classList.toggle("active",m===mode);
+      });
+      const cashContent=document.getElementById("cashContent");
+      const qrContent=document.getElementById("qrContent");
+      if(cashContent)cashContent.hidden=(mode===null || mode==="qr");
+      if(qrContent)qrContent.hidden=(mode===null || mode==="cash");
+      const lock=document.getElementById("cashConfirmLock");
+      if(lock)lock.style.display=mode==="mixed"?"block":"none";
+    }
+
+    function chooseCouponConflict(choice){
+      if(choice==="ticket"){
+        newspaperCouponSelected=false;
+        renderNewspaperCouponState();
+        const keep=activeTicketData||pendingConflictTicket;
+        pendingConflictTicket=null;
+        applyModeWithoutReset((cashRice+cashSesame)>0?"mixed":"qr");
+        if(keep){
+          activeTicketData=keep;
+          renderActiveTicketResult(keep);
+        }
+        renderCashOrder();
+        return;
+      }
+
+      if(choice==="coupon"){
+        // チケットは未処理のまま。参照だけ破棄。
+        activeTicketData=null;
+        pendingConflictTicket=null;
+        newspaperCouponSelected=true;
+        applyModeWithoutReset("cash");
+        renderNewspaperCouponState();
+        document.getElementById("result").className="valid";
+        document.getElementById("result").innerHTML=`
+          <h2>📰 新聞50円OFFを選択</h2>
+          <p>チケットは未使用のままです。</p>`;
+        renderCashOrder();
+        return;
+      }
+
+      pendingConflictTicket=null;
+      document.getElementById("result").className="";
+      document.getElementById("result").textContent="どちらも確定していません。";
+    }
+
+    function clearNewspaperCoupon(){
+      newspaperCouponSelected=false;
+      renderNewspaperCouponState();
+      renderCashOrder();
+    }
+
+    function renderNewspaperCouponState(){
+      const box=document.getElementById("newspaperCouponState");
+      const clear=document.getElementById("clearNewspaperCouponButton");
+      if(!box)return;
+      if(newspaperCouponSelected){
+        box.style.display="block";
+        box.innerHTML=`📰 <strong>新聞クーポン ${newspaperCouponDiscount}円OFF 適用予定</strong><br>
+          <span class="small">注文を確定するまで利用記録は作られません。</span>`;
+        if(clear)clear.style.display="block";
+      }else{
+        box.style.display="none";
+        box.innerHTML="";
+        if(clear)clear.style.display="none";
+      }
+    }
+
+    function renderActiveTicketResult(data){
+      const resultBox=document.getElementById("result");
+      resultBox.className="valid";
+      resultBox.innerHTML=`
+        <h2>🟢 有効</h2>
+        <p><strong>商品</strong><br>${data.product_name}</p>
+        <p><strong>販売者</strong><br>${data.seller_name}</p>
+        <p><strong>購入者</strong><br>${data.buyer_name ?? "未登録"}</p>
+        <p><strong>チケットID</strong><br>${data.ticket_code}</p>
+        <div class="subcard">
+          <strong>交換する商品を選択</strong><br>
+          <div id="mixedCashSummary" class="mixed-summary" style="display:none"></div>
+          <button id="useRiceButton" onclick="useTicket('${data.ticket_code}','fried_rice')">🍚 炒飯1個と交換</button>
+          <button id="useSesameButton" onclick="useTicket('${data.ticket_code}','sesame_pair')">● 胡麻団子2個と交換</button>
+          <div id="registerPriceInfo" class="small">現在価格を確認しています...</div>
+        </div>
+        <button class="secondary" onclick="startScanner()">別のQRを読み取る</button>
+        <button onclick="startScanner()">キャンセルして次を読む</button>`;
+      showRegisterPriceInfo();
+      updateMixedUi();
     }
 
 
@@ -1024,6 +1200,12 @@ let scanner = null;
 
         activeTicketData = data;
 
+        if(newspaperCouponSelected){
+          pendingConflictTicket=data;
+          showCouponTicketConflict(data);
+          return;
+        }
+
         resultBox.className =
           "valid";
 
@@ -1062,6 +1244,9 @@ let scanner = null;
             <div id="registerPriceInfo" class="small">現在価格を確認しています...</div>
           </div>
 
+          <button class="secondary" onclick="startScanner()">
+            別のQRを読み取る
+          </button>
           <button onclick="startScanner()">
             キャンセルして次を読む
           </button>
@@ -1192,7 +1377,10 @@ let scanner = null;
     function backToPaymentStep(){
       pendingCheckout=null;
       activeTicketData=null;
+      pendingConflictTicket=null;
+      newspaperCouponSelected=false;
       paymentMode=null;
+      renderNewspaperCouponState();
       resetCheckoutState();
       setPaymentMode(null,false);
       setCheckoutStep(1);
@@ -1216,6 +1404,7 @@ let scanner = null;
       if(p.mode==="cash"){
         return `<strong>現金のみ</strong><br>
           商品：${cashItems}<br>
+          ${p.couponApplied?`通常合計：${Number(p.cashSubtotal||0).toLocaleString()}円<br>📰 新聞クーポン：−${Number(p.couponDiscount||0).toLocaleString()}円<br>`:""}
           支払額：${p.cashTotal.toLocaleString()}円<br>
           お預かり：${p.received.toLocaleString()}円
           <span class="money-settled">お釣り：${p.cashChange.toLocaleString()}円</span>`;
@@ -1260,6 +1449,8 @@ let scanner = null;
         return;
       }
 
+      const subtotal=currentCashSubtotal();
+      const discount=newspaperCouponSelected?Math.min(newspaperCouponDiscount,subtotal):0;
       const total=currentCashTotal();
       const received=getCashReceived();
       if(received<total){
@@ -1271,6 +1462,9 @@ let scanner = null;
       pendingCheckout={
         mode:"cash",
         cashRice,cashSesame,
+        cashSubtotal:subtotal,
+        couponApplied:newspaperCouponSelected,
+        couponDiscount:discount,
         cashTotal:total,
         received,
         cashChange:received-total,
@@ -1353,12 +1547,20 @@ let scanner = null;
       }
 
       if(pendingCheckout.mode==="cash"){
-        const {data,error}=await supabaseClient.rpc("record_cash_order",{
+        const rpcName=pendingCheckout.couponApplied
+          ?"record_cash_order_with_newspaper_coupon"
+          :"record_cash_order";
+        const args=pendingCheckout.couponApplied?{
+          p_rice:pendingCheckout.cashRice,
+          p_sesame:pendingCheckout.cashSesame,
+          p_pickup_number:pickup
+        }:{
           p_rice:pendingCheckout.cashRice,
           p_sesame:pendingCheckout.cashSesame,
           p_cash_amount:pendingCheckout.cashTotal,
           p_pickup_number:pickup
-        });
+        };
+        const {data,error}=await supabaseClient.rpc(rpcName,args);
 
         if(error){
           if(msg)msg.textContent="エラー："+error.message;
@@ -1434,6 +1636,9 @@ let scanner = null;
       cashRice=0;
       cashSesame=0;
       activeTicketData=null;
+      pendingConflictTicket=null;
+      newspaperCouponSelected=false;
+      renderNewspaperCouponState();
       pendingCheckout=null;
       const r=document.getElementById("cashReceived");
       if(r)r.value="";
@@ -1488,8 +1693,14 @@ let scanner = null;
       return Number.isFinite(n)?Math.max(0,Math.floor(n)):0;
     }
 
-    function currentCashTotal(){
+    function currentCashSubtotal(){
       return cashRice*registerMenu.rice+cashSesameAmount(cashSesame);
+    }
+
+    function currentCashTotal(){
+      const subtotal=currentCashSubtotal();
+      const discount=newspaperCouponSelected?Math.min(newspaperCouponDiscount,subtotal):0;
+      return Math.max(subtotal-discount,0);
     }
 
     function resetCheckoutState(){
@@ -1510,6 +1721,10 @@ let scanner = null;
     }
 
     function setPaymentMode(mode,advance=true){
+      if((mode==="qr" || mode==="mixed") && newspaperCouponSelected){
+        newspaperCouponSelected=false;
+        renderNewspaperCouponState();
+      }
       paymentMode=mode;
 
       ["cash","qr","mixed"].forEach(m=>{
@@ -1672,7 +1887,15 @@ let scanner = null;
       const change=received-total;
 
       const t=document.getElementById("cashTotal");
-      if(t) t.textContent=`現金支払額 ${total.toLocaleString()}円`;
+      if(t){
+        const subtotal=currentCashSubtotal();
+        if(newspaperCouponSelected && subtotal>0){
+          const discount=Math.min(newspaperCouponDiscount,subtotal);
+          t.innerHTML=`通常 ${subtotal.toLocaleString()}円<br><span style="color:#b5121b">新聞クーポン −${discount.toLocaleString()}円</span><br>現金支払額 ${total.toLocaleString()}円`;
+        }else{
+          t.textContent=`現金支払額 ${total.toLocaleString()}円`;
+        }
+      }
 
       const preview=document.getElementById("changePreview");
       if(preview){

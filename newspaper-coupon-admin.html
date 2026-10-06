@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>新聞クーポン管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--red:#b5121b;--ink:#241f1d;--muted:#756c68;--line:#eadfdb}
+*{box-sizing:border-box}
+body{margin:0;background:#f7f4f2;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+main{max-width:680px;margin:auto;padding:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin:14px 0}
+button,a.btn{display:block;width:100%;border:0;border-radius:13px;padding:13px 14px;background:var(--red);color:#fff;font-weight:900;text-decoration:none;text-align:center;margin-top:10px}
+button.secondary,a.secondary{background:#f3efed;color:#403735}
+.small{font-size:12px;color:var(--muted);line-height:1.6}
+.status{display:inline-block;padding:6px 9px;border-radius:999px;background:#edf9ef;color:#157b35;font-size:12px;font-weight:900}
+.qr{max-width:300px;width:80%;display:block;margin:18px auto;border-radius:16px}
+code{word-break:break-all;font-size:12px}
+</style>
+</head>
+<body><main>
+<a class="btn secondary" href="admin.html">← 管理者画面へ戻る</a>
+<div class="card">
+  <h1>📰 新聞クーポンQR</h1>
+  <p class="small">QRは1回だけ発行します。再発行機能はありません。QR内のURLは固定なので、今後ページのデザインを変更しても印刷済みQRはそのまま使えます。</p>
+  <div id="content">状態を確認しています...</div>
+</div>
+</main>
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+const FIXED_URL="https://masaya0206.github.io/sigma-ticket/newspaper-coupon.html";
+async function load(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href="admin.html";return;}
+  const {data,error}=await sb.rpc("admin_newspaper_coupon_status");
+  if(error){
+    content.innerHTML='<p>'+error.message+'</p>';
+    return;
+  }
+  if(!data?.issued){
+    content.innerHTML=`
+      <h2>未発行</h2>
+      <p class="small">発行後はこのQRを固定で使用します。</p>
+      <button onclick="issue()">新聞クーポンQRを発行する</button>`;
+    return;
+  }
+  content.innerHTML=`
+    <span class="status">発行済み・有効</span>
+    <h2>50円OFF</h2>
+    <img class="qr" src="newspaper-coupon-qr.png" alt="新聞クーポンQR">
+    <p class="small">固定URL</p>
+    <code>${FIXED_URL}</code>
+    <p class="small">発行日時：${new Date(data.issued_at).toLocaleString("ja-JP")}</p>
+    <a class="btn secondary" href="newspaper-coupon-qr.png" target="_blank">QR画像を開く</a>
+    <a class="btn secondary" href="newspaper-coupon.html" target="_blank">お客さん側の表示を確認</a>`;
+}
+async function issue(){
+  if(!confirm("新聞クーポンQRを発行しますか？\n発行は1回のみで、再発行はできません。"))return;
+  const {data,error}=await sb.rpc("admin_issue_newspaper_coupon");
+  if(error){alert(error.message);return;}
+  await load();
+}
+load();
+</script>
+</body>
+</html>

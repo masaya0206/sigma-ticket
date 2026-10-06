@@ -151,176 +151,6 @@
       }
     }
   </style>
-
-  <meta name="theme-color" content="#111111">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="シグマ祭">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icon-180.png">
-
-
-  <style id="sigma-red-theme">
-    :root {
-      --sigma-red: #b5121b;
-      --sigma-red-dark: #8f0e15;
-      --sigma-red-soft: #fff1f2;
-      --sigma-gold: #d9a526;
-      --sigma-bg: #f7f4f2;
-      --sigma-surface: #ffffff;
-      --sigma-ink: #1c1c1e;
-      --sigma-muted: #6e6e73;
-      --sigma-line: #ece7e4;
-      --sigma-green: #15803d;
-      --sigma-shadow: 0 8px 24px rgba(74, 25, 25, 0.08);
-    }
-
-    html {
-      background: var(--sigma-bg);
-    }
-
-    body {
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Hiragino Sans",
-        "Yu Gothic",
-        sans-serif !important;
-      color: var(--sigma-ink) !important;
-      background: var(--sigma-bg) !important;
-      max-width: 620px !important;
-      margin: 0 auto !important;
-      padding: 20px !important;
-    }
-
-    body > h1:first-of-type {
-      margin: -20px -20px 22px !important;
-      padding:
-        max(36px, env(safe-area-inset-top))
-        22px
-        34px !important;
-      color: #fff !important;
-      background:
-        radial-gradient(circle at 86% 18%, rgba(255,255,255,.12), transparent 28%),
-        linear-gradient(145deg, var(--sigma-red), var(--sigma-red-dark)) !important;
-      border-radius: 0 0 28px 28px !important;
-      font-size: 30px !important;
-      letter-spacing: .02em !important;
-      text-align: left !important;
-    }
-
-    input,
-    select,
-    textarea {
-      color: var(--sigma-ink) !important;
-      background: #fff !important;
-      border: 1px solid #ddd5d1 !important;
-      border-radius: 14px !important;
-      box-shadow: none !important;
-    }
-
-    input:focus,
-    select:focus,
-    textarea:focus {
-      outline: none !important;
-      border-color: var(--sigma-red) !important;
-      box-shadow: 0 0 0 3px rgba(181,18,27,.10) !important;
-    }
-
-    button {
-      border-radius: 14px !important;
-      font-weight: 750 !important;
-      color: var(--sigma-red) !important;
-      background: var(--sigma-red-soft) !important;
-      box-shadow: none !important;
-    }
-
-    button:active {
-      transform: scale(.985);
-    }
-
-    button:disabled {
-      opacity: .45 !important;
-    }
-
-    #loginArea,
-    #sellerArea,
-    #staffArea,
-    #adminArea,
-    #ticketArea,
-    #ticketResult,
-    #claimArea,
-    #mySummaryArea,
-    #summaryArea,
-    #logArea,
-    #newPasswordArea,
-    .card,
-    .subcard {
-      border-radius: 20px !important;
-    }
-
-    #loginArea,
-    #ticketArea,
-    #ticketResult,
-    #claimArea,
-    #mySummaryArea,
-    #summaryArea,
-    #logArea,
-    #newPasswordArea,
-    .card {
-      background: var(--sigma-surface) !important;
-      border: 1px solid rgba(181,18,27,.06) !important;
-      box-shadow: var(--sigma-shadow) !important;
-    }
-
-    .subcard {
-      background: #fff !important;
-      border-color: var(--sigma-line) !important;
-    }
-
-    .success {
-      background: #ecfdf3 !important;
-      color: #14532d !important;
-    }
-
-    .danger {
-      background: #fff0f0 !important;
-      color: #7f1d1d !important;
-    }
-
-    .warning {
-      background: #fff8e8 !important;
-      color: #6b4a00 !important;
-    }
-
-    a {
-      color: var(--sigma-red) !important;
-    }
-
-    strong {
-      color: inherit;
-    }
-
-    hr {
-      border-color: var(--sigma-line) !important;
-    }
-
-    .ticket-code {
-      color: var(--sigma-red) !important;
-    }
-
-    @media (max-width: 520px) {
-      body {
-        padding: 16px !important;
-      }
-
-      body > h1:first-of-type {
-        margin-left: -16px !important;
-        margin-right: -16px !important;
-      }
-    }
-  </style>
-
 </head>
 
 <body>
@@ -376,8 +206,8 @@
   <div id="adminArea">
 
     <div class="top-actions">
-      <button onclick="location.href='home.html'">
-        🏠 ポータル
+      <button onclick="location.href='staff.html'">
+        スタッフ画面
       </button>
 
       <button onclick="logout()">
@@ -391,8 +221,13 @@
       <button onclick="toggleMainPanel('sellerManagementArea')">
         🎫 発行者管理
       </button>
-<button onclick="location.href='points-admin.html'">
-        ⭐ ポイント管理
+
+      <button onclick="toggleMainPanel('staffManagementArea')">
+        👥 スタッフ・シフト管理
+      </button>
+
+      <button onclick="toggleMainPanel('pointManagementArea')">
+        ⭐ ポイント設定
       </button>
 
       <button onclick="toggleMainPanel('ticketManagementArea')">
@@ -401,6 +236,10 @@
 
       <button onclick="toggleMainPanel('operationsArea')">
         🧭 当日運営ページ
+      </button>
+
+      <button onclick="location.href='newspaper-coupon-admin.html'">
+        📰 新聞クーポンQR
       </button>
     </div>
 
@@ -442,6 +281,121 @@
         </div>
       </div>
     </div>
+
+
+    <div id="staffManagementArea" class="card panel">
+      <h2>スタッフ・シフト管理</h2>
+
+      <div class="subcard">
+        <h3>スタッフ一覧</h3>
+
+        <p class="small">
+          チケット発行は全スタッフ共通です。
+          スキャン権限はレジ勤務中かどうかで判定します。
+        </p>
+
+        <button onclick="loadStaffMembers()">
+          スタッフ一覧を更新
+        </button>
+
+        <div id="staffMemberList">
+          未読み込み
+        </div>
+      </div>
+
+      <div class="subcard">
+        <h3>シフトを追加</h3>
+
+        <select id="assignmentStaff">
+          <option value="">スタッフを選択</option>
+        </select>
+
+        <select id="assignmentRole">
+          <option value="">役割を選択</option>
+          <option value="seller">売り子</option>
+          <option value="tent">テント内</option>
+          <option value="front">表番</option>
+          <option value="back">裏番</option>
+        </select>
+
+        <input
+          id="assignmentStart"
+          type="datetime-local"
+        >
+
+        <input
+          id="assignmentEnd"
+          type="datetime-local"
+        >
+
+        <button onclick="saveAssignment()">
+          シフトを保存
+        </button>
+
+        <p id="assignmentMessage"></p>
+      </div>
+
+      <div class="subcard">
+        <h3>シフト一覧</h3>
+
+        <input
+          id="assignmentDate"
+          type="date"
+          onchange="loadAssignments()"
+        >
+
+        <button onclick="setAssignmentDateToday()">
+          今日を表示
+        </button>
+
+        <div id="assignmentList">
+          未読み込み
+        </div>
+      </div>
+    </div>
+
+
+    <div id="pointManagementArea" class="card panel">
+      <h2>ポイント設定</h2>
+
+      <p class="small">
+        現在のポイントルール表を管理します。
+        最終的な自動ポイント計算式は後でSupabase側とまとめて整備します。
+      </p>
+
+      <input
+        id="pointStart"
+        type="datetime-local"
+      >
+
+      <input
+        id="pointEnd"
+        type="datetime-local"
+      >
+
+      <input
+        id="pointValue"
+        type="number"
+        step="0.01"
+        min="0"
+        placeholder="1枚あたりpt 例：0.25"
+      >
+
+      <button onclick="savePointRule()">
+        ポイント設定を保存
+      </button>
+
+      <p id="pointMessage"></p>
+
+      <button onclick="loadPointRules()">
+        ポイント設定一覧を更新
+      </button>
+
+      <div id="pointRuleList">
+        未読み込み
+      </div>
+    </div>
+
 
     <div id="ticketManagementArea" class="card panel">
       <h2>チケット管理</h2>
@@ -493,16 +447,16 @@
     <div id="operationsArea" class="card panel">
       <h2>当日運営ページ</h2>
 
-      <button onclick="location.href='home.html'">
+      <button onclick="location.href='staff.html'">
         👤 スタッフ画面
       </button>
 
-      <button onclick="location.href='manager.html'">
-        🧭 店長画面
+      <button onclick="location.href='front.html'">
+        📊 表番画面
       </button>
 
-      <button onclick="location.href='support.html'">
-        📦 サポート画面
+      <button onclick="location.href='back.html'">
+        🧭 裏番画面
       </button>
 
       <button onclick="location.href='index.html'">
@@ -535,13 +489,10 @@
     function roleText(role) {
 
       if (role === "seller") return "売り子";
-      if (role === "manager") return "店長";
+      if (role === "tent") return "テント内";
+      if (role === "front") return "表番";
+      if (role === "back") return "裏番";
       if (role === "register") return "レジ";
-      if (role === "cook") return "調理";
-      if (role === "support") return "サポート";
-
-      // 過去データ互換。旧役割は現在の「店長」として表示。
-      if (["tent","front","back"].includes(role)) return "店長";
 
       return "未確定";
     }
@@ -873,6 +824,7 @@
       const panelIds = [
         "sellerManagementArea",
         "staffManagementArea",
+        "pointManagementArea",
         "ticketManagementArea",
         "operationsArea"
       ];
@@ -920,7 +872,15 @@
           loadStaffMembers();
           loadAssignments();
         }
-if (
+
+        if (
+          panelId ===
+          "pointManagementArea"
+        ) {
+          loadPointRules();
+        }
+
+        if (
           panelId ===
           "ticketManagementArea"
         ) {
@@ -1596,6 +1556,230 @@ if (
     }
 
 
+    async function savePointRule() {
+
+      const startValue =
+        document.getElementById(
+          "pointStart"
+        ).value;
+
+      const endValue =
+        document.getElementById(
+          "pointEnd"
+        ).value;
+
+      const pointValue =
+        document.getElementById(
+          "pointValue"
+        ).value;
+
+      const message =
+        document.getElementById(
+          "pointMessage"
+        );
+
+      if (
+        !startValue ||
+        !endValue ||
+        pointValue === ""
+      ) {
+
+        message.textContent =
+          "開始日時・終了日時・ポイントを入力してください。";
+
+        return;
+      }
+
+      const start =
+        new Date(startValue);
+
+      const end =
+        new Date(endValue);
+
+      const pointPerTicket =
+        Number(pointValue);
+
+      if (end <= start) {
+
+        message.textContent =
+          "終了日時は開始日時より後にしてください。";
+
+        return;
+      }
+
+      if (
+        !Number.isFinite(
+          pointPerTicket
+        ) ||
+        pointPerTicket < 0
+      ) {
+
+        message.textContent =
+          "ポイントは0以上にしてください。";
+
+        return;
+      }
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from("point_rules")
+          .insert({
+            start_at:
+              start.toISOString(),
+            end_at:
+              end.toISOString(),
+            point_per_ticket:
+              pointPerTicket
+          });
+
+      if (error) {
+
+        message.textContent =
+          "保存エラー：" +
+          error.message;
+
+        return;
+      }
+
+      message.textContent =
+        "✅ ポイント設定を保存しました。";
+
+      document.getElementById(
+        "pointStart"
+      ).value = "";
+
+      document.getElementById(
+        "pointEnd"
+      ).value = "";
+
+      document.getElementById(
+        "pointValue"
+      ).value = "";
+
+      await loadPointRules();
+    }
+
+
+    async function loadPointRules() {
+
+      const area =
+        document.getElementById(
+          "pointRuleList"
+        );
+
+      area.textContent =
+        "読み込み中...";
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from("point_rules")
+          .select(
+            "id,start_at,end_at,point_per_ticket"
+          )
+          .order(
+            "start_at",
+            { ascending: true }
+          );
+
+      if (error) {
+
+        area.textContent =
+          "取得エラー：" +
+          error.message;
+
+        return;
+      }
+
+      if (
+        !data ||
+        data.length === 0
+      ) {
+
+        area.textContent =
+          "ポイント設定はまだありません。";
+
+        return;
+      }
+
+      area.innerHTML =
+        data.map(
+          rule => `
+            <div class="subcard">
+              <strong>
+                ${localDateTime(
+                  rule.start_at
+                )}
+              </strong>
+
+              <br>
+
+              〜
+              ${localDateTime(
+                rule.end_at
+              )}
+
+              <br><br>
+
+              1枚あたり
+              <strong>
+                ${rule.point_per_ticket} pt
+              </strong>
+
+              <button
+                onclick="
+                  deletePointRule(
+                    '${rule.id}'
+                  )
+                "
+              >
+                この設定を削除
+              </button>
+            </div>
+          `
+        ).join("");
+    }
+
+
+    async function deletePointRule(
+      id
+    ) {
+
+      const confirmed =
+        confirm(
+          "このポイント設定を削除しますか？"
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from("point_rules")
+          .delete()
+          .eq("id", id);
+
+      if (error) {
+
+        alert(
+          "削除エラー：" +
+          error.message
+        );
+
+        return;
+      }
+
+      await loadPointRules();
+    }
+
+
     async function searchTicket() {
 
       const ticketCode =
@@ -2080,19 +2264,6 @@ if (
 
     checkLogin();
 
-  </script>
-
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("./service-worker.js", { scope: "./" })
-          .catch((error) => {
-            console.log("Service Worker registration failed:", error);
-          });
-      });
-    }
   </script>
 
 </body>
