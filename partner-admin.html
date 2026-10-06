@@ -28,23 +28,19 @@ button,.btn{width:100%;display:block;text-align:center;padding:13px;border:0;bor
 .row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eee} .row:last-child{border-bottom:0}
 .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red);font-size:11px;font-weight:900}
 .instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}
-.staff-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.staff-actions button{width:auto;margin:0;white-space:nowrap}
-.delete-danger{background:#7f1d1d!important;color:#fff!important}
-.delete-danger:disabled{opacity:.55;cursor:not-allowed}
 pre{white-space:pre-wrap;word-break:break-all;background:#faf7f5;padding:10px;border-radius:10px;font-size:11px}
+.partner-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.partner-head h2{margin:0}
+.status-active{background:#edf9ef;color:#157b35}
+.status-ended{background:#f1efee;color:#6e6e73}
+.danger-btn{background:#fff0f0;color:#b5121b;border:1px solid #efb9bd}
+.danger-btn-strong{background:#8f0e15;color:#fff}
+.partner-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.filter-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.filter-tabs button{width:auto;margin:0;padding:8px 12px;background:#f4efed;color:#6e6e73}
+.filter-tabs button.active{background:var(--red);color:#fff}
+@media(max-width:520px){.partner-actions{grid-template-columns:1fr}}
 </style>
-
-<style id="responsiveOverflowFixV1">
-*,*::before,*::after{box-sizing:border-box}
-html,body{width:100%;max-width:100%;overflow-x:hidden}
-body{overflow-wrap:anywhere}
-main,.card,.row,main>*,.card>*{min-width:0;max-width:100%}
-input,select,textarea,button{max-width:100%;min-width:0;box-sizing:border-box}
-pre,code{max-width:100%;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
-@media(max-width:600px){input,select,textarea{font-size:16px}}
-</style>
-
 </head>
 <body>
 
@@ -57,6 +53,15 @@ pre,code{max-width:100%;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywh
     <button onclick="savePartner()">提携先を登録</button>
   </div>
 
+  <div class="card">
+    <b>表示</b>
+    <div class="filter-tabs">
+      <button id="filter-active" class="active" onclick="setPartnerFilter('active')">提携中</button>
+      <button id="filter-ended" onclick="setPartnerFilter('ended')">提携終了済み</button>
+      <button id="filter-all" onclick="setPartnerFilter('all')">すべて</button>
+    </div>
+  </div>
+
   <div id="partners"><div class="card">読み込み中...</div></div>
   <button class="secondary" onclick="location.href='admin-menu.html'">← 管理者メニューへ戻る</button>
 </main>
@@ -65,6 +70,7 @@ pre,code{max-width:100%;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywh
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 
 let overview=null;
+let partnerFilter='active';
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
@@ -88,11 +94,42 @@ async function load(){
   render();
 }
 
+function setPartnerFilter(value){
+  partnerFilter=value;
+  ["active","ended","all"].forEach(x=>{
+    const el=document.getElementById("filter-"+x);
+    if(el) el.classList.toggle("active",x===value);
+  });
+  render();
+}
+
 function render(){
-  const ps=overview?.partners||[];
-  partners.innerHTML=ps.length?ps.map(p=>`
-    <div class="card">
-      <h2>${esc(p.name)}</h2>
+  const all=overview?.partners||[];
+  const ps=all.filter(p=>{
+    if(partnerFilter==="active") return !!p.is_active;
+    if(partnerFilter==="ended") return !p.is_active;
+    return true;
+  });
+
+  partners.innerHTML=ps.length?ps.map(p=>{
+    const totalRedemptions=Number(p.total_redemption_count||0);
+    const joinedStaff=(p.staff||[]).length;
+    const canHardDelete=!p.is_active && totalRedemptions===0 && joinedStaff===0;
+
+    return `
+    <div class="card ${p.is_active?'':'danger'}">
+      <div class="partner-head">
+        <div>
+          <h2>${esc(p.name)}</h2>
+          <div style="margin-top:6px">
+            <span class="pill ${p.is_active?'status-active':'status-ended'}">
+              ${p.is_active?'提携中':'提携終了済み'}
+            </span>
+            <span class="small" style="margin-left:6px">特典利用 ${totalRedemptions}件</span>
+          </div>
+        </div>
+      </div>
+
       ${p.instagram_url?`<a class="btn instagram" href="${esc(p.instagram_url)}" target="_blank" rel="noopener">Instagramを見る</a>`:""}
 
       <div style="margin-top:16px">
@@ -103,16 +140,16 @@ function render(){
               <b>${esc(b.title)}</b>
               <div class="small">${esc(b.valid_label)} ／ 利用 ${b.redemption_count||0}件</div>
             </div>
+            ${p.is_active?`
             <button
               style="width:auto;margin:0"
               class="secondary"
               onclick="deleteBenefit('${b.id}','${esc(b.title)}')"
-            >
-              削除
-            </button>
+            >削除</button>`:""}
           </div>`).join("") || '<div class="small">特典なし</div>'}
       </div>
 
+      ${p.is_active?`
       <details style="margin-top:14px">
         <summary><b>特典を追加</b></summary>
         <label>特典名</label><input id="bt-${p.id}" placeholder="例：トッピング無料">
@@ -122,45 +159,26 @@ function render(){
       </details>
 
       <details style="margin-top:14px">
-        <summary><b>提携先スタッフを招待</b></summary><div class="small" style="margin:8px 0 4px">発行したURLは本人専用・1回限りです。本人はURL先でパスワードを設定するだけで登録できます。</div>
+        <summary><b>提携先スタッフを招待</b></summary>
         <label>名前</label><input id="in-${p.id}" placeholder="スタッフ名">
         <label>メールアドレス</label><input id="ie-${p.id}" type="email">
         <button onclick="makeInvite('${p.id}')">招待URLを発行</button>
         <div id="iu-${p.id}"></div>
-      </details>
+      </details>`:""}
 
       <div style="margin-top:16px">
         <b>参加済みスタッフ</b>
         ${(p.staff||[]).map(s=>`
           <div class="row">
-            <div style="min-width:0">
-              <b>${esc(s.display_name)}</b>
-              <div class="small">${esc(s.email)}</div>
-              ${!s.is_active?'<div class="small" style="margin-top:4px;color:#9a3412">停止中：完全削除ができます</div>':''}
-            </div>
-            <div class="staff-actions">
-              <button
-                class="${s.is_active?'secondary':''}"
-                onclick="setStaff('${s.user_id}',${!s.is_active})"
-              >
-                ${s.is_active?'停止':'再開'}
-              </button>
-              ${!s.is_active?`
-                <button
-                  class="delete-danger"
-                  onclick="deletePartnerStaff(
-                    '${s.user_id}',
-                    '${esc(s.display_name)}',
-                    '${esc(s.email)}'
-                  )"
-                >
-                  完全削除
-                </button>
-              `:''}
-            </div>
+            <div><b>${esc(s.display_name)}</b><div class="small">${esc(s.email)}</div></div>
+            ${p.is_active?`
+            <button style="width:auto;margin:0" class="${s.is_active?'secondary':''}" onclick="setStaff('${s.user_id}',${!s.is_active})">
+              ${s.is_active?'停止':'再開'}
+            </button>`:`<span class="small">提携終了中</span>`}
           </div>`).join("") || '<div class="small">まだいません</div>'}
       </div>
 
+      ${p.is_active?`
       <div style="margin-top:16px">
         <b>未使用の招待</b>
         ${(p.invites||[]).filter(i=>!i.revoked).map(i=>{
@@ -177,16 +195,86 @@ function render(){
               style="width:auto;margin:0 0 0 10px;white-space:nowrap"
               class="secondary"
               onclick="copyText(partnerInviteUrl('${i.invite_token}'))"
-            >
-              URLをコピー
-            </button>
+            >URLをコピー</button>
           </div>`;
         }).join("") || '<div class="small">なし</div>'}
+      </div>`:""}
+
+      <div class="partner-actions">
+        ${p.is_active
+          ? `<button class="danger-btn" onclick="endPartner('${p.id}','${esc(p.name)}',${totalRedemptions})">提携を終了</button>`
+          : `<button class="secondary" onclick="reactivatePartner('${p.id}','${esc(p.name)}')">提携を再開</button>`
+        }
+        ${canHardDelete
+          ? `<button class="danger-btn-strong" onclick="hardDeletePartner('${p.id}','${esc(p.name)}')">完全削除</button>`
+          : (!p.is_active
+              ? `<div class="small" style="padding:10px 2px">利用履歴または参加済みスタッフがあるため、完全削除せず履歴を保持します。</div>`
+              : '')
+        }
       </div>
-    </div>
-  `).join(""):'<div class="card">提携先がありません。</div>';
+    </div>`;
+  }).join(""):'<div class="card">該当する提携先がありません。</div>';
 }
 
+
+async function endPartner(id,name,redemptions){
+  const note=redemptions>0
+    ? `\n\n過去の特典利用 ${redemptions}件は削除せず保持します。`
+    : "";
+  if(!confirm(
+    `「${name}」との提携を終了しますか？\n\n`
+    +`・購入者画面から非表示になります\n`
+    +`・提携先QRリーダーは利用できなくなります\n`
+    +`・未使用の招待URLは無効になります`
+    +note
+  )) return;
+
+  const {error}=await sb.rpc("admin_set_partner_active",{
+    p_partner_id:id,
+    p_active:false
+  });
+  if(error){alert(error.message);return;}
+
+  partnerFilter="ended";
+  await load();
+  setPartnerFilter("ended");
+}
+
+async function reactivatePartner(id,name){
+  if(!confirm(`「${name}」との提携を再開しますか？\n過去の特典・スタッフ情報はそのまま利用します。`)) return;
+
+  const {error}=await sb.rpc("admin_set_partner_active",{
+    p_partner_id:id,
+    p_active:true
+  });
+  if(error){alert(error.message);return;}
+
+  partnerFilter="active";
+  await load();
+  setPartnerFilter("active");
+}
+
+async function hardDeletePartner(id,name){
+  if(!confirm(
+    `「${name}」を完全削除します。\n\n`
+    +`この操作は取り消せません。\n`
+    +`特典・未使用招待も削除されます。\n\n`
+    +`本当に完全削除しますか？`
+  )) return;
+
+  const typed=prompt(`確認のため団体名「${name}」を入力してください`);
+  if(typed!==name){
+    if(typed!==null) alert("団体名が一致しないため中止しました。");
+    return;
+  }
+
+  const {error}=await sb.rpc("admin_delete_partner",{
+    p_partner_id:id
+  });
+  if(error){alert(error.message);return;}
+
+  await load();
+}
 
 async function deleteBenefit(id,title){
   if(!confirm(`「${title}」を削除しますか？\nこの特典は購入者画面と提携先QRリーダーから消えます。`)){
@@ -249,11 +337,11 @@ async function makeInvite(pid){
   if(box){
     box.innerHTML=`
       <div class="card success">
-        <b>本人専用の招待URLを発行しました</b>
+        <b>招待URLを発行しました</b>
         <pre>${esc(url)}</pre>
         <button onclick="copyText(partnerInviteUrl('${data}'))">URLをコピー</button>
         <div class="small" style="margin-top:8px">
-          このURLは1回限りです。登録完了後は再利用できません。下の「未使用の招待」から再コピーできます。
+          このURLは下の「未使用の招待」にも残るため、画面を更新しても再コピーできます。
         </div>
       </div>
     `;
@@ -264,58 +352,6 @@ async function setStaff(uid,active){
   const {error}=await sb.rpc("admin_set_partner_staff_active",{p_user_id:uid,p_active:active});
   if(error){alert(error.message);return;}
   load();
-}
-
-async function functionErrorMessage(error){
-  if(!error) return "不明なエラー";
-  let text=error.message||"不明なエラー";
-  try{
-    const body=await error.context.json();
-    text=body?.error||body?.message||text;
-  }catch(_){}
-  return text;
-}
-
-async function deletePartnerStaff(uid,name,email){
-  const first=confirm(
-    `「${name}」を完全削除しますか？\n\n`+
-    `メール：${email}\n\n`+
-    `削除されるもの：\n`+
-    `・提携先スタッフ登録\n`+
-    `・この提携先で発行された本人の招待情報\n`+
-    `・Supabase Auth アカウント\n\n`+
-    `削除後は同じメールアドレスを新規招待できます。\n`+
-    `この操作は元に戻せません。`
-  );
-  if(!first)return;
-
-  const typed=prompt(
-    `誤操作防止のため「削除」と入力してください。\n\n対象：${name}`
-  );
-  if(typed!=="削除"){
-    if(typed!==null) alert("「削除」と入力されなかったため中止しました。");
-    return;
-  }
-
-  const {data,error}=await sb.functions.invoke(
-    "admin-delete-partner-staff",
-    {body:{user_id:uid}}
-  );
-
-  if(error){
-    alert("削除エラー："+await functionErrorMessage(error));
-    return;
-  }
-
-  if(data?.error){
-    alert("削除エラー："+data.error);
-    return;
-  }
-
-  alert(
-    `完全削除しました。\n\n${data?.display_name||name}\n${data?.email||email}\n\n同じメールアドレスで再招待できます。`
-  );
-  await load();
 }
 
 load();
