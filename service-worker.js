@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-quota-collection-fix-v45-2";
+const CACHE_NAME = "sigma-login-auto-sync-v50";
 
 const CORE_ASSETS = [
   "./home.html",

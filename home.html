@@ -7,7 +7,7 @@
   <title>シグマ祭 ポータル</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./offline-store.js"></script>
+  <script src="./offline-store.js?v=50"></script>
 
   <meta name="theme-color" content="#b5121b">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -975,6 +975,573 @@ table{
     }
 
 
+    let loginOfflineSyncBusy = false;
+
+    async function syncOfflineDayIssuesOnLogin() {
+      if (!window.SigmaOfflineStore?.listDayIssuesByStatus) {
+        return { type: "day_issues", synced: 0, failed: 0 };
+      }
+
+      const rows =
+        await window.SigmaOfflineStore
+          .listDayIssuesByStatus(["pending"]);
+
+      let synced = 0;
+      let failed = 0;
+
+      for (const x of rows) {
+        try {
+          const { data, error } =
+            await supabaseClient.rpc(
+              "sync_offline_day_issue_v3",
+              {
+                p_ticket_code: x.ticket_code,
+                p_seller_user_id: x.seller_user_id,
+                p_buyer_name: x.buyer_name || null,
+                p_issue_kind: x.issue_kind || "day",
+                p_issued_at: x.issued_at,
+                p_device_id: x.device_id,
+                p_local_id: x.local_id
+              }
+            );
+
+          if (error) throw error;
+
+          await window.SigmaOfflineStore
+            .updateDayIssue(
+              x.local_id,
+              {
+                sync_status: "synced",
+                synced_at:
+                  new Date()
+                    .toISOString(),
+                server_result: data,
+                issue_kind:
+                  data?.issue_kind ||
+                  x.issue_kind ||
+                  "day",
+                sync_error: null
+              }
+            );
+
+          synced++;
+        } catch (e) {
+          await window.SigmaOfflineStore
+            .updateDayIssue(
+              x.local_id,
+              {
+                sync_error:
+                  e?.message ||
+                  String(e)
+              }
+            );
+
+          failed++;
+        }
+      }
+
+      return {
+        type: "day_issues",
+        synced,
+        failed
+      };
+    }
+
+
+    async function syncOfflineTicketUsesOnLogin() {
+      if (!window.SigmaOfflineStore?.listUsesByStatus) {
+        return {
+          type: "ticket_uses",
+          synced: 0,
+          conflicts: 0,
+          failed: 0
+        };
+      }
+
+      const rows =
+        await window.SigmaOfflineStore
+          .listUsesByStatus(["pending"]);
+
+      let synced = 0;
+      let conflicts = 0;
+      let failed = 0;
+
+      for (const u of rows) {
+        try {
+          const { data, error } =
+            await supabaseClient.rpc(
+              "sync_offline_ticket_use",
+              {
+                p_ticket_code:
+                  u.ticket_code,
+                p_item:
+                  u.item,
+                p_used_at:
+                  u.used_at,
+                p_device_id:
+                  u.device_id,
+                p_local_id:
+                  u.local_id,
+                p_register_label:
+                  u.register_label
+              }
+            );
+
+          if (error) throw error;
+
+          const status =
+            data?.status ||
+            "error";
+
+          if (status === "synced") {
+            await window.SigmaOfflineStore
+              .updateUse(
+                u.local_id,
+                {
+                  sync_status: "synced",
+                  synced_at:
+                    new Date()
+                      .toISOString(),
+                  server_result: data,
+                  sync_error: null
+                }
+              );
+
+            synced++;
+          } else if (
+            status ===
+            "awaiting_issue"
+          ) {
+            // 売り子側の発行履歴がまだ同期されていない場合は
+            // pending のまま残し、次回ログイン / オンライン復帰時に再送する。
+            await window.SigmaOfflineStore
+              .updateUse(
+                u.local_id,
+                {
+                  sync_status:
+                    "pending",
+                  server_result: data,
+                  sync_error:
+                    "売り子側の発行履歴同期待ち"
+                }
+              );
+
+            failed++;
+          } else {
+            await window.SigmaOfflineStore
+              .updateUse(
+                u.local_id,
+                {
+                  sync_status:
+                    "conflict",
+                  synced_at:
+                    new Date()
+                      .toISOString(),
+                  server_result: data,
+                  sync_error:
+                    data?.message ||
+                    status
+                }
+              );
+
+            conflicts++;
+          }
+        } catch (e) {
+          await window.SigmaOfflineStore
+            .updateUse(
+              u.local_id,
+              {
+                sync_error:
+                  e?.message ||
+                  String(e)
+              }
+            );
+
+          failed++;
+        }
+      }
+
+      return {
+        type: "ticket_uses",
+        synced,
+        conflicts,
+        failed
+      };
+    }
+
+
+    async function syncOfflineCollectionsOnLogin() {
+      if (!window.SigmaOfflineStore?.listCollectionEventsByStatus) {
+        return {
+          type: "collections",
+          synced: 0,
+          conflicts: 0,
+          failed: 0
+        };
+      }
+
+      const rows =
+        await window.SigmaOfflineStore
+          .listCollectionEventsByStatus(
+            ["pending"]
+          );
+
+      let synced = 0;
+      let conflicts = 0;
+      let failed = 0;
+
+      for (const e of rows) {
+        try {
+          const { data, error } =
+            await supabaseClient.rpc(
+              "record_presale_collection",
+              {
+                p_staff_token:
+                  e.token,
+                p_client_event_id:
+                  e.client_event_id,
+                p_collected_at:
+                  e.collected_at,
+                p_device_id:
+                  e.device_id,
+                p_was_offline:
+                  e.was_offline
+              }
+            );
+
+          if (error) throw error;
+
+          const result =
+            data || {};
+
+          if (
+            result.status ===
+            "duplicate"
+          ) {
+            await window.SigmaOfflineStore
+              .updateCollectionEvent(
+                e.local_id,
+                {
+                  sync_status:
+                    "conflict",
+                  sync_error:
+                    "別の回収記録が先に登録されています",
+                  synced_at:
+                    new Date()
+                      .toISOString(),
+                  server_result:
+                    result
+                }
+              );
+
+            conflicts++;
+          } else {
+            await window.SigmaOfflineStore
+              .updateCollectionEvent(
+                e.local_id,
+                {
+                  sync_status:
+                    "synced",
+                  sync_error:
+                    null,
+                  synced_at:
+                    new Date()
+                      .toISOString(),
+                  server_result:
+                    result
+                }
+              );
+
+            synced++;
+          }
+        } catch (err) {
+          await window.SigmaOfflineStore
+            .updateCollectionEvent(
+              e.local_id,
+              {
+                sync_error:
+                  err?.message ||
+                  String(err)
+              }
+            );
+
+          failed++;
+        }
+      }
+
+      return {
+        type: "collections",
+        synced,
+        conflicts,
+        failed
+      };
+    }
+
+
+    async function refreshOfflineDataAfterLogin(
+      user,
+      staff
+    ) {
+      if (
+        !navigator.onLine ||
+        !window.SigmaOfflineStore
+      ) {
+        return {
+          snapshot: false,
+          collectionBackup: false
+        };
+      }
+
+      let snapshot = false;
+      let collectionBackup = false;
+
+      try {
+        const {
+          data,
+          error
+        } =
+          await supabaseClient.rpc(
+            "offline_ticket_backup_snapshot"
+          );
+
+        if (error) throw error;
+
+        await window.SigmaOfflineStore
+          .saveSnapshot(
+            data,
+            {
+              user_id:
+                user.id,
+              staff_name:
+                staff.staff_name,
+              source:
+                "login-auto",
+              saved_at:
+                new Date()
+                  .toISOString()
+            }
+          );
+
+        snapshot = true;
+      } catch (e) {
+        console.warn(
+          "ログイン時のオフラインバックアップ更新に失敗:",
+          e
+        );
+      }
+
+      // 集金担当者の場合だけ、その日の集金用データも自動保存。
+      // 担当ではない人はRPC側で拒否されるため、そのエラーは無視する。
+      if (
+        window.SigmaOfflineStore
+          ?.saveCollectionBootstrap
+      ) {
+        try {
+          const {
+            data,
+            error
+          } =
+            await supabaseClient.rpc(
+              "presale_collection_bootstrap"
+            );
+
+          if (error) throw error;
+
+          if (data?.authorized) {
+            await window.SigmaOfflineStore
+              .saveCollectionBootstrap(
+                data
+              );
+
+            collectionBackup = true;
+          }
+        } catch (_) {}
+      }
+
+      return {
+        snapshot,
+        collectionBackup
+      };
+    }
+
+
+    async function runOfflineSyncAfterLogin(
+      user,
+      staff,
+      options = {}
+    ) {
+      const reason =
+        options.reason ||
+        "password-login";
+
+      if (
+        loginOfflineSyncBusy ||
+        !navigator.onLine ||
+        !user ||
+        !staff ||
+        !window.SigmaOfflineStore
+      ) {
+        return {
+          skipped: true
+        };
+      }
+
+      loginOfflineSyncBusy = true;
+
+      const loginMessage =
+        document.getElementById(
+          "loginMessage"
+        );
+
+      const backupMessage =
+        document.getElementById(
+          "offlineBackupMessage"
+        );
+
+      if (
+        reason ===
+        "password-login"
+      ) {
+        loginMessage.textContent =
+          "ログイン成功。オフラインデータを同期しています...";
+      } else if (
+        backupMessage
+      ) {
+        backupMessage.textContent =
+          "通信復帰を検知。未同期データを自動送信しています...";
+      }
+
+      try {
+        // 発行履歴を先に同期する。
+        // 先にQR使用履歴を送ると awaiting_issue になる可能性があるため。
+        const dayResult =
+          await syncOfflineDayIssuesOnLogin();
+
+        const useResult =
+          await syncOfflineTicketUsesOnLogin();
+
+        const collectionResult =
+          await syncOfflineCollectionsOnLogin();
+
+        const refreshResult =
+          await refreshOfflineDataAfterLogin(
+            user,
+            staff
+          );
+
+        const synced =
+          Number(
+            dayResult.synced ||
+            0
+          ) +
+          Number(
+            useResult.synced ||
+            0
+          ) +
+          Number(
+            collectionResult.synced ||
+            0
+          );
+
+        const conflicts =
+          Number(
+            useResult.conflicts ||
+            0
+          ) +
+          Number(
+            collectionResult.conflicts ||
+            0
+          );
+
+        const failed =
+          Number(
+            dayResult.failed ||
+            0
+          ) +
+          Number(
+            useResult.failed ||
+            0
+          ) +
+          Number(
+            collectionResult.failed ||
+            0
+          );
+
+        await window.SigmaOfflineStore
+          .setMeta(
+            "last_login_auto_sync",
+            {
+              synced,
+              conflicts,
+              failed,
+              snapshot:
+                !!refreshResult.snapshot,
+              collection_backup:
+                !!refreshResult.collectionBackup,
+              reason,
+              synced_at:
+                new Date()
+                  .toISOString()
+            }
+          );
+
+        if (
+          reason ===
+          "password-login"
+        ) {
+          loginMessage.textContent =
+            "";
+        }
+
+        if (backupMessage) {
+          if (
+            failed ||
+            conflicts
+          ) {
+            backupMessage.textContent =
+              `自動同期：成功 ${synced}件 / 要確認 ${conflicts}件 / 再送待ち ${failed}件。`;
+          } else if (synced > 0) {
+            backupMessage.textContent =
+              `自動同期：${synced}件を同期しました。オフライン用データも更新済みです。`;
+          } else if (
+            refreshResult.snapshot
+          ) {
+            backupMessage.textContent =
+              "未同期データはありません。オフライン用データを最新状態に更新しました。";
+          }
+        }
+
+        return {
+          synced,
+          conflicts,
+          failed,
+          ...refreshResult
+        };
+      } catch (e) {
+        console.warn(
+          "ログイン時自動同期エラー:",
+          e
+        );
+
+        if (
+          reason ===
+          "password-login"
+        ) {
+          loginMessage.textContent =
+            "ログインしました。未同期データの一部は次回自動同期します。";
+        }
+
+        return {
+          error:
+            e?.message ||
+            String(e)
+        };
+      } finally {
+        loginOfflineSyncBusy = false;
+      }
+    }
+
+
     async function login() {
 
       const email =
@@ -1015,7 +1582,7 @@ table{
 
       message.textContent = "";
 
-      await showPortal();
+      await showPortal({ afterPasswordLogin: true });
     }
 
     async function saveNewPassword() {
@@ -1261,7 +1828,7 @@ table{
       return true;
     }
 
-    async function showPortal() {
+    async function showPortal(options = {}) {
 
       const {
         data: { user }
@@ -1349,6 +1916,19 @@ table{
           });
         }
       } catch (_) {}
+
+      // 「メールアドレス・パスワード認証を通過した直後」は、
+      // 未同期データ送信 + 最新オフラインバックアップ取得を必ず実行。
+      if (options.afterPasswordLogin) {
+        await runOfflineSyncAfterLogin(
+          user,
+          staff,
+          {
+            reason:
+              "password-login"
+          }
+        );
+      }
 
       document.getElementById(
         "loginArea"
@@ -1788,6 +2368,47 @@ const planned =
 
         if (session) {
           await showPortal();
+
+          try {
+            const {
+              data: { user }
+            } =
+              await supabaseClient.auth
+                .getUser();
+
+            if (user) {
+              const {
+                data: staff
+              } =
+                await supabaseClient
+                  .from(
+                    "staff_members"
+                  )
+                  .select(
+                    "staff_name,is_active"
+                  )
+                  .eq(
+                    "user_id",
+                    user.id
+                  )
+                  .maybeSingle();
+
+              if (
+                staff?.is_active
+              ) {
+                await runOfflineSyncAfterLogin(
+                  user,
+                  staff,
+                  {
+                    reason:
+                      "online-recovery"
+                  }
+                );
+
+                await refreshOfflineBackupStatus();
+              }
+            }
+          } catch (_) {}
         }
       }
     );
