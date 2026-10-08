@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-login-auto-sync-v50";
+const CACHE_NAME = "sigma-coupon-map-movieclub-v51";
 
 const CORE_ASSETS = [
   "./home.html",
