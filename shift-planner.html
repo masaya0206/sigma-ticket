@@ -39,6 +39,13 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
 .warning-box{background:#fff8e8;border:1px solid #f0d59a;border-radius:14px;padding:12px;margin-top:10px}.warning-box ul{margin:7px 0 0;padding-left:20px}
 .person-plan{padding:9px 0;border-top:1px solid #eee}.person-plan:first-child{border-top:0}.person-name{font-weight:900}
 .seg{display:inline-block;margin:4px 5px 0 0;padding:5px 8px;border-radius:999px;background:#f7f3f1;font-size:11px}
+.chart-wrap{width:100%;overflow-x:auto;padding-bottom:4px}
+.chart-canvas-wrap{min-width:640px;height:340px;position:relative}
+#staffingChart{width:100%;height:100%;display:block}
+.chart-legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin:10px 0 0}
+.chart-legend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-weight:800}
+.chart-dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.chart-note{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}
 @media(max-width:700px){
  .grid2,.grid3{grid-template-columns:1fr}
  .rule-row,.fixed-row{grid-template-columns:1fr 1fr}
@@ -117,6 +124,20 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   <details class="card section" open>
     <summary>5. 時間帯ごとの完成案</summary>
     <div class="section-body" id="slotPlan">まだ生成されていません。</div>
+  </details>
+
+  <details class="card section" open>
+    <summary>人員配置グラフ</summary>
+    <div class="section-body">
+      <p class="small">時間帯ごとの実配置人数を職種別の積み上げ棒で表示します。黒い折れ線は、その時間帯に設定した最低必要人数の合計です。</p>
+      <div class="chart-wrap">
+        <div class="chart-canvas-wrap">
+          <canvas id="staffingChart"></canvas>
+        </div>
+      </div>
+      <div id="chartLegend" class="chart-legend"></div>
+      <div class="chart-note">レジ・買い出し補助・ドライバーを希望職種に選んだ人は、希望判定上は「売り子」として扱います。実際に派生職種へ入れたい場合は必要人数条件または固定配置で指定してください。</div>
+    </div>
   </details>
 
   <details class="card section">
@@ -334,12 +355,23 @@ function availableFor(uid,slice,availabilityMap){
   return (availabilityMap[uid]||[]).some(([s,e])=>s<=slice.start&&e>=slice.end);
 }
 
+function normalizePreferenceRole(role){
+  // レジ・買い出し補助・ドライバーは「売り子系」の派生職種。
+  // 希望職種としては売り子にまとめ、派生職種そのものへ自動固定しない。
+  if(["register","shopping_helper","shopping_driver"].includes(role)) return "seller";
+  return role||"";
+}
+
 function preferenceScore(uid,role,prevRole){
   const p=prefs[uid]||{};
+  const first=normalizePreferenceRole(p.first_role);
+  const second=normalizePreferenceRole(p.second_role);
+  const third=normalizePreferenceRole(p.third_role);
+
   let score=0;
-  if(p.first_role===role)score+=300;
-  if(p.second_role===role)score+=200;
-  if(p.third_role===role)score+=100;
+  if(first===role)score+=300;
+  if(second===role)score+=200;
+  if(third===role)score+=100;
   if(prevRole===role)score+=60;
   if(role==="seller")score+=20;
   return score;
@@ -466,6 +498,7 @@ function renderSavedPlan(){
     planSummary.innerHTML='<p class="muted">この日の保存済み完成案はありません。</p>';
     slotPlan.innerHTML='まだ生成されていません。';
     personPlan.innerHTML='まだ生成されていません。';
+    renderStaffingChart();
     return;
   }
 
@@ -484,6 +517,7 @@ function renderSavedPlan(){
   `;
 
   renderSlotPlan();
+  renderStaffingChart();
   renderPersonPlan();
 }
 
@@ -513,6 +547,164 @@ function renderSlotPlan(){
   }).join("");
 }
 
+function renderStaffingChart(){
+  const canvas=document.getElementById("staffingChart");
+  const legend=document.getElementById("chartLegend");
+  if(!canvas||!legend)return;
+
+  if(!currentPlan.length){
+    const ctx=canvas.getContext("2d");
+    const dpr=window.devicePixelRatio||1;
+    const w=Math.max(640,canvas.parentElement.clientWidth||640),h=340;
+    canvas.width=w*dpr; canvas.height=h*dpr;
+    canvas.style.width=w+"px"; canvas.style.height=h+"px";
+    ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#6e6e73";
+    ctx.font="14px sans-serif";
+    ctx.fillText("完成案を生成するとグラフが表示されます。",24,40);
+    legend.innerHTML="";
+    return;
+  }
+
+  const cuts=new Set();
+  for(const x of currentPlan){
+    cuts.add(new Date(x.starts_at).getTime());
+    cuts.add(new Date(x.ends_at).getTime());
+  }
+  for(const r of requirementsRows){
+    cuts.add(new Date(r.starts_at).getTime());
+    cuts.add(new Date(r.ends_at).getTime());
+  }
+  const arr=[...cuts].sort((a,b)=>a-b);
+  const rows=[];
+  for(let i=0;i<arr.length-1;i++){
+    const s=arr[i],e=arr[i+1];
+    const active=currentPlan.filter(x=>
+      new Date(x.starts_at).getTime()<=s &&
+      new Date(x.ends_at).getTime()>=e
+    );
+    if(!active.length)continue;
+
+    const counts=Object.fromEntries(roleOrder.map(r=>[r,0]));
+    for(const x of active)counts[x.role]=(counts[x.role]||0)+1;
+
+    const req=activeRequirements({start:s,end:e});
+    const requiredTotal=Object.values(req).reduce((sum,n)=>sum+Number(n||0),0);
+
+    rows.push({s,e,counts,total:active.length,requiredTotal});
+  }
+
+  if(!rows.length)return;
+
+  const colors={
+    manager:"#7c3aed",
+    register:"#2563eb",
+    cook:"#dc2626",
+    support:"#16a34a",
+    shopping_helper:"#ca8a04",
+    shopping_driver:"#0891b2",
+    seller:"#6b7280"
+  };
+
+  legend.innerHTML=roleOrder.map(r=>
+    `<span><i class="chart-dot" style="background:${colors[r]}"></i>${esc(roleLabel[r])}</span>`
+  ).join("")+`<span><i class="chart-dot" style="background:#111;border-radius:999px"></i>最低必要人数</span>`;
+
+  const dpr=window.devicePixelRatio||1;
+  const cssW=Math.max(640,canvas.parentElement.clientWidth||640);
+  const cssH=340;
+  canvas.width=cssW*dpr;
+  canvas.height=cssH*dpr;
+  canvas.style.width=cssW+"px";
+  canvas.style.height=cssH+"px";
+
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  const pad={l:42,r:18,t:18,b:58};
+  const W=cssW-pad.l-pad.r,H=cssH-pad.t-pad.b;
+  const maxY=Math.max(
+    1,
+    ...rows.map(x=>x.total),
+    ...rows.map(x=>x.requiredTotal)
+  );
+  const yMax=Math.max(4,Math.ceil(maxY/2)*2);
+
+  // grid + y labels
+  ctx.font="11px sans-serif";
+  ctx.textAlign="right";
+  ctx.textBaseline="middle";
+  for(let i=0;i<=4;i++){
+    const val=Math.round(yMax*i/4);
+    const y=pad.t+H-(H*i/4);
+    ctx.strokeStyle="#ece7e4";
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+W,y);ctx.stroke();
+    ctx.fillStyle="#777";
+    ctx.fillText(String(val),pad.l-7,y);
+  }
+
+  const gap=4;
+  const bw=Math.max(7,(W/rows.length)-gap);
+
+  rows.forEach((row,i)=>{
+    const x=pad.l+(W/rows.length)*i+(W/rows.length-bw)/2;
+    let yBottom=pad.t+H;
+
+    for(const role of roleOrder.slice().reverse()){
+      const n=Number(row.counts[role]||0);
+      if(!n)continue;
+      const hh=(n/yMax)*H;
+      yBottom-=hh;
+      ctx.fillStyle=colors[role];
+      ctx.fillRect(x,yBottom,bw,hh);
+    }
+
+    const labelEvery=Math.max(1,Math.ceil(rows.length/8));
+    if(i%labelEvery===0 || i===rows.length-1){
+      ctx.save();
+      ctx.translate(x+bw/2,pad.t+H+12);
+      ctx.rotate(-Math.PI/5);
+      ctx.textAlign="right";
+      ctx.textBaseline="middle";
+      ctx.fillStyle="#666";
+      ctx.font="10px sans-serif";
+      ctx.fillText(timeOnly(row.s),0,0);
+      ctx.restore();
+    }
+  });
+
+  // required total line
+  ctx.strokeStyle="#111";
+  ctx.fillStyle="#111";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  rows.forEach((row,i)=>{
+    const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
+    const y=pad.t+H-(Math.min(row.requiredTotal,yMax)/yMax)*H;
+    if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  rows.forEach((row,i)=>{
+    const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
+    const y=pad.t+H-(Math.min(row.requiredTotal,yMax)/yMax)*H;
+    ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
+  });
+
+  ctx.fillStyle="#555";
+  ctx.font="11px sans-serif";
+  ctx.textAlign="center";
+  ctx.fillText("時間",pad.l+W/2,cssH-7);
+  ctx.save();
+  ctx.translate(11,pad.t+H/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("人数",0,0);
+  ctx.restore();
+}
+
 function renderPersonPlan(){
   const grouped={};
   for(const x of currentPlan)(grouped[x.user_id]??=[]).push(x);
@@ -525,6 +717,12 @@ function renderPersonPlan(){
       ).join("")}
     </div>`).join("");
 }
+
+let chartResizeTimer=null;
+window.addEventListener("resize",()=>{
+  clearTimeout(chartResizeTimer);
+  chartResizeTimer=setTimeout(()=>renderStaffingChart(),120);
+});
 
 daySelect.onchange=async()=>{
   syncDefaultTimes();
