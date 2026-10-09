@@ -74,12 +74,13 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
     </div>
     <p class="small">提出開始・終了、固定条件、必要人数条件の境界でも自動的に区切るため、10:15開始なども崩しません。</p>
     <p class="small">💾 このページで最後に選んだ対象日・基準分割・入力中の条件は、この端末に自動保存されます。ページを閉じても次回そのまま復元します。</p>
+    <p id="scopeNote" class="small"></p>
   </div>
 
   <details class="card section" open>
     <summary>2. 職種ごとの必要人数</summary>
     <div class="section-body">
-      <p class="small">「この時間帯はレジ2人、調理4人」のような最低必要人数です。固定配置が必要人数を超える場合は固定を優先します。</p>
+      <p class="small">「この時間帯はレジ2人、調理4人」のような最低必要人数です。<b>本祭日に登録した条件は本祭3日間すべてに共通反映</b>します。準備日・片付け日はその日だけの設定です。固定配置が必要人数を超える場合は固定を優先します。</p>
       <div class="grid3">
         <div><label>職種</label><select id="reqRole"></select></div>
         <div><label>開始</label><input id="reqFrom" type="datetime-local"></div>
@@ -96,7 +97,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   <details class="card section" open>
     <summary>3. 個人の固定配置</summary>
     <div class="section-body">
-      <p class="small">「この人はこの時間、この職種で確定」を設定します。自動編成してもここは動かしません。</p>
+      <p class="small">「この人はこの時間、この職種で確定」を設定します。<b>本祭日に登録した固定配置は本祭3日間すべてに共通反映</b>し、準備日・片付け日はその日だけに反映します。自動編成しても固定部分は動かしません。</p>
       <div class="grid2">
         <div><label>スタッフ</label><select id="fixedStaff"></select></div>
         <div><label>職種</label><select id="fixedRole"></select></div>
@@ -235,6 +236,42 @@ function localInput(v){
 function timeOnly(v){return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});}
 function fmtDateTime(v){return new Date(v).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});}
 function currentDay(){return days.find(x=>String(x.id)===String(daySelect.value));}
+
+function isFestivalDay(d){
+  return d?.day_type==="festival";
+}
+
+function festivalDays(){
+  return days.filter(x=>x.day_type==="festival").sort((a,b)=>a.id-b.id);
+}
+
+function updateScopeNote(){
+  const d=currentDay();
+  if(!d)return;
+  scopeNote.innerHTML=isFestivalDay(d)
+    ? '🎪 <b>本祭共通設定：</b>この日に追加した必要人数・固定配置は、本祭の全日程へ同じ時刻で反映します。'
+    : '🧰 <b>個別設定：</b>準備日・片付け日の条件は、この日だけに反映します。';
+}
+
+function applyClockToDay(sourceIso,targetDay){
+  const source=new Date(sourceIso);
+  const base=new Date(targetDay.starts_at);
+
+  const target=new Date(base);
+  target.setHours(
+    source.getHours(),
+    source.getMinutes(),
+    source.getSeconds(),
+    0
+  );
+
+  return target.toISOString();
+}
+
+function makeGroupKey(){
+  if(crypto?.randomUUID)return crypto.randomUUID();
+  return 'grp-'+Date.now()+'-'+Math.random().toString(16).slice(2);
+}
 function roleOptions(el){el.innerHTML=roles.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");}
 
 async function requireAdmin(){
@@ -276,6 +313,7 @@ function syncDefaultTimes(){
   const d=currentDay(); if(!d)return;
   reqFrom.value=localInput(d.starts_at); reqTo.value=localInput(d.ends_at);
   fixedFrom.value=localInput(d.starts_at); fixedTo.value=localInput(d.ends_at);
+  updateScopeNote();
 }
 
 async function loadDayData(){
@@ -304,21 +342,53 @@ addRequirement.onclick=async()=>{
   savePlannerSettings();
   const e=validateRange(reqFrom.value,reqTo.value);
   if(e){alert(e);return;}
-  const payload={
-    event_day_id:+daySelect.value,
-    role:reqRole.value,
-    starts_at:new Date(reqFrom.value).toISOString(),
-    ends_at:new Date(reqTo.value).toISOString(),
-    required_count:+reqCount.value
-  };
-  const {error}=await sb.from("shift_role_requirements").insert(payload);
+
+  const d=currentDay();
+  const groupKey=makeGroupKey();
+  let payloads=[];
+
+  if(isFestivalDay(d)){
+    payloads=festivalDays().map(fd=>({
+      event_day_id:+fd.id,
+      role:reqRole.value,
+      starts_at:applyClockToDay(reqFrom.value,fd),
+      ends_at:applyClockToDay(reqTo.value,fd),
+      required_count:+reqCount.value,
+      group_key:groupKey,
+      scope:"festival_all"
+    }));
+  }else{
+    payloads=[{
+      event_day_id:+daySelect.value,
+      role:reqRole.value,
+      starts_at:new Date(reqFrom.value).toISOString(),
+      ends_at:new Date(reqTo.value).toISOString(),
+      required_count:+reqCount.value,
+      group_key:groupKey,
+      scope:"day"
+    }];
+  }
+
+  const {error}=await sb.from("shift_role_requirements").insert(payloads);
   if(error){alert(error.message);return;}
   await loadDayData();
 };
 
 async function delRequirement(id){
-  if(!confirm("この必要人数条件を削除しますか？"))return;
-  const {error}=await sb.from("shift_role_requirements").delete().eq("id",id);
+  const row=requirementsRows.find(x=>x.id===id);
+  if(!row)return;
+  const msg=row.scope==="festival_all"
+    ? "この必要人数条件を本祭すべての日から削除しますか？"
+    : "この必要人数条件を削除しますか？";
+  if(!confirm(msg))return;
+
+  let q=sb.from("shift_role_requirements").delete();
+  if(row.group_key){
+    q=q.eq("group_key",row.group_key);
+  }else{
+    q=q.eq("id",id);
+  }
+  const {error}=await q;
   if(error)alert(error.message); else loadDayData();
 }
 
@@ -328,7 +398,7 @@ function renderRequirements(){
       <b>${esc(roleLabel[x.role]||x.role)}：${Number(x.required_count)}人</b>
       <span>${timeOnly(x.starts_at)}〜${timeOnly(x.ends_at)}</span>
       <span class="small">${fmtDateTime(x.starts_at)}</span>
-      <span class="pill">最低人数</span>
+      <span class="pill">${x.scope==="festival_all"?"本祭共通":"この日のみ"}</span>
       <button class="smallbtn danger del" onclick="delRequirement(${x.id})">削除</button>
     </div>`).join(""):'<p class="muted">必要人数条件はまだありません。</p>';
 }
@@ -337,23 +407,57 @@ addFixed.onclick=async()=>{
   savePlannerSettings();
   const e=validateRange(fixedFrom.value,fixedTo.value);
   if(e){alert(e);return;}
-  const payload={
-    event_day_id:+daySelect.value,
-    user_id:fixedStaff.value,
-    role:fixedRole.value,
-    starts_at:new Date(fixedFrom.value).toISOString(),
-    ends_at:new Date(fixedTo.value).toISOString(),
-    note:fixedNote.value||null
-  };
-  const {error}=await sb.from("shift_fixed_assignments").insert(payload);
+
+  const d=currentDay();
+  const groupKey=makeGroupKey();
+  let payloads=[];
+
+  if(isFestivalDay(d)){
+    payloads=festivalDays().map(fd=>({
+      event_day_id:+fd.id,
+      user_id:fixedStaff.value,
+      role:fixedRole.value,
+      starts_at:applyClockToDay(fixedFrom.value,fd),
+      ends_at:applyClockToDay(fixedTo.value,fd),
+      note:fixedNote.value||null,
+      group_key:groupKey,
+      scope:"festival_all"
+    }));
+  }else{
+    payloads=[{
+      event_day_id:+daySelect.value,
+      user_id:fixedStaff.value,
+      role:fixedRole.value,
+      starts_at:new Date(fixedFrom.value).toISOString(),
+      ends_at:new Date(fixedTo.value).toISOString(),
+      note:fixedNote.value||null,
+      group_key:groupKey,
+      scope:"day"
+    }];
+  }
+
+  const {error}=await sb.from("shift_fixed_assignments").insert(payloads);
   if(error){alert(error.message);return;}
   fixedNote.value="";
+  savePlannerSettings();
   await loadDayData();
 };
 
 async function delFixed(id){
-  if(!confirm("この固定配置を解除しますか？"))return;
-  const {error}=await sb.from("shift_fixed_assignments").delete().eq("id",id);
+  const row=fixedRows.find(x=>x.id===id);
+  if(!row)return;
+  const msg=row.scope==="festival_all"
+    ? "この固定配置を本祭すべての日から解除しますか？"
+    : "この固定配置を解除しますか？";
+  if(!confirm(msg))return;
+
+  let q=sb.from("shift_fixed_assignments").delete();
+  if(row.group_key){
+    q=q.eq("group_key",row.group_key);
+  }else{
+    q=q.eq("id",id);
+  }
+  const {error}=await q;
   if(error)alert(error.message); else loadDayData();
 }
 
@@ -363,7 +467,7 @@ function renderFixed(){
       <b>${esc(staffName(x.user_id))}</b>
       <span class="pill">${esc(roleLabel[x.role]||x.role)}</span>
       <span>${timeOnly(x.starts_at)}〜${timeOnly(x.ends_at)}</span>
-      <span class="small">${esc(x.note||"固定")}</span>
+      <span class="small">${esc(x.note||"固定")}<br>${x.scope==="festival_all"?"本祭共通":"この日のみ"}</span>
       <button class="smallbtn danger del" onclick="delFixed(${x.id})">解除</button>
     </div>`).join(""):'<p class="muted">固定配置はまだありません。</p>';
 }
