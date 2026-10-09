@@ -39,6 +39,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
 .warning-box{background:#fff8e8;border:1px solid #f0d59a;border-radius:14px;padding:12px;margin-top:10px}.warning-box ul{margin:7px 0 0;padding-left:20px}
 .person-plan{padding:9px 0;border-top:1px solid #eee}.person-plan:first-child{border-top:0}.person-name{font-weight:900}
 .seg{display:inline-block;margin:4px 5px 0 0;padding:5px 8px;border-radius:999px;background:#f7f3f1;font-size:11px}
+.saved-rule{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f8f6f4;border:1px solid var(--line)}
 .chart-wrap{width:100%;overflow-x:auto;padding-bottom:4px}
 .chart-canvas-wrap{min-width:640px;height:340px;position:relative}
 #staffingChart{width:100%;height:100%;display:block}
@@ -112,8 +113,30 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
     </div>
   </details>
 
+  <details class="card section" open>
+    <summary>4. 勤務・休憩ルール</summary>
+    <div class="section-body">
+      <p class="small">連続勤務が上限に達したスタッフから、必要人数をなるべく崩さないように休憩を自動配置します。本祭で設定すると本祭全日共通、準備日・片付け日はその日のみです。</p>
+      <div class="grid2">
+        <div>
+          <label>連続最大勤務時間（分）</label>
+          <input id="maxContinuousMinutes" type="number" min="30" step="30" value="240">
+          <div class="small">例：240分 = 4時間</div>
+        </div>
+        <div>
+          <label>1回の休憩時間（分）</label>
+          <input id="breakMinutes" type="number" min="0" step="15" value="30">
+          <div class="small">0分にすると自動休憩を無効化</div>
+        </div>
+      </div>
+      <button class="primary" id="saveWorkRule">勤務・休憩ルールを保存</button>
+      <div id="workRuleMsg"></div>
+      <div id="workRuleCurrent" class="saved-rule small"></div>
+    </div>
+  </details>
+
   <div class="card">
-    <h2>4. 完成案を生成</h2>
+    <h2>5. 完成案を生成</h2>
     <p class="small">
       優先順位：①固定配置 → ②必要人数を満たす → ③第1〜第3希望 → ④前の時間帯と同じ役割を優先 → ⑤残りは売り子。
       希望時間外には配置しません。
@@ -124,12 +147,12 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </div>
 
   <details class="card section" open>
-    <summary>5. 時間帯ごとの完成案</summary>
+    <summary>6. 時間帯ごとの完成案</summary>
     <div class="section-body" id="slotPlan">まだ生成されていません。</div>
   </details>
 
   <details class="card section" open>
-    <summary>人員配置グラフ</summary>
+    <summary>7. 人員配置グラフ</summary>
     <div class="section-body">
       <p class="small">時間帯ごとの実配置人数を職種別の積み上げ棒で表示します。黒い折れ線は、その時間帯に設定した最低必要人数の合計です。</p>
       <div class="chart-wrap">
@@ -143,7 +166,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </details>
 
   <details class="card section">
-    <summary>スタッフごとの完成案</summary>
+    <summary>8. スタッフごとの完成案</summary>
     <div class="section-body" id="personPlan">まだ生成されていません。</div>
   </details>
 
@@ -167,8 +190,9 @@ const roles=[
 ];
 const roleOrder=roles.map(x=>x[0]);
 const roleLabel=Object.fromEntries(roles);
+roleLabel.break="休憩";
 
-let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[];
+let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[],workRule=null;
 
 const SHIFT_PLANNER_SETTINGS_KEY="sigma_shift_planner_settings_v1";
 
@@ -318,17 +342,25 @@ function syncDefaultTimes(){
 
 async function loadDayData(){
   const d=currentDay(); if(!d)return;
-  const [a,r,f,p]=await Promise.all([
+  const [a,r,f,p,w]=await Promise.all([
     sb.from("staff_availability")
       .select("id,user_id,event_day_id,available_from,available_to,note")
       .eq("event_day_id",d.id).order("available_from"),
     sb.from("shift_role_requirements").select("*").eq("event_day_id",d.id).order("starts_at"),
     sb.from("shift_fixed_assignments").select("*").eq("event_day_id",d.id).order("starts_at"),
-    sb.from("shift_plan_assignments").select("*").eq("event_day_id",d.id).order("starts_at")
+    sb.from("shift_plan_assignments").select("*").eq("event_day_id",d.id).order("starts_at"),
+    sb.from("shift_work_rules").select("*").eq("event_day_id",d.id).maybeSingle()
   ]);
-  for(const x of [a,r,f,p]) if(x.error) throw x.error;
-  avail=a.data||[]; requirementsRows=r.data||[]; fixedRows=f.data||[]; currentPlan=p.data||[];
-  renderRequirements(); renderFixed(); renderSavedPlan();
+  for(const x of [a,r,f,p,w]) if(x.error) throw x.error;
+  avail=a.data||[];
+  requirementsRows=r.data||[];
+  fixedRows=f.data||[];
+  currentPlan=p.data||[];
+  workRule=w.data||{event_day_id:+d.id,max_continuous_minutes:240,break_minutes:30,scope:isFestivalDay(d)?"festival_all":"day"};
+  renderRequirements();
+  renderFixed();
+  renderWorkRule();
+  renderSavedPlan();
 }
 
 function staffName(uid){return staff.find(x=>x.user_id===uid)?.staff_name||uid;}
@@ -472,6 +504,66 @@ function renderFixed(){
     </div>`).join(""):'<p class="muted">固定配置はまだありません。</p>';
 }
 
+
+function renderWorkRule(){
+  const maxMin=Number(workRule?.max_continuous_minutes||240);
+  const br=Number(workRule?.break_minutes??30);
+  maxContinuousMinutes.value=maxMin;
+  breakMinutes.value=br;
+
+  const scopeText=workRule?.scope==="festival_all"?"本祭共通":"この日のみ";
+  workRuleCurrent.innerHTML=
+    `現在：<b>最大 ${maxMin}分（${(maxMin/60).toFixed(maxMin%60?1:0)}時間）</b>連続勤務 → `+
+    `<b>${br}分休憩</b>　<span class="pill">${scopeText}</span>`;
+}
+
+saveWorkRule.onclick=async()=>{
+  const maxMin=Number(maxContinuousMinutes.value);
+  const br=Number(breakMinutes.value);
+
+  if(!Number.isFinite(maxMin)||maxMin<30){
+    workRuleMsg.innerHTML='<span class="err">連続最大勤務時間は30分以上にしてください。</span>';
+    return;
+  }
+  if(!Number.isFinite(br)||br<0){
+    workRuleMsg.innerHTML='<span class="err">休憩時間は0分以上にしてください。</span>';
+    return;
+  }
+
+  const d=currentDay();
+  let payloads=[];
+
+  if(isFestivalDay(d)){
+    payloads=festivalDays().map(fd=>({
+      event_day_id:+fd.id,
+      max_continuous_minutes:Math.round(maxMin),
+      break_minutes:Math.round(br),
+      scope:"festival_all",
+      updated_at:new Date().toISOString()
+    }));
+  }else{
+    payloads=[{
+      event_day_id:+d.id,
+      max_continuous_minutes:Math.round(maxMin),
+      break_minutes:Math.round(br),
+      scope:"day",
+      updated_at:new Date().toISOString()
+    }];
+  }
+
+  const {error}=await sb.from("shift_work_rules").upsert(payloads,{onConflict:"event_day_id"});
+  if(error){
+    workRuleMsg.innerHTML=`<span class="err">${esc(error.message)}</span>`;
+    return;
+  }
+
+  workRuleMsg.innerHTML=isFestivalDay(d)
+    ? '<span class="ok">✅ 本祭すべての日に保存しました。</span>'
+    : '<span class="ok">✅ この日だけに保存しました。</span>';
+
+  await loadDayData();
+};
+
 function mergedAvailability(){
   const by={};
   for(const a of avail){
@@ -493,7 +585,10 @@ function buildSlices(){
   const d=currentDay();
   const start=new Date(d.starts_at).getTime(), end=new Date(d.ends_at).getTime();
   const cuts=new Set([start,end]);
-  const step=Number(slotMinutes.value||30)*60000;
+  const selectedStep=Number(slotMinutes.value||30);
+  const br=Number(workRule?.break_minutes||0);
+  const effectiveStep=br>0?Math.min(selectedStep,br):selectedStep;
+  const step=Math.max(15,effectiveStep)*60000;
   for(let t=start+step;t<end;t+=step)cuts.add(t);
   for(const a of avail){
     const s=new Date(a.available_from).getTime(), e=new Date(a.available_to).getTime();
@@ -553,18 +648,68 @@ function generatePlan(){
   const previousRole={};
   const generated=[];
 
+  const maxContinuousMs=Math.max(30,Number(workRule?.max_continuous_minutes||240))*60000;
+  const breakMs=Math.max(0,Number(workRule?.break_minutes||0))*60000;
+  const workedMs={};
+  const breakUntil={};
+  const postponedWarned=new Set();
+  const fixedOverWarned=new Set();
+
   for(const slice of slices){
     const participants=staff.filter(s=>availableFor(s.user_id,slice,availabilityMap));
     const assigned=new Map();
+    const onBreak=new Set();
+    const needs=activeRequirements(slice);
+    const requiredTotal=Object.values(needs).reduce((sum,n)=>sum+Number(n||0),0);
 
-    // Fixed first.
+    // Continue already-started breaks.
+    if(breakMs>0){
+      for(const p of participants){
+        if(Number(breakUntil[p.user_id]||0)>slice.start){
+          onBreak.add(p.user_id);
+        }
+      }
+    }
+
+    // Fixed assignments take priority over an automatic break.
     for(const person of participants){
       const fx=activeFixed(person.user_id,slice);
+
       if(fx.length>1){
         warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${staffName(person.user_id)} に固定職種が重複しています。先に登録された固定を使用しました。`);
       }
+
       if(fx.length){
+        if(onBreak.has(person.user_id)){
+          onBreak.delete(person.user_id);
+          breakUntil[person.user_id]=0;
+        }
         assigned.set(person.user_id,{role:fx[0].role,is_fixed:true});
+      }
+    }
+
+    // Start new breaks for people who reached the maximum continuous work time.
+    if(breakMs>0){
+      const due=participants
+        .filter(p=>!assigned.has(p.user_id)&&!onBreak.has(p.user_id))
+        .filter(p=>Number(workedMs[p.user_id]||0)>=maxContinuousMs)
+        .sort((a,b)=>Number(workedMs[b.user_id]||0)-Number(workedMs[a.user_id]||0));
+
+      for(const p of due){
+        const workingIfBreak=
+          participants.length-onBreak.size-1;
+
+        // Try not to break the total minimum staffing requirement.
+        if(workingIfBreak>=requiredTotal){
+          onBreak.add(p.user_id);
+          breakUntil[p.user_id]=slice.start+breakMs;
+        }else{
+          const key=`${p.user_id}|${slice.start}`;
+          if(!postponedWarned.has(key)){
+            warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${staffName(p.user_id)} は最大連続勤務時間に達していますが、必要人数確保のため休憩を後ろ倒ししました。`);
+            postponedWarned.add(key);
+          }
+        }
       }
     }
 
@@ -577,16 +722,15 @@ function generatePlan(){
       }
     }
 
-    const needs=activeRequirements(slice);
-
+    // Fill required roles from people who are not on break.
     for(const role of roleOrder){
       const target=Number(needs[role]||0);
       const already=[...assigned.values()].filter(x=>x.role===role).length;
-      let missing=Math.max(0,target-already);
+      const missing=Math.max(0,target-already);
       if(!missing)continue;
 
       const candidates=participants
-        .filter(p=>!assigned.has(p.user_id))
+        .filter(p=>!assigned.has(p.user_id)&&!onBreak.has(p.user_id))
         .map(p=>({
           ...p,
           score:preferenceScore(p.user_id,role,previousRole[p.user_id])
@@ -596,21 +740,41 @@ function generatePlan(){
       for(const p of candidates.slice(0,missing)){
         assigned.set(p.user_id,{role,is_fixed:false});
       }
+
       const after=[...assigned.values()].filter(x=>x.role===role).length;
       if(after<target){
         warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${roleLabel[role]} が ${target-after}人不足しています。`);
       }
     }
 
-    // Everyone who submitted this time stays in the shift.
+    // Everyone else who submitted this time stays in the shift as a seller,
+    // except those taking an automatic break.
     for(const p of participants){
-      if(!assigned.has(p.user_id)){
+      if(!assigned.has(p.user_id)&&!onBreak.has(p.user_id)){
         assigned.set(p.user_id,{role:"seller",is_fixed:false});
       }
     }
 
+    const sliceMs=slice.end-slice.start;
+
     for(const p of participants){
+      if(onBreak.has(p.user_id)){
+        generated.push({
+          event_day_id:+daySelect.value,
+          user_id:p.user_id,
+          role:"break",
+          starts_at:new Date(slice.start).toISOString(),
+          ends_at:new Date(slice.end).toISOString(),
+          is_fixed:false
+        });
+        workedMs[p.user_id]=0;
+        previousRole[p.user_id]="break";
+        continue;
+      }
+
       const a=assigned.get(p.user_id);
+      if(!a)continue;
+
       generated.push({
         event_day_id:+daySelect.value,
         user_id:p.user_id,
@@ -619,7 +783,31 @@ function generatePlan(){
         ends_at:new Date(slice.end).toISOString(),
         is_fixed:a.is_fixed
       });
+
+      workedMs[p.user_id]=Number(workedMs[p.user_id]||0)+sliceMs;
       previousRole[p.user_id]=a.role;
+
+      if(
+        a.is_fixed &&
+        breakMs>0 &&
+        workedMs[p.user_id]>maxContinuousMs
+      ){
+        const key=`${p.user_id}|fixed-over`;
+        if(!fixedOverWarned.has(key)){
+          warnings.push(`${staffName(p.user_id)} は固定配置を優先したため、連続勤務上限を超える可能性があります。`);
+          fixedOverWarned.add(key);
+        }
+      }
+    }
+
+    // People who are no longer participating have their continuous counter reset.
+    const activeIds=new Set(participants.map(x=>x.user_id));
+    for(const uid of Object.keys(workedMs)){
+      if(!activeIds.has(uid)){
+        workedMs[uid]=0;
+        breakUntil[uid]=0;
+        previousRole[uid]=null;
+      }
     }
   }
 
@@ -674,14 +862,14 @@ function renderSavedPlan(){
 
   const people=new Set(currentPlan.map(x=>x.user_id)).size;
   const fixed=currentPlan.filter(x=>x.is_fixed).length;
-  const totalMin=currentPlan.reduce((s,x)=>s+(new Date(x.ends_at)-new Date(x.starts_at))/60000,0);
+  const totalMin=currentPlan.filter(x=>x.role!=="break").reduce((s,x)=>s+(new Date(x.ends_at)-new Date(x.starts_at))/60000,0);
 
   planSummary.innerHTML=`
     <div class="summarybar">
       <div><b>${people}</b><span>配置スタッフ</span></div>
       <div><b>${currentPlan.length}</b><span>連続役割区間</span></div>
       <div><b>${fixed}</b><span>固定区間</span></div>
-      <div><b>${Math.round(totalMin/60*10)/10}</b><span>延べ時間</span></div>
+      <div><b>${Math.round(totalMin/60*10)/10}</b><span>延べ勤務時間</span></div>
     </div>
     ${warnings.length?`<div class="warning-box"><b>⚠ 要確認 ${warnings.length}件</b><ul>${warnings.map(w=>`<li>${esc(w)}</li>`).join("")}</ul></div>`:"<p class='ok'>必要人数上の警告はありません。</p>"}
   `;
@@ -706,13 +894,14 @@ function renderSlotPlan(){
     const byRole={};
     for(const x of sl.active)(byRole[x.role]??=[]).push(x);
     return `<div class="slot">
-      <div class="slot-time">${timeOnly(sl.s)}〜${timeOnly(sl.e)}　合計 ${sl.active.length}人</div>
+      <div class="slot-time">${timeOnly(sl.s)}〜${timeOnly(sl.e)}　勤務 ${sl.active.filter(x=>x.role!=="break").length}人 / 休憩 ${(byRole.break||[]).length}人</div>
       ${roleOrder.map(r=>{
         const xs=byRole[r]||[];
         if(!xs.length)return "";
         return `<div class="roleline"><div class="rolelabel">${esc(roleLabel[r])} ${xs.length}人</div>
           <div class="names">${xs.map(x=>`${esc(staffName(x.user_id))}${x.is_fixed?" 🔒":""}`).join("、")}</div></div>`;
       }).join("")}
+      ${(byRole.break||[]).length?`<div class="roleline"><div class="rolelabel">休憩 ${(byRole.break||[]).length}人</div><div class="names">${(byRole.break||[]).map(x=>esc(staffName(x.user_id))).join("、")}</div></div>`:""}
     </div>`;
   }).join("");
 }
@@ -756,13 +945,15 @@ function renderStaffingChart(){
     );
     if(!active.length)continue;
 
+    const working=active.filter(x=>x.role!=="break");
+    const breakCount=active.filter(x=>x.role==="break").length;
     const counts=Object.fromEntries(roleOrder.map(r=>[r,0]));
-    for(const x of active)counts[x.role]=(counts[x.role]||0)+1;
+    for(const x of working)counts[x.role]=(counts[x.role]||0)+1;
 
     const req=activeRequirements({start:s,end:e});
     const requiredTotal=Object.values(req).reduce((sum,n)=>sum+Number(n||0),0);
 
-    rows.push({s,e,counts,total:active.length,requiredTotal});
+    rows.push({s,e,counts,total:working.length,breakCount,requiredTotal});
   }
 
   if(!rows.length)return;
@@ -779,7 +970,9 @@ function renderStaffingChart(){
 
   legend.innerHTML=roleOrder.map(r=>
     `<span><i class="chart-dot" style="background:${colors[r]}"></i>${esc(roleLabel[r])}</span>`
-  ).join("")+`<span><i class="chart-dot" style="background:#111;border-radius:999px"></i>最低必要人数</span>`;
+  ).join("")+
+    `<span><i class="chart-dot" style="background:#111;border-radius:999px"></i>最低必要人数</span>`+
+    `<span><i class="chart-dot" style="background:#f59e0b;border-radius:999px"></i>休憩人数</span>`;
 
   const dpr=window.devicePixelRatio||1;
   const cssW=Math.max(640,canvas.parentElement.clientWidth||640);
@@ -798,7 +991,8 @@ function renderStaffingChart(){
   const maxY=Math.max(
     1,
     ...rows.map(x=>x.total),
-    ...rows.map(x=>x.requiredTotal)
+    ...rows.map(x=>x.requiredTotal),
+    ...rows.map(x=>x.breakCount)
   );
   const yMax=Math.max(4,Math.ceil(maxY/2)*2);
 
@@ -861,6 +1055,23 @@ function renderStaffingChart(){
   rows.forEach((row,i)=>{
     const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
     const y=pad.t+H-(Math.min(row.requiredTotal,yMax)/yMax)*H;
+    ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
+  });
+
+  // Break count line
+  ctx.strokeStyle="#f59e0b";
+  ctx.fillStyle="#f59e0b";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  rows.forEach((row,i)=>{
+    const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
+    const y=pad.t+H-(Math.min(row.breakCount,yMax)/yMax)*H;
+    if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  rows.forEach((row,i)=>{
+    const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
+    const y=pad.t+H-(Math.min(row.breakCount,yMax)/yMax)*H;
     ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
   });
 
