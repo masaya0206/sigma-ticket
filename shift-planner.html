@@ -129,6 +129,21 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
           <div class="small">0分にすると自動休憩を無効化</div>
         </div>
       </div>
+      <div class="grid2">
+        <div>
+          <label>出勤時刻の自動補正</label>
+          <select id="autoStaggerEnabled">
+            <option value="1">有効</option>
+            <option value="0">無効</option>
+          </select>
+        </div>
+        <div>
+          <label>最大で遅らせる時間（分）</label>
+          <input id="maxStartDelayMinutes" type="number" min="0" max="180" step="15" value="60">
+        </div>
+      </div>
+      <p class="small">同じ時刻に休憩が集中しそうな場合、本人の提出した参加可能時間の範囲内で、実際の勤務開始を少し遅らせて休憩を分散します。提出時間より早く働かせたり、提出終了時刻を超えて延長したりはしません。</p>
+
       <button class="primary" id="saveWorkRule">勤務・休憩ルールを保存</button>
       <div id="workRuleMsg"></div>
       <div id="workRuleCurrent" class="saved-rule small"></div>
@@ -138,7 +153,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   <div class="card">
     <h2>5. 完成案を生成</h2>
     <p class="small">
-      優先順位：①休憩ルール → ②固定配置 → ③必要人数を満たす → ④第1〜第3希望 → ⑤前の時間帯と同じ役割を優先 → ⑥残りは売り子。
+      優先順位：①必要人数を崩さない範囲で出勤時刻を分散 → ②休憩ルール → ③固定配置 → ④必要人数 → ⑤希望職種 → ⑥継続役割 → ⑦残りは売り子。
       希望時間外には配置しません。連続勤務上限に達した場合は、固定配置中でも休憩を優先します。
     </p>
     <button class="primary" id="generateBtn">✨ 完成案を生成・下書き保存</button>
@@ -152,7 +167,15 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </details>
 
   <details class="card section" open>
-    <summary>7. 人員配置グラフ</summary>
+    <summary>7. 自動補正内容</summary>
+    <div class="section-body">
+      <p class="small">休憩が同時刻に集中しないよう、誰の勤務開始を何分ずらしたかを表示します。補正は提出済みの参加可能時間の内側だけで行います。</p>
+      <div id="correctionSummary">まだ完成案を生成していません。</div>
+    </div>
+  </details>
+
+  <details class="card section" open>
+    <summary>8. 人員配置グラフ</summary>
     <div class="section-body">
       <p class="small">時間帯ごとの実配置人数を職種別の積み上げ棒で表示します。黒い折れ線は、その時間帯に設定した最低必要人数の合計です。</p>
       <div class="chart-wrap">
@@ -166,7 +189,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </details>
 
   <details class="card section">
-    <summary>8. スタッフごとの完成案</summary>
+    <summary>9. スタッフごとの完成案</summary>
     <div class="section-body" id="personPlan">まだ生成されていません。</div>
   </details>
 
@@ -192,7 +215,7 @@ const roleOrder=roles.map(x=>x[0]);
 const roleLabel=Object.fromEntries(roles);
 roleLabel.break="休憩";
 
-let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[],workRule=null;
+let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[],workRule=null,corrections=[];
 
 const SHIFT_PLANNER_SETTINGS_KEY="sigma_shift_planner_settings_v1";
 
@@ -218,6 +241,8 @@ function savePlannerSettings(){
       fixed_from:fixedFrom?.value||"",
       fixed_to:fixedTo?.value||"",
       fixed_note:fixedNote?.value||"",
+      auto_stagger_enabled:autoStaggerEnabled?.value||"1",
+      max_start_delay_minutes:maxStartDelayMinutes?.value||"60",
       saved_at:new Date().toISOString()
     };
     localStorage.setItem(SHIFT_PLANNER_SETTINGS_KEY,JSON.stringify(data));
@@ -247,6 +272,8 @@ function restorePlannerSettings(){
   if(s.fixed_from)fixedFrom.value=s.fixed_from;
   if(s.fixed_to)fixedTo.value=s.fixed_to;
   if(s.fixed_note!==undefined)fixedNote.value=s.fixed_note||"";
+  if(s.auto_stagger_enabled!==undefined)autoStaggerEnabled.value=String(s.auto_stagger_enabled);
+  if(s.max_start_delay_minutes!==undefined)maxStartDelayMinutes.value=String(s.max_start_delay_minutes);
 }
 
 const esc=v=>String(v??"")
@@ -514,7 +541,8 @@ function renderWorkRule(){
   const scopeText=workRule?.scope==="festival_all"?"本祭共通":"この日のみ";
   workRuleCurrent.innerHTML=
     `現在：<b>最大 ${maxMin}分（${(maxMin/60).toFixed(maxMin%60?1:0)}時間）</b>連続勤務 → `+
-    `<b>${br}分休憩</b>　<span class="pill">${scopeText}</span>`;
+    `<b>${br}分休憩</b>　<span class="pill">${scopeText}</span>`+
+    `<br>勤務開始補正：<b>${autoStaggerEnabled.value==="1"?"有効":"無効"}</b> / 最大 <b>${Number(maxStartDelayMinutes.value||60)}分</b>`;
 }
 
 saveWorkRule.onclick=async()=>{
@@ -641,9 +669,140 @@ function preferenceScore(uid,role,prevRole){
   return score;
 }
 
+
+function firstAvailabilityForUser(uid,availabilityMap){
+  const rows=availabilityMap[uid]||[];
+  if(!rows.length)return null;
+  return rows[0];
+}
+
+function requirementsAt(ms){
+  const sums={};
+  for(const r of requirementsRows){
+    const s=new Date(r.starts_at).getTime();
+    const e=new Date(r.ends_at).getTime();
+    if(s<=ms && e>ms){
+      sums[r.role]=(sums[r.role]||0)+Number(r.required_count||0);
+    }
+  }
+  return sums;
+}
+
+function minimumTotalAt(ms){
+  return Object.values(requirementsAt(ms)).reduce((s,n)=>s+Number(n||0),0);
+}
+
+function computeStartCorrections(availabilityMap){
+  corrections=[];
+  const enabled=autoStaggerEnabled.value==="1";
+  const maxDelay=Math.max(0,Number(maxStartDelayMinutes.value||0))*60000;
+  if(!enabled || maxDelay<=0)return {};
+
+  const d=currentDay();
+  const dayStart=new Date(d.starts_at).getTime();
+  const dayEnd=new Date(d.ends_at).getTime();
+  const maxContinuousMs=Math.max(30,Number(workRule?.max_continuous_minutes||240))*60000;
+  const breakMs=Math.max(0,Number(workRule?.break_minutes||0))*60000;
+  if(breakMs<=0)return {};
+
+  const step=Math.max(15,Math.min(Number(slotMinutes.value||30),30))*60000;
+  const delays={};
+
+  // Only stagger the first continuous availability block of each person.
+  const candidates=staff
+    .map(p=>{
+      const a=firstAvailabilityForUser(p.user_id,availabilityMap);
+      if(!a)return null;
+      return {person:p,start:a[0],end:a[1]};
+    })
+    .filter(Boolean)
+    .filter(x=>x.end-x.start>=maxContinuousMs+breakMs)
+    .sort((a,b)=>a.start-b.start || String(a.person.staff_name).localeCompare(String(b.person.staff_name),"ja"));
+
+  // Group people with roughly the same submitted start time.
+  const groups=[];
+  for(const c of candidates){
+    let g=groups.find(x=>Math.abs(x.start-c.start)<step);
+    if(!g){
+      g={start:c.start,items:[]};
+      groups.push(g);
+    }
+    g.items.push(c);
+  }
+
+  for(const g of groups){
+    if(g.items.length<2)continue;
+
+    // Try different delay buckets to spread the expected break starts.
+    let bucketIndex=0;
+
+    for(const c of g.items){
+      const uid=c.person.user_id;
+
+      // Never shift a person whose fixed assignment starts immediately at their submitted start.
+      const hasImmediateFixed=fixedRows.some(f=>
+        f.user_id===uid &&
+        new Date(f.starts_at).getTime()<=c.start &&
+        new Date(f.ends_at).getTime()>c.start
+      );
+      if(hasImmediateFixed){
+        delays[uid]=0;
+        continue;
+      }
+
+      let chosen=0;
+
+      // Keep enough staff working at the original time to satisfy total minimum staffing.
+      const originalActive=staff.filter(p=>{
+        const a=firstAvailabilityForUser(p.user_id,availabilityMap);
+        return a && a[0]<=c.start && a[1]>c.start;
+      }).length;
+
+      const alreadyDelayed=Object.entries(delays).filter(([otherUid,delay])=>{
+        if(Number(delay)<=0)return false;
+        const a=firstAvailabilityForUser(otherUid,availabilityMap);
+        return a && a[0]<=c.start && a[1]>c.start;
+      }).length;
+
+      const minNeeded=minimumTotalAt(c.start);
+      const canDelayAnother=(originalActive-alreadyDelayed-1)>=minNeeded;
+
+      if(canDelayAnother){
+        // Alternate 0, step, 2*step ... and wrap, so not everybody moves.
+        const proposed=Math.min(maxDelay,(bucketIndex%Math.max(1,Math.floor(maxDelay/step)+1))*step);
+        bucketIndex++;
+
+        // If proposed is zero, next candidate can get a delay.
+        chosen=proposed;
+
+        // Ensure delayed start still remains inside the submitted window.
+        if(c.start+chosen>=c.end)chosen=0;
+      }
+
+      delays[uid]=chosen;
+
+      if(chosen>0){
+        corrections.push({
+          user_id:uid,
+          staff_name:c.person.staff_name,
+          original_start:c.start,
+          adjusted_start:c.start+chosen,
+          delay_minutes:Math.round(chosen/60000),
+          expected_break_before:c.start+maxContinuousMs,
+          expected_break_after:c.start+chosen+maxContinuousMs,
+          reason:"休憩集中を避けるため勤務開始を後ろへ補正"
+        });
+      }
+    }
+  }
+
+  return delays;
+}
+
 function generatePlan(){
   warnings=[];
   const availabilityMap=mergedAvailability();
+  const startDelays=computeStartCorrections(availabilityMap);
   const slices=buildSlices();
   const previousRole={};
   const generated=[];
@@ -655,7 +814,13 @@ function generatePlan(){
   const fixedBreakWarned=new Set();
 
   for(const slice of slices){
-    const participants=staff.filter(s=>availableFor(s.user_id,slice,availabilityMap));
+    const participants=staff.filter(s=>{
+      if(!availableFor(s.user_id,slice,availabilityMap))return false;
+      const first=firstAvailabilityForUser(s.user_id,availabilityMap);
+      const delay=Number(startDelays[s.user_id]||0);
+      if(first && slice.start < first[0]+delay && slice.start>=first[0])return false;
+      return true;
+    });
     const assigned=new Map();
     const onBreak=new Set();
     const needs=activeRequirements(slice);
@@ -880,6 +1045,7 @@ function renderSavedPlan(){
     planSummary.innerHTML='<p class="muted">この日の保存済み完成案はありません。</p>';
     slotPlan.innerHTML='まだ生成されていません。';
     personPlan.innerHTML='まだ生成されていません。';
+    correctionSummary.innerHTML='まだ完成案を生成していません。';
     renderStaffingChart();
     return;
   }
@@ -899,6 +1065,7 @@ function renderSavedPlan(){
   `;
 
   renderSlotPlan();
+  renderCorrections();
   renderStaffingChart();
   renderPersonPlan();
 }
@@ -928,6 +1095,32 @@ function renderSlotPlan(){
       ${(byRole.break||[]).length?`<div class="roleline"><div class="rolelabel">休憩 ${(byRole.break||[]).length}人</div><div class="names">${(byRole.break||[]).map(x=>esc(staffName(x.user_id))).join("、")}</div></div>`:""}
     </div>`;
   }).join("");
+}
+
+
+function renderCorrections(){
+  if(!corrections.length){
+    correctionSummary.innerHTML=
+      '<p class="ok">勤務開始の補正は不要でした。提出時刻のまま編成しています。</p>';
+    return;
+  }
+
+  correctionSummary.innerHTML=
+    `<div class="warning-box">
+      <b>自動補正 ${corrections.length}人</b>
+      <div class="small">休憩が一斉に重なるのを避けるため、次の勤務開始だけ後ろへずらしました。</div>
+    </div>`+
+    corrections.map(c=>`
+      <div class="person-plan">
+        <div class="person-name">${esc(c.staff_name)}</div>
+        <div class="small">
+          出勤：<b>${timeOnly(c.original_start)} → ${timeOnly(c.adjusted_start)}</b>
+          （+${c.delay_minutes}分）<br>
+          想定休憩開始：${timeOnly(c.expected_break_before)} → <b>${timeOnly(c.expected_break_after)}</b><br>
+          理由：${esc(c.reason)}
+        </div>
+      </div>
+    `).join("");
 }
 
 function renderStaffingChart(){
@@ -1137,7 +1330,8 @@ daySelect.onchange=async()=>{
 
 [
   slotMinutes,reqRole,reqFrom,reqTo,reqCount,
-  fixedStaff,fixedRole,fixedFrom,fixedTo,fixedNote
+  fixedStaff,fixedRole,fixedFrom,fixedTo,fixedNote,
+  autoStaggerEnabled,maxStartDelayMinutes
 ].forEach(el=>{
   if(!el)return;
   el.addEventListener("change",savePlannerSettings);
