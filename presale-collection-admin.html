@@ -57,24 +57,43 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
 .filter-note{font-size:12px;color:var(--muted);margin-top:8px}
 @media(max-width:520px){.filter-grid{grid-template-columns:1fr}}
 
+
+.section-tools{display:flex;gap:8px;margin:0 0 12px}.section-tools button{margin:0;padding:10px 12px;font-size:13px}
+.section-card{padding:0;overflow:hidden}.section-card>summary{list-style:none;cursor:pointer;padding:17px 18px;font-weight:900;font-size:19px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff}
+.section-card>summary::-webkit-details-marker{display:none}.section-card>summary::after{content:"＋";color:var(--red);font-size:22px;line-height:1}
+.section-card[open]>summary::after{content:"−"}.section-body{padding:0 18px 18px}.section-card[open]>summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+.deposit-card{border:1px solid var(--line);border-radius:15px;padding:13px;margin:9px 0;background:#f8fbf8}
+.deposit-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.deposit-name{font-size:17px;font-weight:900}.deposit-amount{font-size:20px;font-weight:900;color:#157b35;white-space:nowrap}
+.deposit-meta{font-size:12px;color:var(--muted);line-height:1.55;margin-top:4px}.deposit-details{margin-top:9px;border-top:1px solid var(--line)}
+.deposit-details summary{cursor:pointer;padding:9px 0 0;color:var(--red);font-size:12px;font-weight:800}
+
 </style></head><body><main>
 <div class="top"><button class="back" onclick="history.back()">←</button><div><h1>ノルマ集金管理</h1><div class="sub">当日の集金担当を指定</div></div></div>
-
-<div class="card">
-  <h2>集金日</h2>
-  <input id="collectionDate" type="date">
-  <p class="muted">選択した日だけ、指定された幹部が集金画面をオンライン認証できます。</p>
+<div class="section-tools">
+  <button class="secondary" onclick="setAllSections(true)">すべて開く</button>
+  <button class="secondary" onclick="setAllSections(false)">すべて閉じる</button>
 </div>
 
-<div class="card">
-  <h2>集金担当幹部</h2>
-  <div id="staffList">読み込み中...</div>
-  <button onclick="saveCollectors()">この日の集金担当を保存</button>
-  <p id="assignMsg"></p>
-</div>
+<details class="card section-card" open>
+  <summary>集金日</summary>
+  <div class="section-body">
+    <input id="collectionDate" type="date">
+    <p class="muted">選択した日だけ、指定された幹部が集金画面をオンライン認証できます。</p>
+  </div>
+</details>
 
-<div class="card">
-  <h2>回収状況（全体）</h2>
+<details class="card section-card">
+  <summary>集金担当幹部</summary>
+  <div class="section-body">
+    <div id="staffList">読み込み中...</div>
+    <button onclick="saveCollectors()">この日の集金担当を保存</button>
+    <p id="assignMsg"></p>
+  </div>
+</details>
+
+<details class="card section-card" open>
+  <summary>回収状況（全体）</summary>
+  <div class="section-body">
   <p class="muted">一度回収済みにした人は、集金日が変わっても回収済みのまま表示します。上の「集金日」は担当者指定と日別集計に使います。</p>
   <div class="metrics">
     <div class="metric"><span>対象</span><b id="targetCount">--</b></div>
@@ -83,11 +102,13 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
   </div>
   <button class="secondary" onclick="loadSummary()">最新状況に更新</button>
   <div id="summaryList"></div>
-</div>
+  </div>
+</details>
 
 
-<div class="card">
-  <h2>現在の手元保管状況</h2>
+<details class="card section-card">
+  <summary>現在の手元保管状況</summary>
+  <div class="section-body">
   <p class="muted">過去すべての集金データから、まだ回収箱へ提出されていない金額を集計します。日付では区切りません。</p>
 
   <div class="filter-grid">
@@ -105,10 +126,25 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
   </div>
 
   <div id="holdingSummaryList">読み込み中...</div>
-</div>
+  </div>
+</details>
 
-<div class="card">
-  <h2>集金履歴</h2>
+<details class="card section-card">
+  <summary>金庫預入履歴</summary>
+  <div class="section-body">
+    <p class="muted">どの幹部が、いつ、いくら金庫（回収箱）へ預けたかを確認できます。</p>
+    <div class="collector-totalbar">
+      <div><span>預入回数</span><b id="depositCount">--</b></div>
+      <div><span>預入済み件数</span><b id="depositPeopleTotal">--</b></div>
+      <div><span>預入総額</span><b id="depositAmountTotal">--</b></div>
+    </div>
+    <div id="depositList">読み込み中...</div>
+  </div>
+</details>
+
+<details class="card section-card">
+  <summary>集金履歴</summary>
+  <div class="section-body">
   <p class="muted">日付・集金担当者を自由に組み合わせて確認できます。「すべて」を選ぶと全期間・全担当者を表示します。</p>
 
   <div class="filter-grid">
@@ -132,18 +168,26 @@ button{border:0;background:var(--red);color:#fff;font-weight:800;margin-top:10px
   </div>
 
   <div id="historyList" class="history-table">読み込み中...</div>
-</div>
+  </div>
+</details>
 
-<div class="card">
-  <h2>集金画面</h2>
-  <p class="muted">集金担当者はオンライン時に一度この画面を開くと、当日のスタッフデータと担当権限が端末へ保存されます。その後は通信障害時でもログインなしで開けます。</p>
-  <button onclick="location.href='presale-collection.html'">集金画面を開く</button>
-</div>
+<details class="card section-card">
+  <summary>集金画面</summary>
+  <div class="section-body">
+    <p class="muted">集金担当者はオンライン時に一度この画面を開くと、当日のスタッフデータと担当権限が端末へ保存されます。その後は通信障害時でもログインなしで開けます。</p>
+    <button onclick="location.href='presale-collection.html'">集金画面を開く</button>
+  </div>
+</details>
 
 <script>
 const db=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 let staffRows=[];
+
+function setAllSections(opened){
+  document.querySelectorAll('details.section-card').forEach(x=>x.open=opened);
+}
+
 
 function todayJst(){
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -278,6 +322,43 @@ async function loadCollectionDashboard(){
       </details>
     </div>`).join(''):'<p class="muted">現在、手元保管中の集金はありません。</p>';
 
+
+  const deposits=data?.deposits||[];
+  depositCount.textContent=deposits.length+'回';
+  depositPeopleTotal.textContent=deposits.reduce((s,x)=>s+Number(x.collection_count||0),0)+'件';
+  depositAmountTotal.textContent=deposits.reduce((s,x)=>s+Number(x.amount||0),0).toLocaleString()+'円';
+
+  depositList.innerHTML=deposits.length?deposits.map(x=>`
+    <div class="deposit-card">
+      <div class="deposit-head">
+        <div>
+          <div class="deposit-name">${esc(x.submitted_by_name||'名前未登録')}</div>
+          <div class="deposit-meta">
+            ${x.submitted_at?new Date(x.submitted_at).toLocaleString('ja-JP'):''}<br>
+            ${Number(x.collection_count||0)}件を金庫へ預入
+          </div>
+        </div>
+        <div class="deposit-amount">${Number(x.amount||0).toLocaleString()}円</div>
+      </div>
+      <details class="deposit-details">
+        <summary>内訳を見る</summary>
+        ${(x.details||[]).map(d=>`
+          <div class="collection-person">
+            <div class="collection-person-top">
+              <div>
+                <div class="collection-person-name">${esc(d.staff_name||'')}</div>
+                <div class="collection-person-meta">
+                  集金担当: ${esc(d.collector_name||'名前未登録')}<br>
+                  ${d.collection_date?esc(d.collection_date)+' / ':''}
+                  ${d.collected_at?new Date(d.collected_at).toLocaleString('ja-JP'):''}
+                </div>
+              </div>
+              <div class="collection-person-amount">${Number(d.amount||0).toLocaleString()}円</div>
+            </div>
+          </div>`).join('')}
+      </details>
+    </div>`).join(''):'<p class="muted">まだ金庫への預入記録はありません。</p>';
+
   const rows=data?.history||[];
   const historyTotal=rows.reduce((s,x)=>s+Number(x.amount||0),0);
   const historyHolding=rows.filter(x=>!x.submitted_to_box_at).reduce((s,x)=>s+Number(x.amount||0),0);
@@ -302,7 +383,7 @@ async function loadCollectionDashboard(){
           <div class="history-amount">${Number(x.amount||0).toLocaleString()}円</div>
           <div class="history-meta">
             ${x.submitted_to_box_at
-              ? `<span class="submitted">回収箱提出済み</span>`
+              ? `<span class="submitted">金庫預入済み</span><br><span class="muted">${esc(x.submitted_by_name||'名前未登録')} / ${new Date(x.submitted_to_box_at).toLocaleString('ja-JP')}</span>`
               : `<span class="holding">手元保管中</span>`}
           </div>
         </div>
