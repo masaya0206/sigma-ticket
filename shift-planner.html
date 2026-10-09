@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>条件付きシフト完成案</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+:root{--red:#b5121b;--soft:#fff1f2;--bg:#f7f4f2;--line:#eadfdb;--muted:#6e6e73;--ok:#15803d;--warn:#9a6700}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:#1c1c1e}
+header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:#fff;padding:30px 20px;border-radius:0 0 28px 28px}
+header h1{margin:0;font-size:25px} header p{margin:7px 0 0;opacity:.9;font-size:13px}
+main{max-width:900px;margin:auto;padding:16px 16px 100px}
+.card{background:#fff;border-radius:20px;padding:17px;margin:14px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}
+h2{font-size:19px;margin:0 0 12px} h3{font-size:15px;margin:16px 0 8px}
+.small,.muted{font-size:12px;color:var(--muted);line-height:1.6}
+.ok{color:var(--ok);font-weight:800}.err{color:#b00020;font-weight:800}.warn{color:var(--warn);font-weight:800}
+button,input,select,textarea{font:inherit}
+button{width:100%;border:0;border-radius:13px;padding:12px 14px;margin:7px 0;background:var(--soft);color:var(--red);font-weight:900}
+button.primary{background:var(--red);color:#fff} button.secondary{background:#f4f1ef;color:#3b3431}
+button.danger{background:#fff0f0;color:#a11} button.smallbtn{width:auto;padding:8px 10px;margin:0;font-size:12px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid #ddd5d1;border-radius:12px;background:#fff;margin:5px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar button{width:auto}
+.row{border-top:1px solid #eee;padding:11px 0}.row:first-child{border-top:0}
+.rule-row,.fixed-row{display:grid;grid-template-columns:1.1fr 1fr 1fr 90px 52px;gap:8px;align-items:center}
+.fixed-row{grid-template-columns:1.3fr 1fr 1fr 1fr 52px}
+.pill{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--red);font-size:11px;font-weight:900;margin:2px}
+.summarybar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.summarybar div{background:#faf7f5;border-radius:13px;padding:10px;text-align:center}.summarybar b{display:block;font-size:20px}.summarybar span{font-size:10px;color:var(--muted)}
+details.section{background:#fff;border:1px solid var(--line);border-radius:16px;margin:10px 0;overflow:hidden}
+details.section>summary{cursor:pointer;list-style:none;padding:13px 14px;font-weight:900;display:flex;justify-content:space-between;gap:10px}
+details.section>summary::-webkit-details-marker{display:none} details.section>summary::after{content:"＋";color:var(--red)}
+details.section[open]>summary::after{content:"−"} .section-body{border-top:1px solid var(--line);padding:12px 14px}
+.slot{border:1px solid var(--line);border-radius:14px;margin:9px 0;padding:11px}.slot-time{font-size:13px;font-weight:950;color:var(--red);margin-bottom:6px}
+.roleline{display:grid;grid-template-columns:105px 1fr;gap:8px;padding:5px 0;border-top:1px dashed #eee}.roleline:first-of-type{border-top:0}
+.rolelabel{font-size:12px;font-weight:900}.names{font-size:12px;line-height:1.55}
+.warning-box{background:#fff8e8;border:1px solid #f0d59a;border-radius:14px;padding:12px;margin-top:10px}.warning-box ul{margin:7px 0 0;padding-left:20px}
+.person-plan{padding:9px 0;border-top:1px solid #eee}.person-plan:first-child{border-top:0}.person-name{font-weight:900}
+.seg{display:inline-block;margin:4px 5px 0 0;padding:5px 8px;border-radius:999px;background:#f7f3f1;font-size:11px}
+@media(max-width:700px){
+ .grid2,.grid3{grid-template-columns:1fr}
+ .rule-row,.fixed-row{grid-template-columns:1fr 1fr}
+ .rule-row .del,.fixed-row .del{grid-column:2}
+ .summarybar{grid-template-columns:1fr 1fr}
+ .roleline{grid-template-columns:82px 1fr}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>✨ 条件付きシフト完成案</h1>
+  <p>提出された参加可能時間は基本そのまま勤務扱いにして、役割だけ条件に沿って自動編成します。</p>
+</header>
+<main>
+  <div class="card">
+    <h2>1. 対象日</h2>
+    <div class="grid2">
+      <div><label>日</label><select id="daySelect"></select></div>
+      <div><label>基準分割</label>
+        <select id="slotMinutes">
+          <option value="30">30分</option>
+          <option value="60">60分</option>
+        </select>
+      </div>
+    </div>
+    <p class="small">提出開始・終了、固定条件、必要人数条件の境界でも自動的に区切るため、10:15開始なども崩しません。</p>
+  </div>
+
+  <details class="card section" open>
+    <summary>2. 職種ごとの必要人数</summary>
+    <div class="section-body">
+      <p class="small">「この時間帯はレジ2人、調理4人」のような最低必要人数です。固定配置が必要人数を超える場合は固定を優先します。</p>
+      <div class="grid3">
+        <div><label>職種</label><select id="reqRole"></select></div>
+        <div><label>開始</label><input id="reqFrom" type="datetime-local"></div>
+        <div><label>終了</label><input id="reqTo" type="datetime-local"></div>
+      </div>
+      <div class="grid2">
+        <div><label>同時に必要な人数</label><input id="reqCount" type="number" min="0" max="50" value="1"></div>
+        <div style="display:flex;align-items:end"><button class="primary" id="addRequirement">必要人数条件を追加</button></div>
+      </div>
+      <div id="requirements"></div>
+    </div>
+  </details>
+
+  <details class="card section" open>
+    <summary>3. 個人の固定配置</summary>
+    <div class="section-body">
+      <p class="small">「この人はこの時間、この職種で確定」を設定します。自動編成してもここは動かしません。</p>
+      <div class="grid2">
+        <div><label>スタッフ</label><select id="fixedStaff"></select></div>
+        <div><label>職種</label><select id="fixedRole"></select></div>
+      </div>
+      <div class="grid2">
+        <div><label>開始</label><input id="fixedFrom" type="datetime-local"></div>
+        <div><label>終了</label><input id="fixedTo" type="datetime-local"></div>
+      </div>
+      <input id="fixedNote" placeholder="メモ（任意）">
+      <button class="primary" id="addFixed">固定配置を追加</button>
+      <div id="fixedList"></div>
+    </div>
+  </details>
+
+  <div class="card">
+    <h2>4. 完成案を生成</h2>
+    <p class="small">
+      優先順位：①固定配置 → ②必要人数を満たす → ③第1〜第3希望 → ④前の時間帯と同じ役割を優先 → ⑤残りは売り子。
+      希望時間外には配置しません。
+    </p>
+    <button class="primary" id="generateBtn">✨ 完成案を生成・下書き保存</button>
+    <div id="generateMsg"></div>
+    <div id="planSummary"></div>
+  </div>
+
+  <details class="card section" open>
+    <summary>5. 時間帯ごとの完成案</summary>
+    <div class="section-body" id="slotPlan">まだ生成されていません。</div>
+  </details>
+
+  <details class="card section">
+    <summary>スタッフごとの完成案</summary>
+    <div class="section-body" id="personPlan">まだ生成されていません。</div>
+  </details>
+
+  <button onclick="location.href='event-admin.html'">← シフト集計へ戻る</button>
+</main>
+
+<script>
+const sb=supabase.createClient(
+  "https://gsniytemgrbtgfywhqlu.supabase.co",
+  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
+);
+
+const roles=[
+  ["manager","店長"],
+  ["register","レジ"],
+  ["cook","調理"],
+  ["support","サポート"],
+  ["shopping_helper","買い出し補助"],
+  ["shopping_driver","ドライバー"],
+  ["seller","売り子"]
+];
+const roleOrder=roles.map(x=>x[0]);
+const roleLabel=Object.fromEntries(roles);
+
+let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[];
+
+const esc=v=>String(v??"")
+  .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+
+function localInput(v){
+  const d=new Date(v); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+function timeOnly(v){return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});}
+function fmtDateTime(v){return new Date(v).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});}
+function currentDay(){return days.find(x=>String(x.id)===String(daySelect.value));}
+function roleOptions(el){el.innerHTML=roles.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");}
+
+async function requireAdmin(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href="home.html";return false;}
+  const {data}=await sb.from("admins").select("user_id").eq("user_id",user.id).maybeSingle();
+  if(!data){document.body.innerHTML="<main><div class='card'>管理者権限が必要です。</div></main>";return false;}
+  return true;
+}
+
+async function loadBase(){
+  const [d,s,p]=await Promise.all([
+    sb.from("event_days").select("*").eq("is_enabled",true).order("id"),
+    sb.from("staff_members").select("user_id,staff_name,is_active").eq("is_active",true).order("staff_name"),
+    sb.rpc("admin_staff_role_preferences")
+  ]);
+  if(d.error) throw d.error;
+  if(s.error) throw s.error;
+  if(p.error) throw p.error;
+
+  days=d.data||[];
+  staff=s.data||[];
+  prefs=Object.fromEntries((p.data||[]).map(x=>[x.user_id,x]));
+
+  daySelect.innerHTML=days.map(x=>`<option value="${x.id}">${esc(x.label)}</option>`).join("");
+  fixedStaff.innerHTML=staff.map(x=>`<option value="${x.user_id}">${esc(x.staff_name)}</option>`).join("");
+  roleOptions(reqRole); roleOptions(fixedRole);
+  syncDefaultTimes();
+}
+
+function syncDefaultTimes(){
+  const d=currentDay(); if(!d)return;
+  reqFrom.value=localInput(d.starts_at); reqTo.value=localInput(d.ends_at);
+  fixedFrom.value=localInput(d.starts_at); fixedTo.value=localInput(d.ends_at);
+}
+
+async function loadDayData(){
+  const d=currentDay(); if(!d)return;
+  const [a,r,f,p]=await Promise.all([
+    sb.from("staff_availability")
+      .select("id,user_id,event_day_id,available_from,available_to,note")
+      .eq("event_day_id",d.id).order("available_from"),
+    sb.from("shift_role_requirements").select("*").eq("event_day_id",d.id).order("starts_at"),
+    sb.from("shift_fixed_assignments").select("*").eq("event_day_id",d.id).order("starts_at"),
+    sb.from("shift_plan_assignments").select("*").eq("event_day_id",d.id).order("starts_at")
+  ]);
+  for(const x of [a,r,f,p]) if(x.error) throw x.error;
+  avail=a.data||[]; requirementsRows=r.data||[]; fixedRows=f.data||[]; currentPlan=p.data||[];
+  renderRequirements(); renderFixed(); renderSavedPlan();
+}
+
+function staffName(uid){return staff.find(x=>x.user_id===uid)?.staff_name||uid;}
+function validateRange(from,to){
+  if(!from||!to) return "開始・終了を入力してください。";
+  if(new Date(from)>=new Date(to)) return "終了は開始より後にしてください。";
+  return "";
+}
+
+addRequirement.onclick=async()=>{
+  const e=validateRange(reqFrom.value,reqTo.value);
+  if(e){alert(e);return;}
+  const payload={
+    event_day_id:+daySelect.value,
+    role:reqRole.value,
+    starts_at:new Date(reqFrom.value).toISOString(),
+    ends_at:new Date(reqTo.value).toISOString(),
+    required_count:+reqCount.value
+  };
+  const {error}=await sb.from("shift_role_requirements").insert(payload);
+  if(error){alert(error.message);return;}
+  await loadDayData();
+};
+
+async function delRequirement(id){
+  if(!confirm("この必要人数条件を削除しますか？"))return;
+  const {error}=await sb.from("shift_role_requirements").delete().eq("id",id);
+  if(error)alert(error.message); else loadDayData();
+}
+
+function renderRequirements(){
+  requirements.innerHTML=requirementsRows.length?requirementsRows.map(x=>`
+    <div class="row rule-row">
+      <b>${esc(roleLabel[x.role]||x.role)}：${Number(x.required_count)}人</b>
+      <span>${timeOnly(x.starts_at)}〜${timeOnly(x.ends_at)}</span>
+      <span class="small">${fmtDateTime(x.starts_at)}</span>
+      <span class="pill">最低人数</span>
+      <button class="smallbtn danger del" onclick="delRequirement(${x.id})">削除</button>
+    </div>`).join(""):'<p class="muted">必要人数条件はまだありません。</p>';
+}
+
+addFixed.onclick=async()=>{
+  const e=validateRange(fixedFrom.value,fixedTo.value);
+  if(e){alert(e);return;}
+  const payload={
+    event_day_id:+daySelect.value,
+    user_id:fixedStaff.value,
+    role:fixedRole.value,
+    starts_at:new Date(fixedFrom.value).toISOString(),
+    ends_at:new Date(fixedTo.value).toISOString(),
+    note:fixedNote.value||null
+  };
+  const {error}=await sb.from("shift_fixed_assignments").insert(payload);
+  if(error){alert(error.message);return;}
+  fixedNote.value="";
+  await loadDayData();
+};
+
+async function delFixed(id){
+  if(!confirm("この固定配置を解除しますか？"))return;
+  const {error}=await sb.from("shift_fixed_assignments").delete().eq("id",id);
+  if(error)alert(error.message); else loadDayData();
+}
+
+function renderFixed(){
+  fixedList.innerHTML=fixedRows.length?fixedRows.map(x=>`
+    <div class="row fixed-row">
+      <b>${esc(staffName(x.user_id))}</b>
+      <span class="pill">${esc(roleLabel[x.role]||x.role)}</span>
+      <span>${timeOnly(x.starts_at)}〜${timeOnly(x.ends_at)}</span>
+      <span class="small">${esc(x.note||"固定")}</span>
+      <button class="smallbtn danger del" onclick="delFixed(${x.id})">解除</button>
+    </div>`).join(""):'<p class="muted">固定配置はまだありません。</p>';
+}
+
+function mergedAvailability(){
+  const by={};
+  for(const a of avail){
+    (by[a.user_id]??=[]).push([new Date(a.available_from).getTime(),new Date(a.available_to).getTime()]);
+  }
+  for(const uid of Object.keys(by)){
+    by[uid].sort((a,b)=>a[0]-b[0]);
+    const m=[];
+    for(const cur of by[uid]){
+      if(!m.length||cur[0]>m[m.length-1][1])m.push([...cur]);
+      else m[m.length-1][1]=Math.max(m[m.length-1][1],cur[1]);
+    }
+    by[uid]=m;
+  }
+  return by;
+}
+
+function buildSlices(){
+  const d=currentDay();
+  const start=new Date(d.starts_at).getTime(), end=new Date(d.ends_at).getTime();
+  const cuts=new Set([start,end]);
+  const step=Number(slotMinutes.value||30)*60000;
+  for(let t=start+step;t<end;t+=step)cuts.add(t);
+  for(const a of avail){
+    const s=new Date(a.available_from).getTime(), e=new Date(a.available_to).getTime();
+    if(s>start&&s<end)cuts.add(s); if(e>start&&e<end)cuts.add(e);
+  }
+  for(const x of [...requirementsRows,...fixedRows]){
+    const s=new Date(x.starts_at).getTime(), e=new Date(x.ends_at).getTime();
+    if(s>start&&s<end)cuts.add(s); if(e>start&&e<end)cuts.add(e);
+  }
+  const arr=[...cuts].sort((a,b)=>a-b);
+  return arr.slice(0,-1).map((s,i)=>({start:s,end:arr[i+1]})).filter(x=>x.end>x.start);
+}
+
+function activeRequirements(slice){
+  const sums={};
+  for(const r of requirementsRows){
+    const s=new Date(r.starts_at).getTime(),e=new Date(r.ends_at).getTime();
+    if(s<slice.end&&e>slice.start)sums[r.role]=(sums[r.role]||0)+Number(r.required_count||0);
+  }
+  return sums;
+}
+function activeFixed(uid,slice){
+  return fixedRows.filter(x=>x.user_id===uid &&
+    new Date(x.starts_at).getTime()<slice.end &&
+    new Date(x.ends_at).getTime()>slice.start);
+}
+function availableFor(uid,slice,availabilityMap){
+  return (availabilityMap[uid]||[]).some(([s,e])=>s<=slice.start&&e>=slice.end);
+}
+
+function preferenceScore(uid,role,prevRole){
+  const p=prefs[uid]||{};
+  let score=0;
+  if(p.first_role===role)score+=300;
+  if(p.second_role===role)score+=200;
+  if(p.third_role===role)score+=100;
+  if(prevRole===role)score+=60;
+  if(role==="seller")score+=20;
+  return score;
+}
+
+function generatePlan(){
+  warnings=[];
+  const availabilityMap=mergedAvailability();
+  const slices=buildSlices();
+  const previousRole={};
+  const generated=[];
+
+  for(const slice of slices){
+    const participants=staff.filter(s=>availableFor(s.user_id,slice,availabilityMap));
+    const assigned=new Map();
+
+    // Fixed first.
+    for(const person of participants){
+      const fx=activeFixed(person.user_id,slice);
+      if(fx.length>1){
+        warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${staffName(person.user_id)} に固定職種が重複しています。先に登録された固定を使用しました。`);
+      }
+      if(fx.length){
+        assigned.set(person.user_id,{role:fx[0].role,is_fixed:true});
+      }
+    }
+
+    // Fixed that is outside submitted availability.
+    for(const fx of fixedRows){
+      const overlap=new Date(fx.starts_at).getTime()<slice.end&&new Date(fx.ends_at).getTime()>slice.start;
+      if(overlap&&!availableFor(fx.user_id,slice,availabilityMap)){
+        const w=`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：固定 ${staffName(fx.user_id)} / ${roleLabel[fx.role]} は本人の提出時間外です。`;
+        if(!warnings.includes(w))warnings.push(w);
+      }
+    }
+
+    const needs=activeRequirements(slice);
+
+    for(const role of roleOrder){
+      const target=Number(needs[role]||0);
+      const already=[...assigned.values()].filter(x=>x.role===role).length;
+      let missing=Math.max(0,target-already);
+      if(!missing)continue;
+
+      const candidates=participants
+        .filter(p=>!assigned.has(p.user_id))
+        .map(p=>({
+          ...p,
+          score:preferenceScore(p.user_id,role,previousRole[p.user_id])
+        }))
+        .sort((a,b)=>b.score-a.score||String(a.staff_name).localeCompare(String(b.staff_name),"ja"));
+
+      for(const p of candidates.slice(0,missing)){
+        assigned.set(p.user_id,{role,is_fixed:false});
+      }
+      const after=[...assigned.values()].filter(x=>x.role===role).length;
+      if(after<target){
+        warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${roleLabel[role]} が ${target-after}人不足しています。`);
+      }
+    }
+
+    // Everyone who submitted this time stays in the shift.
+    for(const p of participants){
+      if(!assigned.has(p.user_id)){
+        assigned.set(p.user_id,{role:"seller",is_fixed:false});
+      }
+    }
+
+    for(const p of participants){
+      const a=assigned.get(p.user_id);
+      generated.push({
+        event_day_id:+daySelect.value,
+        user_id:p.user_id,
+        role:a.role,
+        starts_at:new Date(slice.start).toISOString(),
+        ends_at:new Date(slice.end).toISOString(),
+        is_fixed:a.is_fixed
+      });
+      previousRole[p.user_id]=a.role;
+    }
+  }
+
+  return mergePlanSegments(generated);
+}
+
+function mergePlanSegments(rows){
+  const by={};
+  for(const x of rows)(by[x.user_id]??=[]).push(x);
+  const out=[];
+  for(const uid of Object.keys(by)){
+    const arr=by[uid].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    for(const x of arr){
+      const prev=out[out.length-1];
+      if(prev&&prev.user_id===x.user_id&&prev.role===x.role&&prev.is_fixed===x.is_fixed&&
+         new Date(prev.ends_at).getTime()===new Date(x.starts_at).getTime()){
+        prev.ends_at=x.ends_at;
+      }else out.push({...x});
+    }
+  }
+  return out.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)||staffName(a.user_id).localeCompare(staffName(b.user_id),"ja"));
+}
+
+generateBtn.onclick=async()=>{
+  generateMsg.textContent="生成中...";
+  try{
+    currentPlan=generatePlan();
+    const dayId=+daySelect.value;
+    const {error:delErr}=await sb.from("shift_plan_assignments").delete().eq("event_day_id",dayId);
+    if(delErr)throw delErr;
+    if(currentPlan.length){
+      const payload=currentPlan.map(x=>({...x}));
+      const {error:insErr}=await sb.from("shift_plan_assignments").insert(payload);
+      if(insErr)throw insErr;
+    }
+    generateMsg.innerHTML=`<span class="ok">✅ 完成案を生成し、下書き保存しました。</span>`;
+    renderSavedPlan();
+  }catch(e){
+    generateMsg.innerHTML=`<span class="err">${esc(e.message||String(e))}</span>`;
+  }
+};
+
+function renderSavedPlan(){
+  if(!currentPlan.length){
+    planSummary.innerHTML='<p class="muted">この日の保存済み完成案はありません。</p>';
+    slotPlan.innerHTML='まだ生成されていません。';
+    personPlan.innerHTML='まだ生成されていません。';
+    return;
+  }
+
+  const people=new Set(currentPlan.map(x=>x.user_id)).size;
+  const fixed=currentPlan.filter(x=>x.is_fixed).length;
+  const totalMin=currentPlan.reduce((s,x)=>s+(new Date(x.ends_at)-new Date(x.starts_at))/60000,0);
+
+  planSummary.innerHTML=`
+    <div class="summarybar">
+      <div><b>${people}</b><span>配置スタッフ</span></div>
+      <div><b>${currentPlan.length}</b><span>連続役割区間</span></div>
+      <div><b>${fixed}</b><span>固定区間</span></div>
+      <div><b>${Math.round(totalMin/60*10)/10}</b><span>延べ時間</span></div>
+    </div>
+    ${warnings.length?`<div class="warning-box"><b>⚠ 要確認 ${warnings.length}件</b><ul>${warnings.map(w=>`<li>${esc(w)}</li>`).join("")}</ul></div>`:"<p class='ok'>必要人数上の警告はありません。</p>"}
+  `;
+
+  renderSlotPlan();
+  renderPersonPlan();
+}
+
+function renderSlotPlan(){
+  const cuts=new Set();
+  for(const x of currentPlan){cuts.add(new Date(x.starts_at).getTime());cuts.add(new Date(x.ends_at).getTime());}
+  const arr=[...cuts].sort((a,b)=>a-b);
+  const slots=[];
+  for(let i=0;i<arr.length-1;i++){
+    const s=arr[i],e=arr[i+1];
+    const active=currentPlan.filter(x=>new Date(x.starts_at).getTime()<=s&&new Date(x.ends_at).getTime()>=e);
+    if(active.length)slots.push({s,e,active});
+  }
+
+  slotPlan.innerHTML=slots.map(sl=>{
+    const byRole={};
+    for(const x of sl.active)(byRole[x.role]??=[]).push(x);
+    return `<div class="slot">
+      <div class="slot-time">${timeOnly(sl.s)}〜${timeOnly(sl.e)}　合計 ${sl.active.length}人</div>
+      ${roleOrder.map(r=>{
+        const xs=byRole[r]||[];
+        if(!xs.length)return "";
+        return `<div class="roleline"><div class="rolelabel">${esc(roleLabel[r])} ${xs.length}人</div>
+          <div class="names">${xs.map(x=>`${esc(staffName(x.user_id))}${x.is_fixed?" 🔒":""}`).join("、")}</div></div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+}
+
+function renderPersonPlan(){
+  const grouped={};
+  for(const x of currentPlan)(grouped[x.user_id]??=[]).push(x);
+  const ids=Object.keys(grouped).sort((a,b)=>staffName(a).localeCompare(staffName(b),"ja"));
+  personPlan.innerHTML=ids.map(uid=>`
+    <div class="person-plan">
+      <div class="person-name">${esc(staffName(uid))}</div>
+      ${grouped[uid].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).map(x=>
+        `<span class="seg">${timeOnly(x.starts_at)}〜${timeOnly(x.ends_at)} ${esc(roleLabel[x.role])}${x.is_fixed?" 🔒":""}</span>`
+      ).join("")}
+    </div>`).join("");
+}
+
+daySelect.onchange=async()=>{
+  syncDefaultTimes();
+  await loadDayData();
+};
+
+(async()=>{
+  try{
+    if(!await requireAdmin())return;
+    await loadBase();
+    await loadDayData();
+  }catch(e){
+    document.querySelector("main").insertAdjacentHTML("afterbegin",`<div class="card err">読み込みエラー：${esc(e.message||String(e))}</div>`);
+  }
+})();
+</script>
+</body>
+</html>
