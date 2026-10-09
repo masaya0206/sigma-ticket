@@ -116,7 +116,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   <details class="card section" open>
     <summary>4. 勤務・休憩ルール</summary>
     <div class="section-body">
-      <p class="small">連続勤務が上限に達したスタッフは、固定配置中でも必ず休憩に入れます。休憩中だけ固定職種を一時解除し、休憩後は自動で元の固定職種へ戻ります。本祭で設定すると本祭全日共通、準備日・片付け日はその日のみです。</p>
+      <p class="small">連続勤務上限は固定配置中でも必ず守ります。休憩は上限到達ギリギリまで待つのではなく、同時休憩が重ならないよう少し早めに分散することがあります。出勤時刻そのものは変更しません。休憩後は固定時間内なら元の固定職種へ戻ります。本祭で設定すると本祭全日共通、準備日・片付け日はその日のみです。</p>
       <div class="grid2">
         <div>
           <label>連続最大勤務時間（分）</label>
@@ -129,20 +129,6 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
           <div class="small">0分にすると自動休憩を無効化</div>
         </div>
       </div>
-      <div class="grid2">
-        <div>
-          <label>出勤時刻の自動補正</label>
-          <select id="autoStaggerEnabled">
-            <option value="1">有効</option>
-            <option value="0">無効</option>
-          </select>
-        </div>
-        <div>
-          <label>最大で遅らせる時間（分）</label>
-          <input id="maxStartDelayMinutes" type="number" min="0" max="180" step="15" value="60">
-        </div>
-      </div>
-      <p class="small">同じ時刻に休憩が集中しそうな場合、本人の提出した参加可能時間の範囲内で、実際の勤務開始を少し遅らせて休憩を分散します。提出時間より早く働かせたり、提出終了時刻を超えて延長したりはしません。</p>
 
       <button class="primary" id="saveWorkRule">勤務・休憩ルールを保存</button>
       <div id="workRuleMsg"></div>
@@ -153,8 +139,8 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   <div class="card">
     <h2>5. 完成案を生成</h2>
     <p class="small">
-      優先順位：①必要人数を崩さない範囲で出勤時刻を分散 → ②休憩ルール → ③固定配置 → ④必要人数 → ⑤希望職種 → ⑥継続役割 → ⑦残りは売り子。
-      希望時間外には配置しません。連続勤務上限に達した場合は、固定配置中でも休憩を優先します。
+      優先順位：①休憩 → ②固定配置 → ③必要人数 → ④希望職種。出勤時刻は動かしません。休憩は連続勤務上限を守りつつ、同時休憩をできるだけ分散し、人員の穴を最小化します。
+      希望時間外には配置しません。固定配置中でも休憩は必ず適用します。必要人数を満たせない場合は不足を警告します。
     </p>
     <button class="primary" id="generateBtn">✨ 完成案を生成・下書き保存</button>
     <div id="generateMsg"></div>
@@ -165,17 +151,8 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
     <summary>6. 時間帯ごとの完成案</summary>
     <div class="section-body" id="slotPlan">まだ生成されていません。</div>
   </details>
-
   <details class="card section" open>
-    <summary>7. 自動補正内容</summary>
-    <div class="section-body">
-      <p class="small">休憩が同時刻に集中しないよう、誰の勤務開始を何分ずらしたかを表示します。補正は提出済みの参加可能時間の内側だけで行います。</p>
-      <div id="correctionSummary">まだ完成案を生成していません。</div>
-    </div>
-  </details>
-
-  <details class="card section" open>
-    <summary>8. 人員配置グラフ</summary>
+    <summary>7. 人員配置グラフ</summary>
     <div class="section-body">
       <p class="small">時間帯ごとの実配置人数を職種別の積み上げ棒で表示します。黒い折れ線は、その時間帯に設定した最低必要人数の合計です。</p>
       <div class="chart-wrap">
@@ -189,7 +166,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </details>
 
   <details class="card section">
-    <summary>9. スタッフごとの完成案</summary>
+    <summary>8. スタッフごとの完成案</summary>
     <div class="section-body" id="personPlan">まだ生成されていません。</div>
   </details>
 
@@ -215,7 +192,7 @@ const roleOrder=roles.map(x=>x[0]);
 const roleLabel=Object.fromEntries(roles);
 roleLabel.break="休憩";
 
-let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[],workRule=null,corrections=[];
+let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[],workRule=null;
 
 const SHIFT_PLANNER_SETTINGS_KEY="sigma_shift_planner_settings_v1";
 
@@ -241,8 +218,6 @@ function savePlannerSettings(){
       fixed_from:fixedFrom?.value||"",
       fixed_to:fixedTo?.value||"",
       fixed_note:fixedNote?.value||"",
-      auto_stagger_enabled:autoStaggerEnabled?.value||"1",
-      max_start_delay_minutes:maxStartDelayMinutes?.value||"60",
       saved_at:new Date().toISOString()
     };
     localStorage.setItem(SHIFT_PLANNER_SETTINGS_KEY,JSON.stringify(data));
@@ -272,8 +247,6 @@ function restorePlannerSettings(){
   if(s.fixed_from)fixedFrom.value=s.fixed_from;
   if(s.fixed_to)fixedTo.value=s.fixed_to;
   if(s.fixed_note!==undefined)fixedNote.value=s.fixed_note||"";
-  if(s.auto_stagger_enabled!==undefined)autoStaggerEnabled.value=String(s.auto_stagger_enabled);
-  if(s.max_start_delay_minutes!==undefined)maxStartDelayMinutes.value=String(s.max_start_delay_minutes);
 }
 
 const esc=v=>String(v??"")
@@ -541,8 +514,7 @@ function renderWorkRule(){
   const scopeText=workRule?.scope==="festival_all"?"本祭共通":"この日のみ";
   workRuleCurrent.innerHTML=
     `現在：<b>最大 ${maxMin}分（${(maxMin/60).toFixed(maxMin%60?1:0)}時間）</b>連続勤務 → `+
-    `<b>${br}分休憩</b>　<span class="pill">${scopeText}</span>`+
-    `<br>勤務開始補正：<b>${autoStaggerEnabled.value==="1"?"有効":"無効"}</b> / 最大 <b>${Number(maxStartDelayMinutes.value||60)}分</b>`;
+    `<b>${br}分休憩</b>　<span class="pill">${scopeText}</span>`;
 }
 
 saveWorkRule.onclick=async()=>{
@@ -670,162 +642,72 @@ function preferenceScore(uid,role,prevRole){
 }
 
 
-function firstAvailabilityForUser(uid,availabilityMap){
-  const rows=availabilityMap[uid]||[];
-  if(!rows.length)return null;
-  return rows[0];
-}
-
-function requirementsAt(ms){
-  const sums={};
-  for(const r of requirementsRows){
-    const s=new Date(r.starts_at).getTime();
-    const e=new Date(r.ends_at).getTime();
-    if(s<=ms && e>ms){
-      sums[r.role]=(sums[r.role]||0)+Number(r.required_count||0);
-    }
-  }
-  return sums;
-}
-
-function minimumTotalAt(ms){
-  return Object.values(requirementsAt(ms)).reduce((s,n)=>s+Number(n||0),0);
-}
-
-function computeStartCorrections(availabilityMap){
-  corrections=[];
-  const enabled=autoStaggerEnabled.value==="1";
-  const maxDelay=Math.max(0,Number(maxStartDelayMinutes.value||0))*60000;
-  if(!enabled || maxDelay<=0)return {};
-
-  const d=currentDay();
-  const dayStart=new Date(d.starts_at).getTime();
-  const dayEnd=new Date(d.ends_at).getTime();
-  const maxContinuousMs=Math.max(30,Number(workRule?.max_continuous_minutes||240))*60000;
-  const breakMs=Math.max(0,Number(workRule?.break_minutes||0))*60000;
-  if(breakMs<=0)return {};
-
-  const step=Math.max(15,Math.min(Number(slotMinutes.value||30),30))*60000;
-  const delays={};
-
-  // Only stagger the first continuous availability block of each person.
-  const candidates=staff
-    .map(p=>{
-      const a=firstAvailabilityForUser(p.user_id,availabilityMap);
-      if(!a)return null;
-      return {person:p,start:a[0],end:a[1]};
-    })
-    .filter(Boolean)
-    .filter(x=>x.end-x.start>=maxContinuousMs+breakMs)
-    .sort((a,b)=>a.start-b.start || String(a.person.staff_name).localeCompare(String(b.person.staff_name),"ja"));
-
-  // Group people with roughly the same submitted start time.
-  const groups=[];
-  for(const c of candidates){
-    let g=groups.find(x=>Math.abs(x.start-c.start)<step);
-    if(!g){
-      g={start:c.start,items:[]};
-      groups.push(g);
-    }
-    g.items.push(c);
-  }
-
-  for(const g of groups){
-    if(g.items.length<2)continue;
-
-    // Try different delay buckets to spread the expected break starts.
-    let bucketIndex=0;
-
-    for(const c of g.items){
-      const uid=c.person.user_id;
-
-      // Never shift a person whose fixed assignment starts immediately at their submitted start.
-      const hasImmediateFixed=fixedRows.some(f=>
-        f.user_id===uid &&
-        new Date(f.starts_at).getTime()<=c.start &&
-        new Date(f.ends_at).getTime()>c.start
-      );
-      if(hasImmediateFixed){
-        delays[uid]=0;
-        continue;
-      }
-
-      let chosen=0;
-
-      // Keep enough staff working at the original time to satisfy total minimum staffing.
-      const originalActive=staff.filter(p=>{
-        const a=firstAvailabilityForUser(p.user_id,availabilityMap);
-        return a && a[0]<=c.start && a[1]>c.start;
-      }).length;
-
-      const alreadyDelayed=Object.entries(delays).filter(([otherUid,delay])=>{
-        if(Number(delay)<=0)return false;
-        const a=firstAvailabilityForUser(otherUid,availabilityMap);
-        return a && a[0]<=c.start && a[1]>c.start;
-      }).length;
-
-      const minNeeded=minimumTotalAt(c.start);
-      const canDelayAnother=(originalActive-alreadyDelayed-1)>=minNeeded;
-
-      if(canDelayAnother){
-        // Alternate 0, step, 2*step ... and wrap, so not everybody moves.
-        const proposed=Math.min(maxDelay,(bucketIndex%Math.max(1,Math.floor(maxDelay/step)+1))*step);
-        bucketIndex++;
-
-        // If proposed is zero, next candidate can get a delay.
-        chosen=proposed;
-
-        // Ensure delayed start still remains inside the submitted window.
-        if(c.start+chosen>=c.end)chosen=0;
-      }
-
-      delays[uid]=chosen;
-
-      if(chosen>0){
-        corrections.push({
-          user_id:uid,
-          staff_name:c.person.staff_name,
-          original_start:c.start,
-          adjusted_start:c.start+chosen,
-          delay_minutes:Math.round(chosen/60000),
-          expected_break_before:c.start+maxContinuousMs,
-          expected_break_after:c.start+chosen+maxContinuousMs,
-          reason:"休憩集中を避けるため勤務開始を後ろへ補正"
-        });
-      }
-    }
-  }
-
-  return delays;
-}
-
 function generatePlan(){
   warnings=[];
   const availabilityMap=mergedAvailability();
-  const startDelays=computeStartCorrections(availabilityMap);
   const slices=buildSlices();
   const previousRole={};
   const generated=[];
 
   const maxContinuousMs=Math.max(30,Number(workRule?.max_continuous_minutes||240))*60000;
   const breakMs=Math.max(0,Number(workRule?.break_minutes||0))*60000;
+
   const workedMs={};
   const breakUntil={};
-  const fixedBreakWarned=new Set();
+  const breakStartedAt={};
 
-  for(const slice of slices){
-    const participants=staff.filter(s=>{
-      if(!availableFor(s.user_id,slice,availabilityMap))return false;
-      const first=firstAvailabilityForUser(s.user_id,availabilityMap);
-      const delay=Number(startDelays[s.user_id]||0);
-      if(first && slice.start < first[0]+delay && slice.start>=first[0])return false;
-      return true;
-    });
+  // 休憩候補を「穴が開きにくい順」に並べる。
+  // 固定配置中の人や、その時間帯で不足しやすい役職に固定されている人は後回し。
+  function breakImpactScore(person,slice,participants,onBreak){
+    let score=0;
+    const fx=activeFixed(person.user_id,slice);
+
+    if(fx.length){
+      score+=1000;
+      const role=fx[0].role;
+      const need=Number(activeRequirements(slice)[role]||0);
+      if(need>0)score+=500+need*50;
+    }
+
+    // この時間帯の総必要人数に対して余裕が少ないほど休憩しにくくする。
+    const requiredTotal=Object.values(activeRequirements(slice))
+      .reduce((s,n)=>s+Number(n||0),0);
+    const workingNow=participants.length-onBreak.size;
+    const slack=workingNow-requiredTotal;
+
+    if(slack<=0)score+=1000;
+    else score+=Math.max(0,200-slack*40);
+
+    // 希望職種が希少役割なら少し後回し。
+    const p=prefs[person.user_id]||{};
+    const prefRoles=[
+      normalizePreferenceRole(p.first_role),
+      normalizePreferenceRole(p.second_role),
+      normalizePreferenceRole(p.third_role)
+    ].filter(Boolean);
+
+    for(const r of prefRoles){
+      if(r!=="seller" && Number(activeRequirements(slice)[r]||0)>0){
+        score+=80;
+      }
+    }
+
+    return score;
+  }
+
+  for(let sliceIndex=0;sliceIndex<slices.length;sliceIndex++){
+    const slice=slices[sliceIndex];
+    const sliceMs=slice.end-slice.start;
+
+    const participants=staff.filter(s=>
+      availableFor(s.user_id,slice,availabilityMap)
+    );
+
     const assigned=new Map();
     const onBreak=new Set();
     const needs=activeRequirements(slice);
 
-    // 1. Continue an already-started break.
+    // 1) すでに始まっている休憩は継続。
     if(breakMs>0){
       for(const p of participants){
         if(Number(breakUntil[p.user_id]||0)>slice.start){
@@ -834,33 +716,89 @@ function generatePlan(){
       }
     }
 
-    // 2. Anyone who reached the continuous-work limit MUST start a break.
-    //    This applies even if that person is in a fixed assignment.
+    // 2) 休憩を決める。
+    //    A. 今休まないと上限を超える人は必須休憩。
+    //    B. 次の1〜2スロット以内に上限到達する人は、余裕がある時だけ前倒し休憩。
     if(breakMs>0){
+      const mustBreak=[];
+      const soonBreak=[];
+
       for(const p of participants){
-        if(
-          !onBreak.has(p.user_id) &&
-          Number(workedMs[p.user_id]||0)>=maxContinuousMs
-        ){
+        if(onBreak.has(p.user_id))continue;
+
+        const worked=Number(workedMs[p.user_id]||0);
+        const afterThis=worked+sliceMs;
+
+        if(afterThis>maxContinuousMs || worked>=maxContinuousMs){
+          mustBreak.push(p);
+          continue;
+        }
+
+        // 最大連続勤務に近い人は、同時休憩集中を防ぐため前倒し候補にする。
+        const remaining=maxContinuousMs-afterThis;
+        if(remaining>=0 && remaining<=(sliceMs*2)){
+          soonBreak.push(p);
+        }
+      }
+
+      const sorter=(a,b)=>{
+        const ia=breakImpactScore(a,slice,participants,onBreak);
+        const ib=breakImpactScore(b,slice,participants,onBreak);
+
+        if(ia!==ib)return ia-ib;
+
+        // より長く働いている人を先に休ませる。
+        return Number(workedMs[b.user_id]||0)-Number(workedMs[a.user_id]||0);
+      };
+
+      mustBreak.sort(sorter);
+      soonBreak.sort(sorter);
+
+      // 必須休憩は人数不足になっても安全優先で必ず入れる。
+      for(const p of mustBreak){
+        if(onBreak.has(p.user_id))continue;
+
+        onBreak.add(p.user_id);
+        breakUntil[p.user_id]=slice.start+breakMs;
+        breakStartedAt[p.user_id]=slice.start;
+
+        const fx=activeFixed(p.user_id,slice);
+        if(fx.length){
+          warnings.push(
+            `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
+            `${staffName(p.user_id)} は固定配置中ですが、連続勤務上限のため休憩を優先しました。`
+          );
+        }
+      }
+
+      // 前倒し休憩は「今休ませても総必要人数を割らない」場合のみ。
+      // 1スロットあたり原則1人まで前倒しし、休憩集中を避ける。
+      let proactiveCount=0;
+      for(const p of soonBreak){
+        if(onBreak.has(p.user_id))continue;
+        if(proactiveCount>=1)break;
+
+        const requiredTotal=Object.values(needs)
+          .reduce((s,n)=>s+Number(n||0),0);
+
+        const workingIfBreak=
+          participants.length-onBreak.size-1;
+
+        if(workingIfBreak>=requiredTotal){
           onBreak.add(p.user_id);
           breakUntil[p.user_id]=slice.start+breakMs;
+          breakStartedAt[p.user_id]=slice.start;
+          proactiveCount++;
 
-          const fx=activeFixed(p.user_id,slice);
-          if(fx.length){
-            const key=`${p.user_id}|${slice.start}`;
-            if(!fixedBreakWarned.has(key)){
-              warnings.push(
-                `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
-                `${staffName(p.user_id)} は固定配置中ですが、連続勤務上限に達したため休憩を優先しました。休憩後は固定職種へ戻ります。`
-              );
-              fixedBreakWarned.add(key);
-            }
-          }
+          warnings.push(
+            `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
+            `${staffName(p.user_id)} の休憩を少し前倒しし、同時休憩による人員の穴を分散しました。`
+          );
         }
       }
     }
 
-    // 3. Apply fixed assignments only to people who are not on break.
+    // 3) 固定配置。休憩中の人には固定を入れない。
     for(const person of participants){
       if(onBreak.has(person.user_id))continue;
 
@@ -876,12 +814,15 @@ function generatePlan(){
       if(fx.length){
         assigned.set(
           person.user_id,
-          {role:fx[0].role,is_fixed:true}
+          {
+            role:fx[0].role,
+            is_fixed:true
+          }
         );
       }
     }
 
-    // Fixed assignment outside submitted availability.
+    // 固定が提出時間外なら警告。
     for(const fx of fixedRows){
       const overlap=
         new Date(fx.starts_at).getTime()<slice.end &&
@@ -899,15 +840,21 @@ function generatePlan(){
       }
     }
 
-    // 4. Fill minimum required roles using only people who are actually working.
+    // 4) 必要人数を埋める。
+    // 固定をカウントした後、不足分だけ未配置スタッフから補充。
     for(const role of roleOrder){
       const target=Number(needs[role]||0);
-      const already=[...assigned.values()].filter(x=>x.role===role).length;
+      const already=[...assigned.values()]
+        .filter(x=>x.role===role).length;
+
       const missing=Math.max(0,target-already);
       if(!missing)continue;
 
       const candidates=participants
-        .filter(p=>!assigned.has(p.user_id)&&!onBreak.has(p.user_id))
+        .filter(p=>
+          !assigned.has(p.user_id) &&
+          !onBreak.has(p.user_id)
+        )
         .map(p=>({
           ...p,
           score:preferenceScore(
@@ -916,47 +863,66 @@ function generatePlan(){
             previousRole[p.user_id]
           )
         }))
-        .sort(
-          (a,b)=>
-            b.score-a.score ||
-            String(a.staff_name).localeCompare(String(b.staff_name),"ja")
+        .sort((a,b)=>
+          b.score-a.score ||
+          String(a.staff_name).localeCompare(
+            String(b.staff_name),
+            "ja"
+          )
         );
 
       for(const p of candidates.slice(0,missing)){
         assigned.set(
           p.user_id,
-          {role,is_fixed:false}
+          {
+            role,
+            is_fixed:false
+          }
         );
       }
 
-      const after=[...assigned.values()].filter(x=>x.role===role).length;
+      const after=[...assigned.values()]
+        .filter(x=>x.role===role).length;
 
       if(after<target){
         warnings.push(
           `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
-          `${roleLabel[role]} が ${target-after}人不足しています。`+
-          `休憩は安全上優先しています。`
+          `${roleLabel[role]} が ${target-after}人不足しています。`
         );
       }
     }
 
-    // 5. Everyone else who submitted this time stays in the shift as seller,
-    //    except staff currently on break.
+    // 5) 残った人は希望順で配置。
+    // レジ・買い出し補助・ドライバー希望は売り子希望として扱う。
     for(const p of participants){
       if(
-        !assigned.has(p.user_id) &&
-        !onBreak.has(p.user_id)
-      ){
-        assigned.set(
-          p.user_id,
-          {role:"seller",is_fixed:false}
-        );
-      }
+        assigned.has(p.user_id) ||
+        onBreak.has(p.user_id)
+      )continue;
+
+      const pref=prefs[p.user_id]||{};
+      const prefList=[
+        normalizePreferenceRole(pref.first_role),
+        normalizePreferenceRole(pref.second_role),
+        normalizePreferenceRole(pref.third_role)
+      ].filter(Boolean);
+
+      const chosen=
+        prefList[0] ||
+        (previousRole[p.user_id]&&previousRole[p.user_id]!=="break"
+          ? previousRole[p.user_id]
+          : "seller");
+
+      assigned.set(
+        p.user_id,
+        {
+          role:chosen,
+          is_fixed:false
+        }
+      );
     }
 
-    const sliceMs=slice.end-slice.start;
-
-    // 6. Save working / break segments and update continuous-work counters.
+    // 6) 完成案へ保存し、連続勤務時間を更新。
     for(const p of participants){
       if(onBreak.has(p.user_id)){
         generated.push({
@@ -985,12 +951,17 @@ function generatePlan(){
         is_fixed:a.is_fixed
       });
 
-      workedMs[p.user_id]=Number(workedMs[p.user_id]||0)+sliceMs;
+      workedMs[p.user_id]=
+        Number(workedMs[p.user_id]||0)+sliceMs;
+
       previousRole[p.user_id]=a.role;
     }
 
-    // Staff who are no longer participating reset their continuous-work counter.
-    const activeIds=new Set(participants.map(x=>x.user_id));
+    // 参加可能時間が途切れたら連続勤務カウントをリセット。
+    const activeIds=new Set(
+      participants.map(x=>x.user_id)
+    );
+
     for(const uid of Object.keys(workedMs)){
       if(!activeIds.has(uid)){
         workedMs[uid]=0;
@@ -1045,7 +1016,6 @@ function renderSavedPlan(){
     planSummary.innerHTML='<p class="muted">この日の保存済み完成案はありません。</p>';
     slotPlan.innerHTML='まだ生成されていません。';
     personPlan.innerHTML='まだ生成されていません。';
-    correctionSummary.innerHTML='まだ完成案を生成していません。';
     renderStaffingChart();
     return;
   }
@@ -1065,7 +1035,6 @@ function renderSavedPlan(){
   `;
 
   renderSlotPlan();
-  renderCorrections();
   renderStaffingChart();
   renderPersonPlan();
 }
@@ -1097,31 +1066,6 @@ function renderSlotPlan(){
   }).join("");
 }
 
-
-function renderCorrections(){
-  if(!corrections.length){
-    correctionSummary.innerHTML=
-      '<p class="ok">勤務開始の補正は不要でした。提出時刻のまま編成しています。</p>';
-    return;
-  }
-
-  correctionSummary.innerHTML=
-    `<div class="warning-box">
-      <b>自動補正 ${corrections.length}人</b>
-      <div class="small">休憩が一斉に重なるのを避けるため、次の勤務開始だけ後ろへずらしました。</div>
-    </div>`+
-    corrections.map(c=>`
-      <div class="person-plan">
-        <div class="person-name">${esc(c.staff_name)}</div>
-        <div class="small">
-          出勤：<b>${timeOnly(c.original_start)} → ${timeOnly(c.adjusted_start)}</b>
-          （+${c.delay_minutes}分）<br>
-          想定休憩開始：${timeOnly(c.expected_break_before)} → <b>${timeOnly(c.expected_break_after)}</b><br>
-          理由：${esc(c.reason)}
-        </div>
-      </div>
-    `).join("");
-}
 
 function renderStaffingChart(){
   const canvas=document.getElementById("staffingChart");
@@ -1330,8 +1274,7 @@ daySelect.onchange=async()=>{
 
 [
   slotMinutes,reqRole,reqFrom,reqTo,reqCount,
-  fixedStaff,fixedRole,fixedFrom,fixedTo,fixedNote,
-  autoStaggerEnabled,maxStartDelayMinutes
+  fixedStaff,fixedRole,fixedFrom,fixedTo,fixedNote
 ].forEach(el=>{
   if(!el)return;
   el.addEventListener("change",savePlannerSettings);
