@@ -87,16 +87,32 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
         <div><label>開始</label><input id="reqFrom" type="datetime-local"></div>
         <div><label>終了</label><input id="reqTo" type="datetime-local"></div>
       </div>
-      <div class="grid2">
-        <div><label>同時に必要な人数</label><input id="reqCount" type="number" min="0" max="50" value="1"></div>
+      <div class="grid3">
+        <div><label>最低人数</label><input id="reqMinCount" type="number" min="0" max="50" value="1"></div>
+        <div><label>最大人数</label><input id="reqMaxCount" type="number" min="0" max="50" value="1"></div>
         <div style="display:flex;align-items:end"><button class="primary" id="addRequirement">必要人数条件を追加</button></div>
       </div>
+      <p class="small">通常時間は最低人数を基準にし、ピーク時間に入ると最大人数を必須目標として編成します。</p>
       <div id="requirements"></div>
     </div>
   </details>
 
   <details class="card section" open>
-    <summary>3. 個人の固定配置</summary>
+    <summary>3. ピーク時間</summary>
+    <div class="section-body">
+      <p class="small">ピーク中は、各職種の必要人数を「最大人数」まで引き上げます。本祭日に登録したピークは本祭3日間すべてに共通反映し、準備日・片付け日はその日だけです。</p>
+      <div class="grid3">
+        <div><label>ピーク名</label><input id="peakLabel" placeholder="例：昼ピーク"></div>
+        <div><label>開始</label><input id="peakFrom" type="datetime-local"></div>
+        <div><label>終了</label><input id="peakTo" type="datetime-local"></div>
+      </div>
+      <button class="primary" id="addPeak">ピーク時間を追加</button>
+      <div id="peakList"></div>
+    </div>
+  </details>
+
+  <details class="card section" open>
+    <summary>4. 個人の固定配置</summary>
     <div class="section-body">
       <p class="small">「この人はこの時間、この職種で確定」を設定します。<b>本祭日に登録した固定配置は本祭3日間すべてに共通反映</b>し、準備日・片付け日はその日だけに反映します。自動編成しても固定部分は動かしません。</p>
       <div class="grid2">
@@ -114,7 +130,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </details>
 
   <details class="card section" open>
-    <summary>4. 勤務・休憩ルール</summary>
+    <summary>5. 勤務・休憩ルール</summary>
     <div class="section-body">
       <p class="small">連続勤務上限は固定配置中でも必ず守ります。休憩は上限到達ギリギリまで待つのではなく、同時休憩が重ならないよう少し早めに分散することがあります。出勤時刻そのものは変更しません。休憩後は固定時間内なら元の固定職種へ戻ります。本祭で設定すると本祭全日共通、準備日・片付け日はその日のみです。</p>
       <div class="grid2">
@@ -137,7 +153,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </details>
 
   <div class="card">
-    <h2>5. 完成案を生成</h2>
+    <h2>6. 完成案を生成</h2>
     <p class="small">
       優先順位：①休憩 → ②固定配置 → ③必要人数 → ④希望職種。出勤時刻は動かしません。休憩は連続勤務上限を守りつつ、同時休憩をできるだけ分散し、人員の穴を最小化します。
       希望時間外には配置しません。固定配置中でも休憩は必ず適用します。必要人数を満たせない場合は不足を警告します。
@@ -148,13 +164,13 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </div>
 
   <details class="card section" open>
-    <summary>6. 時間帯ごとの完成案</summary>
+    <summary>7. 時間帯ごとの完成案</summary>
     <div class="section-body" id="slotPlan">まだ生成されていません。</div>
   </details>
   <details class="card section" open>
-    <summary>7. 人員配置グラフ</summary>
+    <summary>8. 人員配置グラフ</summary>
     <div class="section-body">
-      <p class="small">時間帯ごとの実配置人数を職種別の積み上げ棒で表示します。黒い折れ線は、その時間帯に設定した最低必要人数の合計です。</p>
+      <p class="small">時間帯ごとの実配置人数を職種別の積み上げ棒で表示します。灰色線は最低人数、黒線は実際の編成目標です。ピーク中は黒線が最大人数まで上がり、背景も薄く強調されます。</p>
       <div class="chart-wrap">
         <div class="chart-canvas-wrap">
           <canvas id="staffingChart"></canvas>
@@ -166,7 +182,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   </details>
 
   <details class="card section">
-    <summary>8. スタッフごとの完成案</summary>
+    <summary>9. スタッフごとの完成案</summary>
     <div class="section-body" id="personPlan">まだ生成されていません。</div>
   </details>
 
@@ -192,7 +208,7 @@ const roleOrder=roles.map(x=>x[0]);
 const roleLabel=Object.fromEntries(roles);
 roleLabel.break="休憩";
 
-let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[],workRule=null;
+let days=[],staff=[],avail=[],prefs={},requirementsRows=[],peakRows=[],fixedRows=[],currentPlan=[],warnings=[],workRule=null;
 
 const SHIFT_PLANNER_SETTINGS_KEY="sigma_shift_planner_settings_v1";
 
@@ -212,7 +228,11 @@ function savePlannerSettings(){
       req_role:reqRole?.value||"manager",
       req_from:reqFrom?.value||"",
       req_to:reqTo?.value||"",
-      req_count:reqCount?.value||"1",
+      req_min_count:reqMinCount?.value||"1",
+      req_max_count:reqMaxCount?.value||"1",
+      peak_label:peakLabel?.value||"",
+      peak_from:peakFrom?.value||"",
+      peak_to:peakTo?.value||"",
       fixed_staff:fixedStaff?.value||"",
       fixed_role:fixedRole?.value||"manager",
       fixed_from:fixedFrom?.value||"",
@@ -233,9 +253,15 @@ function restorePlannerSettings(){
   if(s.req_role && [...reqRole.options].some(o=>o.value===s.req_role)){
     reqRole.value=s.req_role;
   }
-  if(s.req_count!==undefined && s.req_count!==null){
-    reqCount.value=String(s.req_count);
+  if(s.req_min_count!==undefined && s.req_min_count!==null){
+    reqMinCount.value=String(s.req_min_count);
   }
+  if(s.req_max_count!==undefined && s.req_max_count!==null){
+    reqMaxCount.value=String(s.req_max_count);
+  }
+  if(s.peak_label!==undefined)peakLabel.value=s.peak_label||"";
+  if(s.peak_from)peakFrom.value=s.peak_from;
+  if(s.peak_to)peakTo.value=s.peak_to;
   if(s.fixed_role && [...fixedRole.options].some(o=>o.value===s.fixed_role)){
     fixedRole.value=s.fixed_role;
   }
@@ -336,28 +362,32 @@ async function loadBase(){
 function syncDefaultTimes(){
   const d=currentDay(); if(!d)return;
   reqFrom.value=localInput(d.starts_at); reqTo.value=localInput(d.ends_at);
+  peakFrom.value=localInput(d.starts_at); peakTo.value=localInput(d.ends_at);
   fixedFrom.value=localInput(d.starts_at); fixedTo.value=localInput(d.ends_at);
   updateScopeNote();
 }
 
 async function loadDayData(){
   const d=currentDay(); if(!d)return;
-  const [a,r,f,p,w]=await Promise.all([
+  const [a,r,pk,f,p,w]=await Promise.all([
     sb.from("staff_availability")
       .select("id,user_id,event_day_id,available_from,available_to,note")
       .eq("event_day_id",d.id).order("available_from"),
     sb.from("shift_role_requirements").select("*").eq("event_day_id",d.id).order("starts_at"),
+    sb.from("shift_peak_periods").select("*").eq("event_day_id",d.id).order("starts_at"),
     sb.from("shift_fixed_assignments").select("*").eq("event_day_id",d.id).order("starts_at"),
     sb.from("shift_plan_assignments").select("*").eq("event_day_id",d.id).order("starts_at"),
     sb.from("shift_work_rules").select("*").eq("event_day_id",d.id).maybeSingle()
   ]);
-  for(const x of [a,r,f,p,w]) if(x.error) throw x.error;
+  for(const x of [a,r,pk,f,p,w]) if(x.error) throw x.error;
   avail=a.data||[];
   requirementsRows=r.data||[];
+  peakRows=pk.data||[];
   fixedRows=f.data||[];
   currentPlan=p.data||[];
   workRule=w.data||{event_day_id:+d.id,max_continuous_minutes:240,break_minutes:30,scope:isFestivalDay(d)?"festival_all":"day"};
   renderRequirements();
+  renderPeaks();
   renderFixed();
   renderWorkRule();
   renderSavedPlan();
@@ -375,6 +405,18 @@ addRequirement.onclick=async()=>{
   const e=validateRange(reqFrom.value,reqTo.value);
   if(e){alert(e);return;}
 
+  const minCount=Number(reqMinCount.value);
+  const maxCount=Number(reqMaxCount.value);
+
+  if(!Number.isFinite(minCount)||!Number.isFinite(maxCount)||minCount<0||maxCount<0){
+    alert("最低人数・最大人数を正しく入力してください。");
+    return;
+  }
+  if(maxCount<minCount){
+    alert("最大人数は最低人数以上にしてください。");
+    return;
+  }
+
   const d=currentDay();
   const groupKey=makeGroupKey();
   let payloads=[];
@@ -385,7 +427,9 @@ addRequirement.onclick=async()=>{
       role:reqRole.value,
       starts_at:applyClockToDay(reqFrom.value,fd),
       ends_at:applyClockToDay(reqTo.value,fd),
-      required_count:+reqCount.value,
+      required_count:minCount,
+      min_required_count:minCount,
+      max_required_count:maxCount,
       group_key:groupKey,
       scope:"festival_all"
     }));
@@ -395,7 +439,9 @@ addRequirement.onclick=async()=>{
       role:reqRole.value,
       starts_at:new Date(reqFrom.value).toISOString(),
       ends_at:new Date(reqTo.value).toISOString(),
-      required_count:+reqCount.value,
+      required_count:minCount,
+      min_required_count:minCount,
+      max_required_count:maxCount,
       group_key:groupKey,
       scope:"day"
     }];
@@ -427,13 +473,76 @@ async function delRequirement(id){
 function renderRequirements(){
   requirements.innerHTML=requirementsRows.length?requirementsRows.map(x=>`
     <div class="row rule-row">
-      <b>${esc(roleLabel[x.role]||x.role)}：${Number(x.required_count)}人</b>
+      <b>${esc(roleLabel[x.role]||x.role)}：${Number(x.min_required_count??x.required_count??0)}〜${Number(x.max_required_count??x.required_count??0)}人</b>
       <span>${timeOnly(x.starts_at)}〜${timeOnly(x.ends_at)}</span>
       <span class="small">${fmtDateTime(x.starts_at)}</span>
       <span class="pill">${x.scope==="festival_all"?"本祭共通":"この日のみ"}</span>
       <button class="smallbtn danger del" onclick="delRequirement(${x.id})">削除</button>
     </div>`).join(""):'<p class="muted">必要人数条件はまだありません。</p>';
 }
+
+addPeak.onclick=async()=>{
+  savePlannerSettings();
+  const e=validateRange(peakFrom.value,peakTo.value);
+  if(e){alert(e);return;}
+
+  const d=currentDay();
+  const groupKey=makeGroupKey();
+  const label=peakLabel.value.trim()||"ピーク";
+  let payloads=[];
+
+  if(isFestivalDay(d)){
+    payloads=festivalDays().map(fd=>({
+      event_day_id:+fd.id,
+      label,
+      starts_at:applyClockToDay(peakFrom.value,fd),
+      ends_at:applyClockToDay(peakTo.value,fd),
+      group_key:groupKey,
+      scope:"festival_all"
+    }));
+  }else{
+    payloads=[{
+      event_day_id:+d.id,
+      label,
+      starts_at:new Date(peakFrom.value).toISOString(),
+      ends_at:new Date(peakTo.value).toISOString(),
+      group_key:groupKey,
+      scope:"day"
+    }];
+  }
+
+  const {error}=await sb.from("shift_peak_periods").insert(payloads);
+  if(error){alert(error.message);return;}
+  await loadDayData();
+};
+
+async function delPeak(id){
+  const row=peakRows.find(x=>x.id===id);
+  if(!row)return;
+  const msg=row.scope==="festival_all"
+    ?"このピーク時間を本祭すべての日から削除しますか？"
+    :"このピーク時間を削除しますか？";
+  if(!confirm(msg))return;
+
+  let q=sb.from("shift_peak_periods").delete();
+  if(row.group_key)q=q.eq("group_key",row.group_key);
+  else q=q.eq("id",id);
+
+  const {error}=await q;
+  if(error)alert(error.message); else loadDayData();
+}
+
+function renderPeaks(){
+  peakList.innerHTML=peakRows.length?peakRows.map(x=>`
+    <div class="row fixed-row">
+      <b>${esc(x.label||"ピーク")}</b>
+      <span class="pill">最大人数</span>
+      <span>${timeOnly(x.starts_at)}〜${timeOnly(x.ends_at)}</span>
+      <span class="small">${x.scope==="festival_all"?"本祭共通":"この日のみ"}</span>
+      <button class="smallbtn danger del" onclick="delPeak(${x.id})">削除</button>
+    </div>`).join(""):'<p class="muted">ピーク時間はまだありません。</p>';
+}
+
 
 addFixed.onclick=async()=>{
   savePlannerSettings();
@@ -594,7 +703,7 @@ function buildSlices(){
     const s=new Date(a.available_from).getTime(), e=new Date(a.available_to).getTime();
     if(s>start&&s<end)cuts.add(s); if(e>start&&e<end)cuts.add(e);
   }
-  for(const x of [...requirementsRows,...fixedRows]){
+  for(const x of [...requirementsRows,...peakRows,...fixedRows]){
     const s=new Date(x.starts_at).getTime(), e=new Date(x.ends_at).getTime();
     if(s>start&&s<end)cuts.add(s); if(e>start&&e<end)cuts.add(e);
   }
@@ -602,13 +711,43 @@ function buildSlices(){
   return arr.slice(0,-1).map((s,i)=>({start:s,end:arr[i+1]})).filter(x=>x.end>x.start);
 }
 
+function isPeakSlice(slice){
+  return peakRows.some(p=>{
+    const s=new Date(p.starts_at).getTime();
+    const e=new Date(p.ends_at).getTime();
+    return s<slice.end&&e>slice.start;
+  });
+}
+
+function activePeakLabels(slice){
+  return peakRows.filter(p=>{
+    const s=new Date(p.starts_at).getTime();
+    const e=new Date(p.ends_at).getTime();
+    return s<slice.end&&e>slice.start;
+  }).map(p=>p.label||"ピーク");
+}
+
 function activeRequirements(slice){
-  const sums={};
+  const peak=isPeakSlice(slice);
+  const out={};
+
   for(const r of requirementsRows){
     const s=new Date(r.starts_at).getTime(),e=new Date(r.ends_at).getTime();
-    if(s<slice.end&&e>slice.start)sums[r.role]=(sums[r.role]||0)+Number(r.required_count||0);
+    if(!(s<slice.end&&e>slice.start))continue;
+
+    const min=Number(r.min_required_count??r.required_count??0);
+    const max=Number(r.max_required_count??r.required_count??min);
+
+    if(!out[r.role])out[r.role]={min:0,max:0,target:0};
+    out[r.role].min+=min;
+    out[r.role].max+=max;
   }
-  return sums;
+
+  for(const role of Object.keys(out)){
+    out[role].target=peak?out[role].max:out[role].min;
+  }
+
+  return out;
 }
 function activeFixed(uid,slice){
   return fixedRows.filter(x=>x.user_id===uid &&
@@ -665,13 +804,13 @@ function generatePlan(){
     if(fx.length){
       score+=1000;
       const role=fx[0].role;
-      const need=Number(activeRequirements(slice)[role]||0);
+      const need=Number(activeRequirements(slice)[role]?.target||0);
       if(need>0)score+=500+need*50;
     }
 
     // この時間帯の総必要人数に対して余裕が少ないほど休憩しにくくする。
     const requiredTotal=Object.values(activeRequirements(slice))
-      .reduce((s,n)=>s+Number(n||0),0);
+      .reduce((s,n)=>s+Number(n?.target||0),0);
     const workingNow=participants.length-onBreak.size;
     const slack=workingNow-requiredTotal;
 
@@ -687,7 +826,7 @@ function generatePlan(){
     ].filter(Boolean);
 
     for(const r of prefRoles){
-      if(r!=="seller" && Number(activeRequirements(slice)[r]||0)>0){
+      if(r!=="seller" && Number(activeRequirements(slice)[r]?.target||0)>0){
         score+=80;
       }
     }
@@ -779,7 +918,7 @@ function generatePlan(){
         if(proactiveCount>=1)break;
 
         const requiredTotal=Object.values(needs)
-          .reduce((s,n)=>s+Number(n||0),0);
+          .reduce((s,n)=>s+Number(n?.target||0),0);
 
         const workingIfBreak=
           participants.length-onBreak.size-1;
@@ -843,7 +982,7 @@ function generatePlan(){
     // 4) 必要人数を埋める。
     // 固定をカウントした後、不足分だけ未配置スタッフから補充。
     for(const role of roleOrder){
-      const target=Number(needs[role]||0);
+      const target=Number(needs[role]?.target||0);
       const already=[...assigned.values()]
         .filter(x=>x.role===role).length;
 
@@ -1054,7 +1193,7 @@ function renderSlotPlan(){
     const byRole={};
     for(const x of sl.active)(byRole[x.role]??=[]).push(x);
     return `<div class="slot">
-      <div class="slot-time">${timeOnly(sl.s)}〜${timeOnly(sl.e)}　勤務 ${sl.active.filter(x=>x.role!=="break").length}人 / 休憩 ${(byRole.break||[]).length}人</div>
+      <div class="slot-time">${timeOnly(sl.s)}〜${timeOnly(sl.e)}　勤務 ${sl.active.filter(x=>x.role!=="break").length}人 / 休憩 ${(byRole.break||[]).length}人 ${isPeakSlice({start:sl.s,end:sl.e})?`<span class="pill">🔥 ${esc(activePeakLabels({start:sl.s,end:sl.e}).join("・"))}</span>`:""}</div>
       ${roleOrder.map(r=>{
         const xs=byRole[r]||[];
         if(!xs.length)return "";
@@ -1111,10 +1250,16 @@ function renderStaffingChart(){
     const counts=Object.fromEntries(roleOrder.map(r=>[r,0]));
     for(const x of working)counts[x.role]=(counts[x.role]||0)+1;
 
-    const req=activeRequirements({start:s,end:e});
-    const requiredTotal=Object.values(req).reduce((sum,n)=>sum+Number(n||0),0);
+    const slice={start:s,end:e};
+    const req=activeRequirements(slice);
+    const minTotal=Object.values(req).reduce((sum,n)=>sum+Number(n?.min||0),0);
+    const targetTotal=Object.values(req).reduce((sum,n)=>sum+Number(n?.target||0),0);
 
-    rows.push({s,e,counts,total:working.length,breakCount,requiredTotal});
+    rows.push({
+      s,e,counts,total:working.length,breakCount,
+      minTotal,targetTotal,
+      isPeak:isPeakSlice(slice)
+    });
   }
 
   if(!rows.length)return;
@@ -1132,7 +1277,8 @@ function renderStaffingChart(){
   legend.innerHTML=roleOrder.map(r=>
     `<span><i class="chart-dot" style="background:${colors[r]}"></i>${esc(roleLabel[r])}</span>`
   ).join("")+
-    `<span><i class="chart-dot" style="background:#111;border-radius:999px"></i>最低必要人数</span>`+
+    `<span><i class="chart-dot" style="background:#777;border-radius:999px"></i>最低人数</span>`+
+    `<span><i class="chart-dot" style="background:#111;border-radius:999px"></i>編成目標（ピークは最大）</span>`+
     `<span><i class="chart-dot" style="background:#f59e0b;border-radius:999px"></i>休憩人数</span>`;
 
   const dpr=window.devicePixelRatio||1;
@@ -1152,7 +1298,8 @@ function renderStaffingChart(){
   const maxY=Math.max(
     1,
     ...rows.map(x=>x.total),
-    ...rows.map(x=>x.requiredTotal),
+    ...rows.map(x=>x.targetTotal),
+    ...rows.map(x=>x.minTotal),
     ...rows.map(x=>x.breakCount)
   );
   const yMax=Math.max(4,Math.ceil(maxY/2)*2);
@@ -1175,7 +1322,14 @@ function renderStaffingChart(){
   const bw=Math.max(7,(W/rows.length)-gap);
 
   rows.forEach((row,i)=>{
-    const x=pad.l+(W/rows.length)*i+(W/rows.length-bw)/2;
+    const slotW=W/rows.length;
+    const x=pad.l+slotW*i+(slotW-bw)/2;
+
+    if(row.isPeak){
+      ctx.fillStyle="rgba(181,18,27,0.06)";
+      ctx.fillRect(pad.l+slotW*i,pad.t,slotW,H);
+    }
+
     let yBottom=pad.t+H;
 
     for(const role of roleOrder.slice().reverse()){
@@ -1201,21 +1355,33 @@ function renderStaffingChart(){
     }
   });
 
-  // required total line
-  ctx.strokeStyle="#111";
-  ctx.fillStyle="#111";
-  ctx.lineWidth=2;
+  // Minimum line
+  ctx.strokeStyle="#777";
+  ctx.fillStyle="#777";
+  ctx.lineWidth=1.5;
   ctx.beginPath();
   rows.forEach((row,i)=>{
     const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
-    const y=pad.t+H-(Math.min(row.requiredTotal,yMax)/yMax)*H;
+    const y=pad.t+H-(Math.min(row.minTotal,yMax)/yMax)*H;
+    if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // Actual staffing target: normal=min, peak=max
+  ctx.strokeStyle="#111";
+  ctx.fillStyle="#111";
+  ctx.lineWidth=2.5;
+  ctx.beginPath();
+  rows.forEach((row,i)=>{
+    const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
+    const y=pad.t+H-(Math.min(row.targetTotal,yMax)/yMax)*H;
     if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
   });
   ctx.stroke();
 
   rows.forEach((row,i)=>{
     const x=pad.l+(W/rows.length)*i+(W/rows.length)/2;
-    const y=pad.t+H-(Math.min(row.requiredTotal,yMax)/yMax)*H;
+    const y=pad.t+H-(Math.min(row.targetTotal,yMax)/yMax)*H;
     ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
   });
 
@@ -1273,7 +1439,8 @@ daySelect.onchange=async()=>{
 };
 
 [
-  slotMinutes,reqRole,reqFrom,reqTo,reqCount,
+  slotMinutes,reqRole,reqFrom,reqTo,reqMinCount,reqMaxCount,
+  peakLabel,peakFrom,peakTo,
   fixedStaff,fixedRole,fixedFrom,fixedTo,fixedNote
 ].forEach(el=>{
   if(!el)return;
