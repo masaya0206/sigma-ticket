@@ -7,7 +7,7 @@
   <title>シグマ祭 ポータル</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./offline-store.js?v=50"></script>
+  <script src="./offline-store.js?v=57"></script>
 
   <meta name="theme-color" content="#b5121b">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -976,6 +976,43 @@ table{
 
 
     let loginOfflineSyncBusy = false;
+    let appLaunchOfflineSyncDone = false;
+
+    async function runAppLaunchOfflineSyncOnce(
+      user,
+      staff,
+      reason = "app-launch"
+    ) {
+      if (
+        appLaunchOfflineSyncDone ||
+        !navigator.onLine ||
+        !user ||
+        !staff ||
+        !window.SigmaOfflineStore
+      ) {
+        return {
+          skipped: true
+        };
+      }
+
+      appLaunchOfflineSyncDone = true;
+
+      const result =
+        await runOfflineSyncAfterLogin(
+          user,
+          staff,
+          {
+            reason
+          }
+        );
+
+      if (result?.error) {
+        appLaunchOfflineSyncDone = false;
+      }
+
+      return result;
+    }
+
 
     async function syncOfflineDayIssuesOnLogin() {
       if (!window.SigmaOfflineStore?.listDayIssuesByStatus) {
@@ -1652,6 +1689,58 @@ table{
               "newPasswordArea"
             ).style.display =
               "block";
+
+            return;
+          }
+
+          if (
+            event ===
+            "SIGNED_IN"
+          ) {
+            try {
+              await showPortal();
+
+              const {
+                data: { user }
+              } =
+                await supabaseClient.auth
+                  .getUser();
+
+              if (user) {
+                const {
+                  data: staff
+                } =
+                  await supabaseClient
+                    .from(
+                      "staff_members"
+                    )
+                    .select(
+                      "staff_name,is_active"
+                    )
+                    .eq(
+                      "user_id",
+                      user.id
+                    )
+                    .maybeSingle();
+
+                if (
+                  staff?.is_active
+                ) {
+                  await runAppLaunchOfflineSyncOnce(
+                    user,
+                    staff,
+                    "auth-signed-in"
+                  );
+
+                  await refreshOfflineBackupStatus();
+                }
+              }
+            } catch (e) {
+              console.warn(
+                "SIGNED_IN時バックアップ自動更新に失敗:",
+                e
+              );
+            }
           }
         }
       );
@@ -1920,13 +2009,10 @@ table{
       // 「メールアドレス・パスワード認証を通過した直後」は、
       // 未同期データ送信 + 最新オフラインバックアップ取得を必ず実行。
       if (options.afterPasswordLogin) {
-        await runOfflineSyncAfterLogin(
+        await runAppLaunchOfflineSyncOnce(
           user,
           staff,
-          {
-            reason:
-              "password-login"
-          }
+          "password-login"
         );
       }
 
@@ -2340,6 +2426,49 @@ const planned =
 
       if (session) {
         await showPortal();
+
+        try {
+          const {
+            data: { user }
+          } =
+            await supabaseClient.auth
+              .getUser();
+
+          if (user) {
+            const {
+              data: staff
+            } =
+              await supabaseClient
+                .from(
+                  "staff_members"
+                )
+                .select(
+                  "staff_name,is_active"
+                )
+                .eq(
+                  "user_id",
+                  user.id
+                )
+                .maybeSingle();
+
+            if (
+              staff?.is_active
+            ) {
+              await runAppLaunchOfflineSyncOnce(
+                user,
+                staff,
+                "app-launch-session"
+              );
+
+              await refreshOfflineBackupStatus();
+            }
+          }
+        } catch (e) {
+          console.warn(
+            "起動時バックアップ自動更新に失敗:",
+            e
+          );
+        }
       }
     }
 
