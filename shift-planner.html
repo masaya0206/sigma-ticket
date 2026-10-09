@@ -116,7 +116,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   <details class="card section" open>
     <summary>4. 勤務・休憩ルール</summary>
     <div class="section-body">
-      <p class="small">連続勤務が上限に達したスタッフから、必要人数をなるべく崩さないように休憩を自動配置します。本祭で設定すると本祭全日共通、準備日・片付け日はその日のみです。</p>
+      <p class="small">連続勤務が上限に達したスタッフは、固定配置中でも必ず休憩に入れます。休憩中だけ固定職種を一時解除し、休憩後は自動で元の固定職種へ戻ります。本祭で設定すると本祭全日共通、準備日・片付け日はその日のみです。</p>
       <div class="grid2">
         <div>
           <label>連続最大勤務時間（分）</label>
@@ -138,8 +138,8 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
   <div class="card">
     <h2>5. 完成案を生成</h2>
     <p class="small">
-      優先順位：①固定配置 → ②必要人数を満たす → ③第1〜第3希望 → ④前の時間帯と同じ役割を優先 → ⑤残りは売り子。
-      希望時間外には配置しません。
+      優先順位：①休憩ルール → ②固定配置 → ③必要人数を満たす → ④第1〜第3希望 → ⑤前の時間帯と同じ役割を優先 → ⑥残りは売り子。
+      希望時間外には配置しません。連続勤務上限に達した場合は、固定配置中でも休憩を優先します。
     </p>
     <button class="primary" id="generateBtn">✨ 完成案を生成・下書き保存</button>
     <div id="generateMsg"></div>
@@ -652,17 +652,15 @@ function generatePlan(){
   const breakMs=Math.max(0,Number(workRule?.break_minutes||0))*60000;
   const workedMs={};
   const breakUntil={};
-  const postponedWarned=new Set();
-  const fixedOverWarned=new Set();
+  const fixedBreakWarned=new Set();
 
   for(const slice of slices){
     const participants=staff.filter(s=>availableFor(s.user_id,slice,availabilityMap));
     const assigned=new Map();
     const onBreak=new Set();
     const needs=activeRequirements(slice);
-    const requiredTotal=Object.values(needs).reduce((sum,n)=>sum+Number(n||0),0);
 
-    // Continue already-started breaks.
+    // 1. Continue an already-started break.
     if(breakMs>0){
       for(const p of participants){
         if(Number(breakUntil[p.user_id]||0)>slice.start){
@@ -671,58 +669,72 @@ function generatePlan(){
       }
     }
 
-    // Fixed assignments take priority over an automatic break.
-    for(const person of participants){
-      const fx=activeFixed(person.user_id,slice);
-
-      if(fx.length>1){
-        warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${staffName(person.user_id)} に固定職種が重複しています。先に登録された固定を使用しました。`);
-      }
-
-      if(fx.length){
-        if(onBreak.has(person.user_id)){
-          onBreak.delete(person.user_id);
-          breakUntil[person.user_id]=0;
-        }
-        assigned.set(person.user_id,{role:fx[0].role,is_fixed:true});
-      }
-    }
-
-    // Start new breaks for people who reached the maximum continuous work time.
+    // 2. Anyone who reached the continuous-work limit MUST start a break.
+    //    This applies even if that person is in a fixed assignment.
     if(breakMs>0){
-      const due=participants
-        .filter(p=>!assigned.has(p.user_id)&&!onBreak.has(p.user_id))
-        .filter(p=>Number(workedMs[p.user_id]||0)>=maxContinuousMs)
-        .sort((a,b)=>Number(workedMs[b.user_id]||0)-Number(workedMs[a.user_id]||0));
-
-      for(const p of due){
-        const workingIfBreak=
-          participants.length-onBreak.size-1;
-
-        // Try not to break the total minimum staffing requirement.
-        if(workingIfBreak>=requiredTotal){
+      for(const p of participants){
+        if(
+          !onBreak.has(p.user_id) &&
+          Number(workedMs[p.user_id]||0)>=maxContinuousMs
+        ){
           onBreak.add(p.user_id);
           breakUntil[p.user_id]=slice.start+breakMs;
-        }else{
-          const key=`${p.user_id}|${slice.start}`;
-          if(!postponedWarned.has(key)){
-            warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${staffName(p.user_id)} は最大連続勤務時間に達していますが、必要人数確保のため休憩を後ろ倒ししました。`);
-            postponedWarned.add(key);
+
+          const fx=activeFixed(p.user_id,slice);
+          if(fx.length){
+            const key=`${p.user_id}|${slice.start}`;
+            if(!fixedBreakWarned.has(key)){
+              warnings.push(
+                `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
+                `${staffName(p.user_id)} は固定配置中ですが、連続勤務上限に達したため休憩を優先しました。休憩後は固定職種へ戻ります。`
+              );
+              fixedBreakWarned.add(key);
+            }
           }
         }
       }
     }
 
-    // Fixed that is outside submitted availability.
+    // 3. Apply fixed assignments only to people who are not on break.
+    for(const person of participants){
+      if(onBreak.has(person.user_id))continue;
+
+      const fx=activeFixed(person.user_id,slice);
+
+      if(fx.length>1){
+        warnings.push(
+          `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
+          `${staffName(person.user_id)} に固定職種が重複しています。先に登録された固定を使用しました。`
+        );
+      }
+
+      if(fx.length){
+        assigned.set(
+          person.user_id,
+          {role:fx[0].role,is_fixed:true}
+        );
+      }
+    }
+
+    // Fixed assignment outside submitted availability.
     for(const fx of fixedRows){
-      const overlap=new Date(fx.starts_at).getTime()<slice.end&&new Date(fx.ends_at).getTime()>slice.start;
-      if(overlap&&!availableFor(fx.user_id,slice,availabilityMap)){
-        const w=`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：固定 ${staffName(fx.user_id)} / ${roleLabel[fx.role]} は本人の提出時間外です。`;
+      const overlap=
+        new Date(fx.starts_at).getTime()<slice.end &&
+        new Date(fx.ends_at).getTime()>slice.start;
+
+      if(
+        overlap &&
+        !availableFor(fx.user_id,slice,availabilityMap)
+      ){
+        const w=
+          `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
+          `固定 ${staffName(fx.user_id)} / ${roleLabel[fx.role]} は本人の提出時間外です。`;
+
         if(!warnings.includes(w))warnings.push(w);
       }
     }
 
-    // Fill required roles from people who are not on break.
+    // 4. Fill minimum required roles using only people who are actually working.
     for(const role of roleOrder){
       const target=Number(needs[role]||0);
       const already=[...assigned.values()].filter(x=>x.role===role).length;
@@ -733,30 +745,53 @@ function generatePlan(){
         .filter(p=>!assigned.has(p.user_id)&&!onBreak.has(p.user_id))
         .map(p=>({
           ...p,
-          score:preferenceScore(p.user_id,role,previousRole[p.user_id])
+          score:preferenceScore(
+            p.user_id,
+            role,
+            previousRole[p.user_id]
+          )
         }))
-        .sort((a,b)=>b.score-a.score||String(a.staff_name).localeCompare(String(b.staff_name),"ja"));
+        .sort(
+          (a,b)=>
+            b.score-a.score ||
+            String(a.staff_name).localeCompare(String(b.staff_name),"ja")
+        );
 
       for(const p of candidates.slice(0,missing)){
-        assigned.set(p.user_id,{role,is_fixed:false});
+        assigned.set(
+          p.user_id,
+          {role,is_fixed:false}
+        );
       }
 
       const after=[...assigned.values()].filter(x=>x.role===role).length;
+
       if(after<target){
-        warnings.push(`${timeOnly(slice.start)}〜${timeOnly(slice.end)}：${roleLabel[role]} が ${target-after}人不足しています。`);
+        warnings.push(
+          `${timeOnly(slice.start)}〜${timeOnly(slice.end)}：`+
+          `${roleLabel[role]} が ${target-after}人不足しています。`+
+          `休憩は安全上優先しています。`
+        );
       }
     }
 
-    // Everyone else who submitted this time stays in the shift as a seller,
-    // except those taking an automatic break.
+    // 5. Everyone else who submitted this time stays in the shift as seller,
+    //    except staff currently on break.
     for(const p of participants){
-      if(!assigned.has(p.user_id)&&!onBreak.has(p.user_id)){
-        assigned.set(p.user_id,{role:"seller",is_fixed:false});
+      if(
+        !assigned.has(p.user_id) &&
+        !onBreak.has(p.user_id)
+      ){
+        assigned.set(
+          p.user_id,
+          {role:"seller",is_fixed:false}
+        );
       }
     }
 
     const sliceMs=slice.end-slice.start;
 
+    // 6. Save working / break segments and update continuous-work counters.
     for(const p of participants){
       if(onBreak.has(p.user_id)){
         generated.push({
@@ -767,6 +802,7 @@ function generatePlan(){
           ends_at:new Date(slice.end).toISOString(),
           is_fixed:false
         });
+
         workedMs[p.user_id]=0;
         previousRole[p.user_id]="break";
         continue;
@@ -786,21 +822,9 @@ function generatePlan(){
 
       workedMs[p.user_id]=Number(workedMs[p.user_id]||0)+sliceMs;
       previousRole[p.user_id]=a.role;
-
-      if(
-        a.is_fixed &&
-        breakMs>0 &&
-        workedMs[p.user_id]>maxContinuousMs
-      ){
-        const key=`${p.user_id}|fixed-over`;
-        if(!fixedOverWarned.has(key)){
-          warnings.push(`${staffName(p.user_id)} は固定配置を優先したため、連続勤務上限を超える可能性があります。`);
-          fixedOverWarned.add(key);
-        }
-      }
     }
 
-    // People who are no longer participating have their continuous counter reset.
+    // Staff who are no longer participating reset their continuous-work counter.
     const activeIds=new Set(participants.map(x=>x.user_id));
     for(const uid of Object.keys(workedMs)){
       if(!activeIds.has(uid)){
