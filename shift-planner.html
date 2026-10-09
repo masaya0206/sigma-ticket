@@ -73,6 +73,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
       </div>
     </div>
     <p class="small">提出開始・終了、固定条件、必要人数条件の境界でも自動的に区切るため、10:15開始なども崩しません。</p>
+    <p class="small">💾 このページで最後に選んだ対象日・基準分割・入力中の条件は、この端末に自動保存されます。ページを閉じても次回そのまま復元します。</p>
   </div>
 
   <details class="card section" open>
@@ -168,6 +169,61 @@ const roleLabel=Object.fromEntries(roles);
 
 let days=[],staff=[],avail=[],prefs={},requirementsRows=[],fixedRows=[],currentPlan=[],warnings=[];
 
+const SHIFT_PLANNER_SETTINGS_KEY="sigma_shift_planner_settings_v1";
+
+function getPlannerSettings(){
+  try{
+    return JSON.parse(localStorage.getItem(SHIFT_PLANNER_SETTINGS_KEY)||"{}")||{};
+  }catch(_){
+    return {};
+  }
+}
+
+function savePlannerSettings(){
+  try{
+    const data={
+      day_id:daySelect?.value||"",
+      slot_minutes:slotMinutes?.value||"30",
+      req_role:reqRole?.value||"manager",
+      req_from:reqFrom?.value||"",
+      req_to:reqTo?.value||"",
+      req_count:reqCount?.value||"1",
+      fixed_staff:fixedStaff?.value||"",
+      fixed_role:fixedRole?.value||"manager",
+      fixed_from:fixedFrom?.value||"",
+      fixed_to:fixedTo?.value||"",
+      fixed_note:fixedNote?.value||"",
+      saved_at:new Date().toISOString()
+    };
+    localStorage.setItem(SHIFT_PLANNER_SETTINGS_KEY,JSON.stringify(data));
+  }catch(_){}
+}
+
+function restorePlannerSettings(){
+  const s=getPlannerSettings();
+
+  if(s.slot_minutes && [...slotMinutes.options].some(o=>o.value===String(s.slot_minutes))){
+    slotMinutes.value=String(s.slot_minutes);
+  }
+  if(s.req_role && [...reqRole.options].some(o=>o.value===s.req_role)){
+    reqRole.value=s.req_role;
+  }
+  if(s.req_count!==undefined && s.req_count!==null){
+    reqCount.value=String(s.req_count);
+  }
+  if(s.fixed_role && [...fixedRole.options].some(o=>o.value===s.fixed_role)){
+    fixedRole.value=s.fixed_role;
+  }
+  if(s.fixed_staff && [...fixedStaff.options].some(o=>o.value===s.fixed_staff)){
+    fixedStaff.value=s.fixed_staff;
+  }
+  if(s.req_from)reqFrom.value=s.req_from;
+  if(s.req_to)reqTo.value=s.req_to;
+  if(s.fixed_from)fixedFrom.value=s.fixed_from;
+  if(s.fixed_to)fixedTo.value=s.fixed_to;
+  if(s.fixed_note!==undefined)fixedNote.value=s.fixed_note||"";
+}
+
 const esc=v=>String(v??"")
   .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
   .replaceAll('"',"&quot;").replaceAll("'","&#039;");
@@ -206,7 +262,14 @@ async function loadBase(){
   daySelect.innerHTML=days.map(x=>`<option value="${x.id}">${esc(x.label)}</option>`).join("");
   fixedStaff.innerHTML=staff.map(x=>`<option value="${x.user_id}">${esc(x.staff_name)}</option>`).join("");
   roleOptions(reqRole); roleOptions(fixedRole);
+
+  const saved=getPlannerSettings();
+  if(saved.day_id && [...daySelect.options].some(o=>o.value===String(saved.day_id))){
+    daySelect.value=String(saved.day_id);
+  }
+
   syncDefaultTimes();
+  restorePlannerSettings();
 }
 
 function syncDefaultTimes(){
@@ -238,6 +301,7 @@ function validateRange(from,to){
 }
 
 addRequirement.onclick=async()=>{
+  savePlannerSettings();
   const e=validateRange(reqFrom.value,reqTo.value);
   if(e){alert(e);return;}
   const payload={
@@ -270,6 +334,7 @@ function renderRequirements(){
 }
 
 addFixed.onclick=async()=>{
+  savePlannerSettings();
   const e=validateRange(fixedFrom.value,fixedTo.value);
   if(e){alert(e);return;}
   const payload={
@@ -475,6 +540,7 @@ function mergePlanSegments(rows){
 }
 
 generateBtn.onclick=async()=>{
+  savePlannerSettings();
   generateMsg.textContent="生成中...";
   try{
     currentPlan=generatePlan();
@@ -726,14 +792,28 @@ window.addEventListener("resize",()=>{
 
 daySelect.onchange=async()=>{
   syncDefaultTimes();
+  savePlannerSettings();
   await loadDayData();
 };
+
+[
+  slotMinutes,reqRole,reqFrom,reqTo,reqCount,
+  fixedStaff,fixedRole,fixedFrom,fixedTo,fixedNote
+].forEach(el=>{
+  if(!el)return;
+  el.addEventListener("change",savePlannerSettings);
+  el.addEventListener("input",savePlannerSettings);
+});
+
+window.addEventListener("pagehide",savePlannerSettings);
+window.addEventListener("beforeunload",savePlannerSettings);
 
 (async()=>{
   try{
     if(!await requireAdmin())return;
     await loadBase();
     await loadDayData();
+    savePlannerSettings();
   }catch(e){
     document.querySelector("main").insertAdjacentHTML("afterbegin",`<div class="card err">読み込みエラー：${esc(e.message||String(e))}</div>`);
   }
