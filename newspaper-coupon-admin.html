@@ -23,7 +23,7 @@ code{word-break:break-all;font-size:12px}
 <a class="btn secondary" href="admin.html">← 管理者画面へ戻る</a>
 <div class="card">
   <h1>📰 新聞クーポンQR</h1>
-  <p class="small">QRは1回だけ発行します。再発行機能はありません。QR内のURLは固定なので、今後ページのデザインを変更しても印刷済みQRはそのまま使えます。</p>
+  <p class="small">同じ内容・同じ固定URLのQRを何回でも発行できます。何度発行してもQRの内容は変わりません。今後ページのデザインを変更しても、印刷済みQRはそのまま使えます。</p>
   <div id="content">状態を確認しています...</div>
 </div>
 </main>
@@ -44,7 +44,7 @@ async function load(){
   if(!data?.issued){
     content.innerHTML=`
       <h2>未発行</h2>
-      <p class="small">発行後はこのQRを固定で使用します。</p>
+      <p class="small">発行後も、同じ内容のQRを何回でも再発行できます。</p>
       <button onclick="issue()">新聞クーポンQRを発行する</button>`;
     return;
   }
@@ -54,12 +54,13 @@ async function load(){
     <img class="qr" src="newspaper-coupon-qr.png" alt="新聞クーポンQR">
     <p class="small">固定URL</p>
     <code>${FIXED_URL}</code>
-    <p class="small">発行日時：${new Date(data.issued_at).toLocaleString("ja-JP")}</p>
+    <p class="small">初回発行日時：${new Date(data.issued_at).toLocaleString("ja-JP")}</p>
+    <button onclick="issue()">同じQRをもう一度発行する</button>
     <a class="btn secondary" href="newspaper-coupon-qr.png" target="_blank">QR画像を開く</a>
     <a class="btn secondary" href="newspaper-coupon.html" target="_blank">お客さん側の表示を確認</a>`;
 }
 async function issue(){
-  if(!confirm("新聞クーポンQRを発行しますか？\n発行は1回のみで、再発行はできません。"))return;
+  if(!confirm("新聞クーポンQRを発行しますか？\n何回発行しても内容・URLは同じです。"))return;
   const {data,error}=await sb.rpc("admin_issue_newspaper_coupon");
   if(error){alert(error.message);return;}
   await load();
