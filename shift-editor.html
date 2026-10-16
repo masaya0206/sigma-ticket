@@ -103,7 +103,7 @@ button.primary{background:var(--red);color:#fff}button:disabled{opacity:.45;curs
     <div id="summary" class="summary"></div>
     <div class="legend" id="legend"></div>
     <div class="note-box">
-      初期配置は「第1希望」の職種で作成します。微調整では全役職から変更できます。左側の第1〜第3希望は参考として常に表示します。役職を変更すると該当グループへ移動します。各役職グループごとに「時間が長い・入りが早い・上がりが早い」などで並べ替えできます。
+      初期配置は「第1希望」の職種で作成します。微調整では全役職から変更できます。重複して提出された参加可能時間は自動で1本に統合します。左側の第1〜第3希望は参考として常に表示し、役職を変更すると該当グループへ移動します。
     </div>
   </div>
 
@@ -174,8 +174,51 @@ function timeOnDay(hm){const b=new Date(currentDay().starts_at);const [h,m]=hm.s
 function makeKey(){return "local-"+Date.now()+"-"+Math.random().toString(16).slice(2);}
 function dayBounds(){return {start:ms(currentDay().starts_at),end:ms(currentDay().ends_at)};}
 function availForUser(uid){return availability.filter(x=>x.user_id===uid);}
+
+function mergedAvailabilityForUser(uid){
+  const xs=availForUser(uid)
+    .map(a=>({start:ms(a.available_from),end:ms(a.available_to)}))
+    .filter(x=>x.end>x.start)
+    .sort((a,b)=>a.start-b.start);
+
+  const merged=[];
+  for(const cur of xs){
+    if(!merged.length || cur.start>merged[merged.length-1].end){
+      merged.push({...cur});
+    }else{
+      merged[merged.length-1].end=Math.max(merged[merged.length-1].end,cur.end);
+    }
+  }
+  return merged;
+}
+
 function planForUser(uid){return draft.filter(x=>x.user_id===uid).sort((a,b)=>ms(a.starts_at)-ms(b.starts_at));}
-function isWithinAvailability(seg){return availForUser(seg.user_id).some(a=>ms(seg.starts_at)>=ms(a.available_from)&&ms(seg.ends_at)<=ms(a.available_to));}
+function isWithinAvailability(seg){
+  return mergedAvailabilityForUser(seg.user_id)
+    .some(a=>ms(seg.starts_at)>=a.start&&ms(seg.ends_at)<=a.end);
+}
+
+function normalizeSavedSegments(rows){
+  const sorted=(rows||[]).map(x=>({...x,_key:String(x.id)}))
+    .sort((a,b)=>String(a.user_id).localeCompare(String(b.user_id))
+      || String(a.role).localeCompare(String(b.role))
+      || ms(a.starts_at)-ms(b.starts_at)
+      || ms(a.ends_at)-ms(b.ends_at));
+
+  const out=[];
+  for(const cur of sorted){
+    const prev=out[out.length-1];
+    if(prev
+      && prev.user_id===cur.user_id
+      && prev.role===cur.role
+      && ms(cur.starts_at)<=ms(prev.ends_at)){
+      prev.ends_at=iso(Math.max(ms(prev.ends_at),ms(cur.ends_at)));
+      continue;
+    }
+    out.push({...cur});
+  }
+  return out;
+}
 function hasOverlap(seg,key=null){return draft.some(x=>x.user_id===seg.user_id&&(x._key||String(x.id))!==key&&ms(x.starts_at)<ms(seg.ends_at)&&ms(x.ends_at)>ms(seg.starts_at));}
 function validateSegment(seg,key=null){
   const b=dayBounds();
@@ -212,13 +255,26 @@ async function loadBase(){
 }
 
 function buildFromHope(){
-  return availability
-    .filter(a=>firstRole(a.user_id))
-    .map(a=>({
-      id:null,_key:makeKey(),event_day_id:+daySelect.value,user_id:a.user_id,
-      role:firstRole(a.user_id),starts_at:a.available_from,ends_at:a.available_to
-    }))
-    .sort((a,b)=>staffName(a.user_id).localeCompare(staffName(b.user_id),"ja")||ms(a.starts_at)-ms(b.starts_at));
+  const rows=[];
+  const users=[...new Set(availability.map(a=>a.user_id))];
+
+  for(const uid of users){
+    const role=firstRole(uid);
+    if(!role)continue;
+
+    for(const a of mergedAvailabilityForUser(uid)){
+      rows.push({
+        id:null,_key:makeKey(),event_day_id:+daySelect.value,user_id:uid,
+        role,
+        starts_at:iso(a.start),ends_at:iso(a.end)
+      });
+    }
+  }
+
+  return rows.sort((a,b)=>
+    staffName(a.user_id).localeCompare(staffName(b.user_id),"ja")
+    || ms(a.starts_at)-ms(b.starts_at)
+  );
 }
 
 async function loadDay(){
@@ -230,8 +286,8 @@ async function loadDay(){
   ]);
   if(a.error)throw a.error;if(m.error)throw m.error;
   availability=a.data||[];
-  const saved=(m.data||[]).filter(x=>allowedRoles(x.user_id).includes(x.role));
-  draft=saved.length?saved.map(x=>({...x,_key:String(x.id)})):buildFromHope();
+  const saved=normalizeSavedSegments(m.data||[]);
+  draft=saved.length?saved:buildFromHope();
   history=[];undoBtn.disabled=true;selectedId=null;
   setOk(saved.length?"保存済みの手動シフトを読み込みました。":"希望提出から編集用シフトを作成しました。まだ未保存です。");
   render();
@@ -375,8 +431,8 @@ function render(){
     </div>`;
     for(const uid of arr){
       html+=`<div class="person-row"><div class="person-name"><b>${esc(staffName(uid))}</b><span class="pref">希望：${esc(prefLabel(uid))}</span></div><div class="person-track" style="width:${trackW}px">`;
-      for(const a of availForUser(uid)){
-        const l=((ms(a.available_from)-b.start)/60000)*pxPerMin,w=((ms(a.available_to)-ms(a.available_from))/60000)*pxPerMin;
+      for(const a of mergedAvailabilityForUser(uid)){
+        const l=((a.start-b.start)/60000)*pxPerMin,w=((a.end-a.start)/60000)*pxPerMin;
         html+=`<div class="hope-range" style="left:${l}px;width:${w}px"></div>`;
       }
       for(const s of planForUser(uid)){
