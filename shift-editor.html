@@ -101,7 +101,7 @@ button.primary{background:var(--red);color:#fff}button:disabled{opacity:.45;curs
     <div id="summary" class="summary"></div>
     <div class="legend" id="legend"></div>
     <div class="note-box">
-      初期配置は「第1希望」の職種で作成します。微調整では全役職から変更できます。左側の第1〜第3希望は、配置判断の参考として常に表示します。休憩・固定配置・AI自動編成は使いません。
+      初期配置は「第1希望」の職種で作成します。微調整では全役職から変更できます。左側の第1〜第3希望は、配置判断の参考として常に表示します。役職を変更すると、そのスタッフ行は現在の配置内容に合わせて該当グループへ移動します。休憩・固定配置・AI自動編成は使いません。
     </div>
   </div>
 
@@ -234,7 +234,28 @@ async function loadDay(){
   render();
 }
 
-function groupRole(uid){return firstRole(uid)||"seller";}
+function groupRole(uid){
+  const segs=planForUser(uid);
+  if(!segs.length)return firstRole(uid)||"seller";
+  const totals={}, earliest={};
+  for(const r of roleOrder){totals[r]=0;earliest[r]=Number.POSITIVE_INFINITY}
+  for(const s of segs){
+    const dur=Math.max(0,minDiff(s.starts_at,s.ends_at));
+    totals[s.role]=(totals[s.role]||0)+dur;
+    const st=ms(s.starts_at);
+    if(st<earliest[s.role])earliest[s.role]=st;
+  }
+  let best=firstRole(uid)||segs[0].role||"seller";
+  for(const r of roleOrder){
+    const tb=totals[best]||0, tr=totals[r]||0;
+    if(tr>tb)best=r;
+    else if(tr===tb && tr>0){
+      const eb=earliest[best]||Number.POSITIVE_INFINITY, er=earliest[r]||Number.POSITIVE_INFINITY;
+      if(er<eb)best=r;
+    }
+  }
+  return best;
+}
 function renderLegend(){legend.innerHTML=roles.map(([r,l])=>`<span><i class="dot" style="background:${roleColor[r]}"></i>${l}</span>`).join("")}
 function renderSummary(){
   const people=new Set(draft.map(x=>x.user_id)).size;
