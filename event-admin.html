@@ -408,7 +408,7 @@ input[type="time"]::-webkit-datetime-edit{
   <button class="primary" type="button" onclick="location.href='shift-editor.html'">✏️ 希望からシフトを作成・調整する</button>
   <button type="button" id="exportAllShifts">📊 全日程シフトを棒グラフExcel出力</button>
   <div id="exportShiftMsg"></div>
-  <p class="small">保存済みの手動シフトを、縦＝スタッフ（役職ごと）・横＝時間の棒グラフ形式でExcel（.xlsx）に出力できます。</p>
+  <p class="small">準備日・本祭3日間・片付け日をまとめて、縦＝スタッフ（役職ごと）・横＝時間の棒グラフ形式でExcel（.xlsx）に出力できます。</p>
 
   <div id="shiftMissingOverview"></div>
 
@@ -995,7 +995,7 @@ async function exportSavedShiftsToExcel(){
       {data:staffData,error:staffError},
       {data:shiftData,error:shiftError}
     ]=await Promise.all([
-      sb.from('event_days').select('*').order('id'),
+      sb.from('event_days').select('*').eq('is_enabled',true).order('id'),
       sb.from('staff_members').select('user_id,staff_name,is_active').order('staff_name'),
       sb.from('shift_manual_assignments').select('*').order('event_day_id').order('starts_at')
     ]);
@@ -1021,7 +1021,6 @@ async function exportSavedShiftsToExcel(){
 
     for(const day of allDays){
       const rows=allShifts.filter(s=>Number(s.event_day_id)===Number(day.id));
-      if(!rows.length)continue;
 
       const ws=wb.addWorksheet(excelSafeSheetName(day.label),{
         views:[{state:'frozen',xSplit:2,ySplit:3}]
@@ -1065,6 +1064,15 @@ async function exportSavedShiftsToExcel(){
       // Group by staff then by primary role
       const byUser={};
       for(const s of rows)(byUser[s.user_id]??=[]).push(s);
+
+      if(!rows.length){
+        ws.mergeCells(4,1,4,Math.max(lastTimeCol,7));
+        const emptyCell=ws.getCell(4,1);
+        emptyCell.value='この日程の保存済みシフトはまだありません';
+        emptyCell.font={italic:true,color:{argb:'FF6E6E73'}};
+        emptyCell.alignment={vertical:'middle',horizontal:'center'};
+        ws.getRow(4).height=30;
+      }
 
       const people=Object.entries(byUser).map(([uid,segs])=>({
         uid,
