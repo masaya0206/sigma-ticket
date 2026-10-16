@@ -39,9 +39,11 @@ button.primary{background:var(--red);color:#fff}button:disabled{opacity:.45;curs
 .time-track{position:relative;height:43px}
 .hour-label{position:absolute;top:0;height:43px;border-left:1px solid #ddd;padding:11px 0 0 5px;font-size:11px;color:#5f6368;white-space:nowrap}
 .half-line{position:absolute;top:0;bottom:0;border-left:1px dashed #eee}
-.group-row{display:flex;min-height:38px;border-bottom:1px solid #efe8e5;background:#faf7f5}
-.group-name{position:sticky;left:0;z-index:12;width:var(--namew);min-width:var(--namew);padding:9px 10px;font-weight:950;font-size:12px;background:#faf7f5;border-right:1px solid var(--line)}
-.group-track{height:38px;position:relative}
+.group-row{display:flex;min-height:42px;border-bottom:1px solid #efe8e5;background:#faf7f5}
+.group-name{position:sticky;left:0;z-index:12;width:var(--namew);min-width:var(--namew);padding:7px 8px;font-weight:950;font-size:12px;background:#faf7f5;border-right:1px solid var(--line)}
+.group-name-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.group-sort{width:auto;min-width:88px;max-width:112px;padding:5px 6px;margin:0;border-radius:8px;font-size:9px;font-weight:800;background:#fff}
+.group-track{height:42px;position:relative}
 .person-row{display:flex;min-height:58px;border-bottom:1px solid #f0ece9}
 .person-name{position:sticky;left:0;z-index:11;width:var(--namew);min-width:var(--namew);background:#fff;border-right:1px solid var(--line);padding:7px 9px}
 .person-name b{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -101,7 +103,7 @@ button.primary{background:var(--red);color:#fff}button:disabled{opacity:.45;curs
     <div id="summary" class="summary"></div>
     <div class="legend" id="legend"></div>
     <div class="note-box">
-      初期配置は「第1希望」の職種で作成します。微調整では全役職から変更できます。左側の第1〜第3希望は、配置判断の参考として常に表示します。役職を変更すると、そのスタッフ行は現在の配置内容に合わせて該当グループへ移動します。休憩・固定配置・AI自動編成は使いません。
+      初期配置は「第1希望」の職種で作成します。微調整では全役職から変更できます。左側の第1〜第3希望は参考として常に表示します。役職を変更すると該当グループへ移動します。各役職グループごとに「時間が長い・入りが早い・上がりが早い」などで並べ替えできます。
     </div>
   </div>
 
@@ -151,6 +153,7 @@ const roleOrder=roles.map(x=>x[0]);
 const roleColor={manager:"#8b5cf6",register:"#3b82f6",cook:"#ef5350",support:"#34a853",shopping_helper:"#22a6b3",shopping_driver:"#6366f1",seller:"#d9a40e"};
 
 let days=[],staff=[],availability=[],prefs={},draft=[],history=[],selectedId=null,pxPerMin=1.35;
+const groupSorts=Object.fromEntries(roleOrder.map(r=>[r,"name"]));
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function clone(v){return JSON.parse(JSON.stringify(v));}
@@ -256,7 +259,80 @@ function groupRole(uid){
   }
   return best;
 }
+
+function userStats(uid,groupRoleCode){
+  const segs=planForUser(uid);
+  const relevant=segs.filter(s=>s.role===groupRoleCode);
+  const base=relevant.length?relevant:segs;
+
+  const totalMinutes=base.reduce((sum,s)=>sum+Math.max(0,minDiff(s.starts_at,s.ends_at)),0);
+  const firstStart=base.length?Math.min(...base.map(s=>ms(s.starts_at))):Number.POSITIVE_INFINITY;
+  const lastEnd=base.length?Math.max(...base.map(s=>ms(s.ends_at))):Number.POSITIVE_INFINITY;
+
+  return {totalMinutes,firstStart,lastEnd};
+}
+
+function sortUsersForGroup(role,arr){
+  const mode=groupSorts[role]||"name";
+  return [...arr].sort((a,b)=>{
+    const sa=userStats(a,role), sb=userStats(b,role);
+
+    if(mode==="long"){
+      return sb.totalMinutes-sa.totalMinutes
+        || sa.firstStart-sb.firstStart
+        || staffName(a).localeCompare(staffName(b),"ja");
+    }
+    if(mode==="short"){
+      return sa.totalMinutes-sb.totalMinutes
+        || sa.firstStart-sb.firstStart
+        || staffName(a).localeCompare(staffName(b),"ja");
+    }
+    if(mode==="early"){
+      return sa.firstStart-sb.firstStart
+        || sb.totalMinutes-sa.totalMinutes
+        || staffName(a).localeCompare(staffName(b),"ja");
+    }
+    if(mode==="late"){
+      return sb.firstStart-sa.firstStart
+        || sb.totalMinutes-sa.totalMinutes
+        || staffName(a).localeCompare(staffName(b),"ja");
+    }
+    if(mode==="finishEarly"){
+      return sa.lastEnd-sb.lastEnd
+        || sa.firstStart-sb.firstStart
+        || staffName(a).localeCompare(staffName(b),"ja");
+    }
+    if(mode==="finishLate"){
+      return sb.lastEnd-sa.lastEnd
+        || sa.firstStart-sb.firstStart
+        || staffName(a).localeCompare(staffName(b),"ja");
+    }
+
+    return staffName(a).localeCompare(staffName(b),"ja");
+  });
+}
+
+function setGroupSort(role,value){
+  groupSorts[role]=value;
+  render();
+}
+
+function groupSortOptions(role){
+  const value=groupSorts[role]||"name";
+  const opts=[
+    ["name","名前順"],
+    ["long","時間が長い"],
+    ["short","時間が短い"],
+    ["early","入りが早い"],
+    ["late","入りが遅い"],
+    ["finishEarly","上がりが早い"],
+    ["finishLate","上がりが遅い"]
+  ];
+  return opts.map(([v,l])=>`<option value="${v}" ${value===v?"selected":""}>${l}</option>`).join("");
+}
+
 function renderLegend(){legend.innerHTML=roles.map(([r,l])=>`<span><i class="dot" style="background:${roleColor[r]}"></i>${l}</span>`).join("")}
+
 function renderSummary(){
   const people=new Set(draft.map(x=>x.user_id)).size;
   const hours=draft.reduce((s,x)=>s+minDiff(x.starts_at,x.ends_at),0)/60;
@@ -273,7 +349,6 @@ function render(){
   const users=[...new Set(draft.map(x=>x.user_id))];
   const grouped={};for(const r of roleOrder)grouped[r]=[];
   for(const uid of users)(grouped[groupRole(uid)]??=[]).push(uid);
-  for(const arr of Object.values(grouped))arr.sort((a,b)=>staffName(a).localeCompare(staffName(b),"ja"));
 
   let html=`<div class="time-header"><div class="corner">スタッフ</div><div class="time-track" style="width:${trackW}px">`;
   let tick=new Date(b.start);tick.setMinutes(0,0,0);if(tick.getTime()<b.start)tick.setHours(tick.getHours()+1);
@@ -285,8 +360,19 @@ function render(){
   html+=`</div></div>`;
 
   for(const r of roleOrder){
-    const arr=grouped[r]||[];if(!arr.length)continue;
-    html+=`<div class="group-row"><div class="group-name" style="color:${roleColor[r]}">${esc(roleLabel[r])}（${arr.length}人）</div><div class="group-track" style="width:${trackW}px"></div></div>`;
+    const raw=grouped[r]||[];if(!raw.length)continue;
+    const arr=sortUsersForGroup(r,raw);
+    html+=`<div class="group-row">
+      <div class="group-name" style="color:${roleColor[r]}">
+        <div class="group-name-top">
+          <span>${esc(roleLabel[r])}（${arr.length}人）</span>
+          <select class="group-sort" onchange="setGroupSort('${r}',this.value)" aria-label="${esc(roleLabel[r])}の並び順">
+            ${groupSortOptions(r)}
+          </select>
+        </div>
+      </div>
+      <div class="group-track" style="width:${trackW}px"></div>
+    </div>`;
     for(const uid of arr){
       html+=`<div class="person-row"><div class="person-name"><b>${esc(staffName(uid))}</b><span class="pref">希望：${esc(prefLabel(uid))}</span></div><div class="person-track" style="width:${trackW}px">`;
       for(const a of availForUser(uid)){
