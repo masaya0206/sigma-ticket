@@ -101,7 +101,7 @@ button.primary{background:var(--red);color:#fff}button:disabled{opacity:.45;curs
     <div id="summary" class="summary"></div>
     <div class="legend" id="legend"></div>
     <div class="note-box">
-      初期配置は必ず「第1希望」の職種です。役職変更も第1〜第3希望の中からだけ選べます。休憩・固定配置・AI自動編成は使いません。
+      初期配置は「第1希望」の職種で作成します。微調整では全役職から変更できます。左側の第1〜第3希望は、配置判断の参考として常に表示します。休憩・固定配置・AI自動編成は使いません。
     </div>
   </div>
 
@@ -179,7 +179,7 @@ function validateSegment(seg,key=null){
   if(ms(seg.starts_at)>=ms(seg.ends_at))return "終了は開始より後にしてください。";
   if(ms(seg.starts_at)<b.start||ms(seg.ends_at)>b.end)return "開催時間の外には配置できません。";
   if(!isWithinAvailability(seg))return "本人の参加可能時間の外です。";
-  if(!allowedRoles(seg.user_id).includes(seg.role))return "本人が希望していない職種には配置できません。";
+  if(!roleOrder.includes(seg.role))return "役職が不正です。";
   if(hasOverlap(seg,key))return "同じスタッフの別区間と重なっています。";
   return "";
 }
@@ -313,8 +313,13 @@ function startPointerEdit(e){
 function openSheet(key){
   const seg=draft.find(x=>(x._key||String(x.id))===key);if(!seg)return;
   selectedId=key;sheetTitle.textContent=staffName(seg.user_id);sheetSub.textContent=`${roleLabel[seg.role]} ${fmtTime(seg.starts_at)}〜${fmtTime(seg.ends_at)}`;
-  prefText.textContent="希望職種："+prefLabel(seg.user_id);
-  editRole.innerHTML=allowedRoles(seg.user_id).map(r=>`<option value="${r}">${roleLabel[r]}</option>`).join("");
+  prefText.textContent="本人の希望："+prefLabel(seg.user_id)+" ／ 微調整では希望外の役職にも変更できます。";
+  const wanted=allowedRoles(seg.user_id);
+  editRole.innerHTML=roles.map(([r,l])=>{
+    const n=wanted.indexOf(r);
+    const suffix=n>=0?`（第${n+1}希望）`:"";
+    return `<option value="${r}">${l}${suffix}</option>`;
+  }).join("");
   editRole.value=seg.role;editStart.value=localTimeValue(seg.starts_at);editEnd.value=localTimeValue(seg.ends_at);
   const mid=ms(seg.starts_at)+(ms(seg.ends_at)-ms(seg.starts_at))/2;splitTime.value=localTimeValue(mid);
   sheetWarning.innerHTML="";cover.classList.add("open");sheet.classList.add("open");render();
