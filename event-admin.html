@@ -408,7 +408,7 @@ input[type="time"]::-webkit-datetime-edit{
   <button class="primary" type="button" onclick="location.href='shift-editor.html'">✏️ 希望からシフトを作成・調整する</button>
   <button type="button" id="exportAllShifts">📊 全日程シフトを棒グラフExcel出力</button>
   <div id="exportShiftMsg"></div>
-  <p class="small">準備日・本祭3日間・片付け日をまとめて、縦＝スタッフ（役職ごと）・横＝時間の棒グラフ形式でExcel（.xlsx）に出力できます。</p>
+  <p class="small">準備日は本祭3日間の保存シフトから各人の主担当役職（合計時間が最長）で色分け・グループ化します。本祭に参加しない人は無地、片付け日は全員無地で出力します。</p>
 
   <div id="shiftMissingOverview"></div>
 
@@ -965,6 +965,25 @@ function roleSortIndex(role){
   return i<0?999:i;
 }
 
+function exportDayKind(day){
+  const t=String(day?.day_type||'').toLowerCase();
+  const label=String(day?.label||'');
+  if(t==='prep'||t==='preparation'||/準備/.test(label))return 'prep';
+  if(t==='cleanup'||t==='clean'||/片付|撤収/.test(label))return 'cleanup';
+  if(t==='festival'||t==='main'||/本祭|祭.*日目|日目/.test(label))return 'festival';
+  return 'other';
+}
+
+function dominantFestivalRole(uid,allDays,allShifts){
+  const festivalIds=new Set(allDays.filter(d=>exportDayKind(d)==='festival').map(d=>Number(d.id)));
+  const rows=allShifts.filter(s=>s.user_id===uid&&festivalIds.has(Number(s.event_day_id)));
+  return rows.length?primaryRoleForUser(rows):null;
+}
+
+function availabilityUsersForDay(dayId,allAvailability){
+  return [...new Set(allAvailability.filter(a=>Number(a.event_day_id)===Number(dayId)).map(a=>a.user_id))];
+}
+
 function primaryRoleForUser(rows){
   const totals={};
   const first={};
@@ -993,20 +1012,24 @@ async function exportSavedShiftsToExcel(){
     const [
       {data:daysData,error:daysError},
       {data:staffData,error:staffError},
-      {data:shiftData,error:shiftError}
+      {data:shiftData,error:shiftError},
+      {data:availabilityData,error:availabilityError}
     ]=await Promise.all([
       sb.from('event_days').select('*').eq('is_enabled',true).order('id'),
       sb.from('staff_members').select('user_id,staff_name,is_active').order('staff_name'),
-      sb.from('shift_manual_assignments').select('*').order('event_day_id').order('starts_at')
+      sb.from('shift_manual_assignments').select('*').order('event_day_id').order('starts_at'),
+      sb.from('staff_availability').select('user_id,event_day_id,available_from,available_to').order('event_day_id').order('available_from')
     ]);
 
     if(daysError)throw daysError;
     if(staffError)throw staffError;
     if(shiftError)throw shiftError;
+    if(availabilityError)throw availabilityError;
 
     const allDays=daysData||[];
     const allStaff=staffData||[];
     const allShifts=shiftData||[];
+    const allAvailability=availabilityData||[];
 
     if(!allShifts.length){
       throw new Error('保存済みの手動シフトがありません。');
@@ -1021,16 +1044,16 @@ async function exportSavedShiftsToExcel(){
 
     for(const day of allDays){
       const rows=allShifts.filter(s=>Number(s.event_day_id)===Number(day.id));
+      const kind=exportDayKind(day);
 
       const ws=wb.addWorksheet(excelSafeSheetName(day.label),{
         views:[{state:'frozen',xSplit:2,ySplit:3}]
       });
 
       const slots=timelineSlots(day);
-      const firstTimeCol=3; // C
+      const firstTimeCol=3;
       const lastTimeCol=firstTimeCol+slots.length-1;
 
-      // Title
       ws.mergeCells(1,1,1,Math.max(lastTimeCol,7));
       const title=ws.getCell(1,1);
       title.value=`${day.label}　シフト`;
@@ -1038,18 +1061,15 @@ async function exportSavedShiftsToExcel(){
       title.alignment={vertical:'middle',horizontal:'left'};
       ws.getRow(1).height=28;
 
-      // Date / hours
       ws.mergeCells(2,1,2,Math.max(lastTimeCol,7));
       const sub=ws.getCell(2,1);
       sub.value=`${excelDateText(day.starts_at)}　${excelTimeText(day.starts_at)}〜${excelTimeText(day.ends_at)}`;
       sub.font={size:10,color:{argb:'FF6E6E73'}};
 
-      // Headers
       ws.getCell(3,1).value='役職';
       ws.getCell(3,2).value='スタッフ';
       for(let i=0;i<slots.length;i++){
-        const c=firstTimeCol+i;
-        const cell=ws.getCell(3,c);
+        const c=firstTimeCol+i,cell=ws.getCell(3,c);
         cell.value=excelTimeText(slots[i]);
         cell.alignment={horizontal:'center',vertical:'middle'};
       }
@@ -1061,40 +1081,57 @@ async function exportSavedShiftsToExcel(){
       }
       ws.getRow(3).height=24;
 
-      // Group by staff then by primary role
       const byUser={};
       for(const s of rows)(byUser[s.user_id]??=[]).push(s);
 
-      if(!rows.length){
-        ws.mergeCells(4,1,4,Math.max(lastTimeCol,7));
-        const emptyCell=ws.getCell(4,1);
-        emptyCell.value='この日程の保存済みシフトはまだありません';
-        emptyCell.font={italic:true,color:{argb:'FF6E6E73'}};
-        emptyCell.alignment={vertical:'middle',horizontal:'center'};
-        ws.getRow(4).height=30;
+      let userIds;
+      if(kind==='prep'||kind==='cleanup'){
+        // 準備日・片付け日は「その日に希望を出した人」だけを対象にする。
+        userIds=availabilityUsersForDay(day.id,allAvailability);
+      }else{
+        userIds=Object.keys(byUser);
       }
 
-      const people=Object.entries(byUser).map(([uid,segs])=>({
-        uid,
-        name:staffMap[uid]||uid,
-        segs:[...segs].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)),
-        primaryRole:primaryRoleForUser(segs)
-      })).sort((a,b)=>
-        roleSortIndex(a.primaryRole)-roleSortIndex(b.primaryRole)
-        || a.name.localeCompare(b.name,'ja')
-      );
+      const people=userIds.map(uid=>{
+        const segs=[...(byUser[uid]||[])].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+        let primaryRole=null;
+        if(kind==='prep')primaryRole=dominantFestivalRole(uid,allDays,allShifts);
+        else if(kind==='festival')primaryRole=primaryRoleForUser(segs);
+        return {uid,name:staffMap[uid]||uid,segs,primaryRole};
+      }).sort((a,b)=>{
+        if(kind==='cleanup')return a.name.localeCompare(b.name,'ja');
+        const ar=a.primaryRole?roleSortIndex(a.primaryRole):999;
+        const br=b.primaryRole?roleSortIndex(b.primaryRole):999;
+        return ar-br||a.name.localeCompare(b.name,'ja');
+      });
 
       let rowNo=4;
-      let currentRole=null;
+      let currentRole='__INIT__';
+
+      if(!people.length){
+        ws.mergeCells(rowNo,1,rowNo,Math.max(lastTimeCol,7));
+        const emptyCell=ws.getCell(rowNo,1);
+        emptyCell.value='この日程の対象スタッフはいません';
+        emptyCell.font={italic:true,color:{argb:'FF6E6E73'}};
+        emptyCell.alignment={vertical:'middle',horizontal:'center'};
+        ws.getRow(rowNo).height=30;
+        rowNo++;
+      }
 
       for(const person of people){
-        if(person.primaryRole!==currentRole){
-          currentRole=person.primaryRole;
+        const groupKey=person.primaryRole||'__PLAIN__';
 
+        if(kind!=='cleanup'&&groupKey!==currentRole){
+          currentRole=groupKey;
           ws.mergeCells(rowNo,1,rowNo,lastTimeCol);
           const g=ws.getCell(rowNo,1);
-          g.value=`${exportRoleLabel[currentRole]||currentRole}`;
-          g.font={bold:true,color:{argb:'FF'+(exportRoleFill[currentRole]||'444444')}};
+          if(person.primaryRole){
+            g.value=exportRoleLabel[person.primaryRole]||person.primaryRole;
+            g.font={bold:true,color:{argb:'FF'+(exportRoleFill[person.primaryRole]||'444444')}};
+          }else{
+            g.value='本祭担当なし';
+            g.font={bold:true,color:{argb:'FF6E6E73'}};
+          }
           g.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F5F3'}};
           g.alignment={vertical:'middle'};
           styleThinBorder(g);
@@ -1102,45 +1139,55 @@ async function exportSavedShiftsToExcel(){
           rowNo++;
         }
 
-        const roleCell=ws.getCell(rowNo,1);
-        const nameCell=ws.getCell(rowNo,2);
-        roleCell.value=exportRoleLabel[person.primaryRole]||person.primaryRole;
+        const roleCell=ws.getCell(rowNo,1),nameCell=ws.getCell(rowNo,2);
+        if(kind==='cleanup'){
+          roleCell.value='';
+        }else if(person.primaryRole){
+          roleCell.value=exportRoleLabel[person.primaryRole]||person.primaryRole;
+          roleCell.font={bold:true,color:{argb:'FF'+(exportRoleFill[person.primaryRole]||'444444')}};
+        }else{
+          roleCell.value='';
+        }
         nameCell.value=person.name;
-        roleCell.font={bold:true,color:{argb:'FF'+(exportRoleFill[person.primaryRole]||'444444')}};
         nameCell.font={bold:true};
         roleCell.alignment={vertical:'middle'};
         nameCell.alignment={vertical:'middle'};
+        for(let c=1;c<=lastTimeCol;c++)styleThinBorder(ws.getCell(rowNo,c));
 
-        for(let c=1;c<=lastTimeCol;c++){
-          styleThinBorder(ws.getCell(rowNo,c));
-        }
-
-        // Paint 30-min cells by actual assignment.
+        // If there is a saved manual shift, use it for the time bar.
+        // Prep: color by dominant festival role. Cleanup: always plain.
         for(const seg of person.segs){
-          const segStart=new Date(seg.starts_at).getTime();
-          const segEnd=new Date(seg.ends_at).getTime();
-          const fill=exportRoleFill[seg.role]||'999999';
+          const segStart=new Date(seg.starts_at).getTime(),segEnd=new Date(seg.ends_at).getTime();
+          let fill=null,label='';
+          if(kind==='festival'){
+            fill=exportRoleFill[seg.role]||'999999';
+            label=`${exportRoleLabel[seg.role]||seg.role} ${excelTimeText(seg.starts_at)}-${excelTimeText(seg.ends_at)}`;
+          }else if(kind==='prep'){
+            if(person.primaryRole){
+              fill=exportRoleFill[person.primaryRole]||'999999';
+              label=`${exportRoleLabel[person.primaryRole]||person.primaryRole} ${excelTimeText(seg.starts_at)}-${excelTimeText(seg.ends_at)}`;
+            }else label=`${excelTimeText(seg.starts_at)}-${excelTimeText(seg.ends_at)}`;
+          }else if(kind==='cleanup'){
+            label=`${excelTimeText(seg.starts_at)}-${excelTimeText(seg.ends_at)}`;
+          }else{
+            fill=exportRoleFill[seg.role]||'999999';
+            label=`${exportRoleLabel[seg.role]||seg.role} ${excelTimeText(seg.starts_at)}-${excelTimeText(seg.ends_at)}`;
+          }
 
           let firstPaint=null,lastPaint=null;
-
           for(let i=0;i<slots.length;i++){
-            const slotStart=slots[i];
-            const slotEnd=slotStart+30*60000;
-            if(segStart<slotEnd && segEnd>slotStart){
-              const c=firstTimeCol+i;
-              const cell=ws.getCell(rowNo,c);
-              cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+fill}};
+            const slotStart=slots[i],slotEnd=slotStart+30*60000;
+            if(segStart<slotEnd&&segEnd>slotStart){
+              const c=firstTimeCol+i,cell=ws.getCell(rowNo,c);
+              cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fill?'FF'+fill:'FFFFFFFF'}};
               if(firstPaint===null)firstPaint=c;
               lastPaint=c;
             }
           }
-
           if(firstPaint!==null){
-            // Put concise text near the center of each assignment bar.
-            const mid=Math.floor((firstPaint+lastPaint)/2);
-            const midCell=ws.getCell(rowNo,mid);
-            midCell.value=`${exportRoleLabel[seg.role]||seg.role} ${excelTimeText(seg.starts_at)}-${excelTimeText(seg.ends_at)}`;
-            midCell.font={bold:true,color:{argb:'FFFFFFFF'},size:9};
+            const mid=Math.floor((firstPaint+lastPaint)/2),midCell=ws.getCell(rowNo,mid);
+            midCell.value=label;
+            midCell.font={bold:true,color:{argb:fill?'FFFFFFFF':'FF444444'},size:9};
             midCell.alignment={horizontal:'center',vertical:'middle'};
           }
         }
@@ -1149,32 +1196,29 @@ async function exportSavedShiftsToExcel(){
         rowNo++;
       }
 
-      // Legend
-      rowNo+=1;
-      ws.getCell(rowNo,1).value='凡例';
-      ws.getCell(rowNo,1).font={bold:true};
-      let legendCol=2;
-      for(const role of exportRoleOrder){
-        if(!rows.some(x=>x.role===role))continue;
-        const cell=ws.getCell(rowNo,legendCol++);
-        cell.value=exportRoleLabel[role];
-        cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+exportRoleFill[role]}};
-        cell.font={bold:true,color:{argb:'FFFFFFFF'}};
-        cell.alignment={horizontal:'center'};
+      if(kind!=='cleanup'){
+        const legendRoles=new Set();
+        if(kind==='festival')rows.forEach(x=>legendRoles.add(x.role));
+        else if(kind==='prep')people.forEach(x=>{if(x.primaryRole)legendRoles.add(x.primaryRole)});
+        if(legendRoles.size){
+          rowNo+=1;
+          ws.getCell(rowNo,1).value='凡例';
+          ws.getCell(rowNo,1).font={bold:true};
+          let legendCol=2;
+          for(const role of exportRoleOrder){
+            if(!legendRoles.has(role))continue;
+            const cell=ws.getCell(rowNo,legendCol++);
+            cell.value=exportRoleLabel[role];
+            cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+exportRoleFill[role]}};
+            cell.font={bold:true,color:{argb:'FFFFFFFF'}};
+            cell.alignment={horizontal:'center'};
+          }
+        }
       }
 
-      // Widths
       ws.getColumn(1).width=15;
       ws.getColumn(2).width=18;
       for(let c=firstTimeCol;c<=lastTimeCol;c++)ws.getColumn(c).width=6.2;
-
-      // Center all timeline area
-      if(lastTimeCol>=firstTimeCol && rowNo>=4){
-        const range=ws.getRange?.(
-          `${excelColName(firstTimeCol)}3:${excelColName(lastTimeCol)}${rowNo}`
-        );
-        if(range)range.alignment={horizontal:'center',vertical:'middle'};
-      }
     }
 
     const buffer=await wb.xlsx.writeBuffer();
