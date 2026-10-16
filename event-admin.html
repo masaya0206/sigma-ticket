@@ -408,7 +408,7 @@ input[type="time"]::-webkit-datetime-edit{
   <button class="primary" type="button" onclick="location.href='shift-editor.html'">✏️ 希望からシフトを作成・調整する</button>
   <button type="button" id="exportAllShifts">📊 全日程シフトを棒グラフExcel出力</button>
   <div id="exportShiftMsg"></div>
-  <p class="small">準備日・片付け日は、その日に提出した参加可能時間を棒で表示します。準備日は本祭3日間の保存シフトから各人の主担当役職（合計時間が最長）で色分け・グループ化し、本祭に参加しない人は無地。片付け日は全員無地です。</p>
+  <p class="small">準備日・片付け日は、その日に提出した参加可能時間を棒で表示します。準備日は本祭3日間の主担当役職で色分けし、各役職内は参加時間が長い人順。本祭担当なしと片付け日は中立の薄いグレー棒で見やすく表示します。</p>
 
   <div id="shiftMissingOverview"></div>
 
@@ -1132,12 +1132,19 @@ async function exportSavedShiftsToExcel(){
 
         if(kind==='prep')primaryRole=dominantFestivalRole(uid,allDays,allShifts);
         else if(kind==='festival')primaryRole=primaryRoleForUser(segs);
-        return {uid,name:staffMap[uid]||uid,segs,primaryRole};
+
+        const displayMinutes=segs.reduce(
+          (sum,s)=>sum+Math.max(0,(new Date(s.ends_at)-new Date(s.starts_at))/60000),
+          0
+        );
+        return {uid,name:staffMap[uid]||uid,segs,primaryRole,displayMinutes};
       }).sort((a,b)=>{
-        if(kind==='cleanup')return a.name.localeCompare(b.name,'ja');
+        if(kind==='cleanup'){
+          return (b.displayMinutes-a.displayMinutes)||a.name.localeCompare(b.name,'ja');
+        }
         const ar=a.primaryRole?roleSortIndex(a.primaryRole):999;
         const br=b.primaryRole?roleSortIndex(b.primaryRole):999;
-        return ar-br||a.name.localeCompare(b.name,'ja');
+        return ar-br||(b.displayMinutes-a.displayMinutes)||a.name.localeCompare(b.name,'ja');
       });
 
       let rowNo=4;
@@ -1214,7 +1221,18 @@ async function exportSavedShiftsToExcel(){
             const slotStart=slots[i],slotEnd=slotStart+30*60000;
             if(segStart<slotEnd&&segEnd>slotStart){
               const c=firstTimeCol+i,cell=ws.getCell(rowNo,c);
-              cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fill?'FF'+fill:'FFFFFFFF'}};
+              if(fill){
+                cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+fill}};
+              }else{
+                // 無地扱いだが、時間帯が一目で分かる中立グレーの棒にする。
+                cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE9ECEF'}};
+                cell.border={
+                  top:{style:'thin',color:{argb:'FF9AA0A6'}},
+                  bottom:{style:'thin',color:{argb:'FF9AA0A6'}},
+                  left:{style:'thin',color:{argb:'FF9AA0A6'}},
+                  right:{style:'thin',color:{argb:'FF9AA0A6'}}
+                };
+              }
               if(firstPaint===null)firstPaint=c;
               lastPaint=c;
             }
@@ -1222,7 +1240,7 @@ async function exportSavedShiftsToExcel(){
           if(firstPaint!==null){
             const mid=Math.floor((firstPaint+lastPaint)/2),midCell=ws.getCell(rowNo,mid);
             midCell.value=label;
-            midCell.font={bold:true,color:{argb:fill?'FFFFFFFF':'FF444444'},size:9};
+            midCell.font={bold:true,color:{argb:fill?'FFFFFFFF':'FF202124'},size:9};
             midCell.alignment={horizontal:'center',vertical:'middle'};
           }
         }
