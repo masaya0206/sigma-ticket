@@ -401,6 +401,15 @@ input[type="time"]::-webkit-datetime-edit{
 </head><body>
 <header><h1>📅 シフト集計・日時設定</h1></header><main>
 <div class="card"><h2>5日間の日時</h2><div id="days"></div><button class="primary" id="saveDays">日時を保存</button><div id="dayMsg"></div></div>
+
+<div class="card">
+  <h2>シフト運営設定</h2>
+  <p class="small">希望提出の受付と、完成シフトのスタッフ公開を別々に管理します。</p>
+  <div class="row"><b>希望シフト提出</b><div id="submissionState" class="small">確認中...</div><button id="toggleSubmissions">切り替え</button></div>
+  <div class="row"><b>完成シフト公開</b><div id="publishState" class="small">確認中...</div><button id="togglePublished">切り替え</button></div>
+  <div id="shiftControlMsg"></div>
+</div>
+
 <div class="card">
   <h2>希望シフト集計</h2>
   <p class="small">日ごとの人数推移とスタッフ別タイムラインで、どの時間に何人参加できるかを確認できます。</p>
@@ -441,6 +450,41 @@ input[type="time"]::-webkit-datetime-edit{
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");let dayRows=[];
 const lin=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,16)};
 async function check(){const {data:{user}}=await sb.auth.getUser();if(!user)return false;const {data}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();if(!data){document.body.innerHTML='管理者権限が必要です';return false}return true}
+
+let shiftControl={submissions_open:true,schedule_published:false};
+function renderShiftControl(){
+  submissionState.innerHTML=shiftControl.submissions_open?'<span class="ok">🟢 受付中</span>':'<span class="err">🔴 受付終了</span>';
+  publishState.innerHTML=shiftControl.schedule_published?'<span class="ok">🟢 公開中</span>':'<span class="small">⚪ 非公開</span>';
+  toggleSubmissions.textContent=shiftControl.submissions_open?'希望提出の受付を終了する':'希望提出の受付を再開する';
+  togglePublished.textContent=shiftControl.schedule_published?'完成シフトを非公開に戻す':'完成シフトをスタッフに公開する';
+}
+async function loadShiftControlSettings(){
+  const {data,error}=await sb.rpc('get_shift_public_settings');
+  if(error){shiftControlMsg.innerHTML='<span class="err">'+error.message+'</span>';return;}
+  shiftControl={submissions_open:data?.submissions_open!==false,schedule_published:data?.schedule_published===true};
+  renderShiftControl();
+}
+async function updateShiftControl(next){
+  shiftControlMsg.textContent='保存中...';
+  const {data,error}=await sb.rpc('admin_update_shift_public_settings',{p_submissions_open:next.submissions_open,p_schedule_published:next.schedule_published});
+  if(error){shiftControlMsg.innerHTML='<span class="err">'+error.message+'</span>';return;}
+  shiftControl={submissions_open:data?.submissions_open!==false,schedule_published:data?.schedule_published===true};
+  renderShiftControl();
+  shiftControlMsg.innerHTML='<span class="ok">✅ 設定を更新しました</span>';
+}
+toggleSubmissions.onclick=async()=>{
+  const nextOpen=!shiftControl.submissions_open;
+  const text=nextOpen?'希望シフトの提出受付を再開しますか？':'希望シフトの提出受付を終了しますか？\n終了後、スタッフは希望職種・参加可能時間を変更できなくなります。';
+  if(!confirm(text))return;
+  await updateShiftControl({submissions_open:nextOpen,schedule_published:shiftControl.schedule_published});
+};
+togglePublished.onclick=async()=>{
+  const nextPublished=!shiftControl.schedule_published;
+  const text=nextPublished?'完成シフトを全スタッフに公開しますか？':'完成シフトを非公開に戻しますか？';
+  if(!confirm(text))return;
+  await updateShiftControl({submissions_open:shiftControl.submissions_open,schedule_published:nextPublished});
+};
+
 async function loadDays(){const {data,error}=await sb.from('event_days').select('*').order('id');if(error){dayMsg.textContent=error.message;return}dayRows=data||[];days.innerHTML=dayRows.map(d=>`<div class="row"><b>${d.label}</b><input id="s${d.id}" type="datetime-local" value="${lin(d.starts_at)}"><input id="e${d.id}" type="datetime-local" value="${lin(d.ends_at)}"></div>`).join('')}
 saveDays.onclick=async()=>{
   dayMsg.textContent='保存中...';
@@ -1305,5 +1349,5 @@ roleFilter.onchange=()=>{
 };
 
 loadShifts.onclick=loadShiftList;
-(async()=>{if(await check()){await loadDays();await loadShiftList()}})();
+(async()=>{if(await check()){await loadShiftControlSettings();await loadDays();await loadShiftList()}})();
 </script></body></html>
