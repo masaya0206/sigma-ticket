@@ -406,9 +406,9 @@ input[type="time"]::-webkit-datetime-edit{
   <p class="small">日ごとの人数推移とスタッフ別タイムラインで、どの時間に何人参加できるかを確認できます。</p>
 
   <button class="primary" type="button" onclick="location.href='shift-editor.html'">✏️ 希望からシフトを作成・調整する</button>
-  <button type="button" id="exportAllShifts">📊 全日程の保存シフトをExcel出力</button>
+  <button type="button" id="exportAllShifts">📊 全日程シフトを棒グラフExcel出力</button>
   <div id="exportShiftMsg"></div>
-  <p class="small">保存済みの手動シフトは、全日程まとめてExcel（.xlsx）に出力できます。</p>
+  <p class="small">保存済みの手動シフトを、縦＝スタッフ（役職ごと）・横＝時間の棒グラフ形式でExcel（.xlsx）に出力できます。</p>
 
   <div id="shiftMissingOverview"></div>
 
@@ -874,6 +874,7 @@ async function loadShiftList(){
 }
 
 
+
 const exportRoleOrder=[
   'manager','cook','support','register',
   'shopping_helper','shopping_driver','seller'
@@ -888,23 +889,19 @@ const exportRoleLabel={
   seller:'売り子'
 };
 const exportRoleFill={
-  manager:'EDE5FF',
-  cook:'FFE4E3',
-  support:'E0F4E6',
-  register:'E3EEFF',
-  shopping_helper:'DEF5F7',
-  shopping_driver:'E7E8FF',
-  seller:'FFF2C7'
+  manager:'8B5CF6',
+  cook:'EF5350',
+  support:'34A853',
+  register:'3B82F6',
+  shopping_helper:'22A6B3',
+  shopping_driver:'6366F1',
+  seller:'D9A40E'
 };
 
 function excelSafeSheetName(name){
   return String(name||'シフト')
     .replace(/[\\/*?:[\]]/g,' ')
     .slice(0,31) || 'シフト';
-}
-
-function excelMinutes(a,b){
-  return Math.max(0,(new Date(b)-new Date(a))/60000);
 }
 
 function excelTimeText(v){
@@ -919,30 +916,69 @@ function excelDateText(v){
   });
 }
 
-function excelStyleHeader(row,fill='B5121B'){
-  row.eachCell(cell=>{
-    cell.font={bold:true,color:{argb:'FFFFFFFF'}};
-    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+fill}};
-    cell.alignment={vertical:'middle',horizontal:'center'};
-    cell.border={
-      top:{style:'thin',color:{argb:'FFD9D1CD'}},
-      bottom:{style:'thin',color:{argb:'FFD9D1CD'}},
-      left:{style:'thin',color:{argb:'FFD9D1CD'}},
-      right:{style:'thin',color:{argb:'FFD9D1CD'}}
-    };
-  });
-  row.height=24;
+function excelColName(n){
+  let s='';
+  while(n>0){
+    const m=(n-1)%26;
+    s=String.fromCharCode(65+m)+s;
+    n=Math.floor((n-1)/26);
+  }
+  return s;
 }
 
-function excelStyleDataRow(row,role){
-  const fill=exportRoleFill[role]||'FFFFFF';
-  row.eachCell(cell=>{
-    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+fill}};
-    cell.border={
-      bottom:{style:'hair',color:{argb:'FFE8E0DD'}}
-    };
-    cell.alignment={vertical:'middle'};
-  });
+function floorTo30(t){
+  const d=new Date(t);
+  d.setSeconds(0,0);
+  d.setMinutes(d.getMinutes()<30?0:30);
+  return d.getTime();
+}
+
+function ceilTo30(t){
+  const d=new Date(t);
+  d.setSeconds(0,0);
+  const m=d.getMinutes();
+  if(m===0||m===30)return d.getTime();
+  if(m<30)d.setMinutes(30);
+  else{d.setHours(d.getHours()+1);d.setMinutes(0);}
+  return d.getTime();
+}
+
+function timelineSlots(day){
+  const start=floorTo30(new Date(day.starts_at).getTime());
+  const end=ceilTo30(new Date(day.ends_at).getTime());
+  const out=[];
+  for(let t=start;t<end;t+=30*60000)out.push(t);
+  return out;
+}
+
+function styleThinBorder(cell){
+  cell.border={
+    top:{style:'hair',color:{argb:'FFE5DEDB'}},
+    bottom:{style:'hair',color:{argb:'FFE5DEDB'}},
+    left:{style:'hair',color:{argb:'FFE5DEDB'}},
+    right:{style:'hair',color:{argb:'FFE5DEDB'}}
+  };
+}
+
+function roleSortIndex(role){
+  const i=exportRoleOrder.indexOf(role);
+  return i<0?999:i;
+}
+
+function primaryRoleForUser(rows){
+  const totals={};
+  const first={};
+  for(const s of rows){
+    const dur=Math.max(0,new Date(s.ends_at)-new Date(s.starts_at));
+    totals[s.role]=(totals[s.role]||0)+dur;
+    const st=new Date(s.starts_at).getTime();
+    if(first[s.role]===undefined||st<first[s.role])first[s.role]=st;
+  }
+  return Object.keys(totals).sort((a,b)=>
+    (totals[b]-totals[a])
+    || ((first[a]??Infinity)-(first[b]??Infinity))
+    || (roleSortIndex(a)-roleSortIndex(b))
+  )[0] || 'seller';
 }
 
 async function exportSavedShiftsToExcel(){
@@ -976,7 +1012,6 @@ async function exportSavedShiftsToExcel(){
       throw new Error('保存済みの手動シフトがありません。');
     }
 
-    const dayMap=Object.fromEntries(allDays.map(d=>[String(d.id),d]));
     const staffMap=Object.fromEntries(allStaff.map(s=>[s.user_id,s.staff_name||s.user_id]));
 
     const wb=new ExcelJS.Workbook();
@@ -984,120 +1019,154 @@ async function exportSavedShiftsToExcel(){
     wb.created=new Date();
     wb.modified=new Date();
 
-    // ===== 全日程一覧 =====
-    const summary=wb.addWorksheet('全日程一覧',{
-      views:[{state:'frozen',ySplit:2}]
-    });
-
-    summary.mergeCells('A1:G1');
-    summary.getCell('A1').value='Match Point　第15回紫熊祭　保存シフト一覧';
-    summary.getCell('A1').font={bold:true,size:16,color:{argb:'FFB5121B'}};
-    summary.getCell('A1').alignment={vertical:'middle',horizontal:'left'};
-    summary.getRow(1).height=28;
-
-    const header=summary.addRow(['日程','日付','職種','スタッフ','開始','終了','勤務時間']);
-    excelStyleHeader(header);
-
-    const sorted=[...allShifts].sort((a,b)=>{
-      const da=Number(a.event_day_id),db=Number(b.event_day_id);
-      if(da!==db)return da-db;
-      const ra=exportRoleOrder.indexOf(a.role),rb=exportRoleOrder.indexOf(b.role);
-      if(ra!==rb)return ra-rb;
-      const ta=new Date(a.starts_at)-new Date(b.starts_at);
-      if(ta!==0)return ta;
-      return String(staffMap[a.user_id]||'').localeCompare(String(staffMap[b.user_id]||''),'ja');
-    });
-
-    for(const s of sorted){
-      const d=dayMap[String(s.event_day_id)];
-      const mins=excelMinutes(s.starts_at,s.ends_at);
-      const row=summary.addRow([
-        d?.label||`日程${s.event_day_id}`,
-        excelDateText(s.starts_at),
-        exportRoleLabel[s.role]||s.role,
-        staffMap[s.user_id]||s.user_id,
-        excelTimeText(s.starts_at),
-        excelTimeText(s.ends_at),
-        mins/60
-      ]);
-      row.getCell(7).numFmt='0.00" h"';
-      excelStyleDataRow(row,s.role);
-    }
-
-    summary.columns=[
-      {width:18},{width:13},{width:16},{width:18},{width:10},{width:10},{width:12}
-    ];
-    summary.autoFilter={from:'A2',to:'G2'};
-
-    // ===== 日程別シート =====
     for(const day of allDays){
       const rows=allShifts.filter(s=>Number(s.event_day_id)===Number(day.id));
       if(!rows.length)continue;
 
       const ws=wb.addWorksheet(excelSafeSheetName(day.label),{
-        views:[{state:'frozen',ySplit:3}]
+        views:[{state:'frozen',xSplit:2,ySplit:3}]
       });
 
-      ws.mergeCells('A1:F1');
-      ws.getCell('A1').value=`${day.label}　保存シフト`;
-      ws.getCell('A1').font={bold:true,size:16,color:{argb:'FFB5121B'}};
+      const slots=timelineSlots(day);
+      const firstTimeCol=3; // C
+      const lastTimeCol=firstTimeCol+slots.length-1;
+
+      // Title
+      ws.mergeCells(1,1,1,Math.max(lastTimeCol,7));
+      const title=ws.getCell(1,1);
+      title.value=`${day.label}　シフト`;
+      title.font={bold:true,size:16,color:{argb:'FFB5121B'}};
+      title.alignment={vertical:'middle',horizontal:'left'};
       ws.getRow(1).height=28;
 
-      ws.mergeCells('A2:F2');
-      ws.getCell('A2').value=`開催時間：${excelTimeText(day.starts_at)}〜${excelTimeText(day.ends_at)}`;
-      ws.getCell('A2').font={color:{argb:'FF6E6E73'},size:10};
+      // Date / hours
+      ws.mergeCells(2,1,2,Math.max(lastTimeCol,7));
+      const sub=ws.getCell(2,1);
+      sub.value=`${excelDateText(day.starts_at)}　${excelTimeText(day.starts_at)}〜${excelTimeText(day.ends_at)}`;
+      sub.font={size:10,color:{argb:'FF6E6E73'}};
 
-      const h=ws.addRow(['職種','スタッフ','開始','終了','勤務時間','備考']);
-      excelStyleHeader(h);
+      // Headers
+      ws.getCell(3,1).value='役職';
+      ws.getCell(3,2).value='スタッフ';
+      for(let i=0;i<slots.length;i++){
+        const c=firstTimeCol+i;
+        const cell=ws.getCell(3,c);
+        cell.value=excelTimeText(slots[i]);
+        cell.alignment={horizontal:'center',vertical:'middle'};
+      }
+      for(let c=1;c<=lastTimeCol;c++){
+        const cell=ws.getCell(3,c);
+        cell.font={bold:true,color:{argb:'FFFFFFFF'}};
+        cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFB5121B'}};
+        styleThinBorder(cell);
+      }
+      ws.getRow(3).height=24;
 
-      const daySorted=[...rows].sort((a,b)=>{
-        const ra=exportRoleOrder.indexOf(a.role),rb=exportRoleOrder.indexOf(b.role);
-        if(ra!==rb)return ra-rb;
-        const ta=new Date(a.starts_at)-new Date(b.starts_at);
-        if(ta!==0)return ta;
-        return String(staffMap[a.user_id]||'').localeCompare(String(staffMap[b.user_id]||''),'ja');
-      });
+      // Group by staff then by primary role
+      const byUser={};
+      for(const s of rows)(byUser[s.user_id]??=[]).push(s);
 
-      for(const s of daySorted){
-        const mins=excelMinutes(s.starts_at,s.ends_at);
-        const row=ws.addRow([
-          exportRoleLabel[s.role]||s.role,
-          staffMap[s.user_id]||s.user_id,
-          excelTimeText(s.starts_at),
-          excelTimeText(s.ends_at),
-          mins/60,
-          ''
-        ]);
-        row.getCell(5).numFmt='0.00" h"';
-        excelStyleDataRow(row,s.role);
+      const people=Object.entries(byUser).map(([uid,segs])=>({
+        uid,
+        name:staffMap[uid]||uid,
+        segs:[...segs].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)),
+        primaryRole:primaryRoleForUser(segs)
+      })).sort((a,b)=>
+        roleSortIndex(a.primaryRole)-roleSortIndex(b.primaryRole)
+        || a.name.localeCompare(b.name,'ja')
+      );
+
+      let rowNo=4;
+      let currentRole=null;
+
+      for(const person of people){
+        if(person.primaryRole!==currentRole){
+          currentRole=person.primaryRole;
+
+          ws.mergeCells(rowNo,1,rowNo,lastTimeCol);
+          const g=ws.getCell(rowNo,1);
+          g.value=`${exportRoleLabel[currentRole]||currentRole}`;
+          g.font={bold:true,color:{argb:'FF'+(exportRoleFill[currentRole]||'444444')}};
+          g.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F5F3'}};
+          g.alignment={vertical:'middle'};
+          styleThinBorder(g);
+          ws.getRow(rowNo).height=22;
+          rowNo++;
+        }
+
+        const roleCell=ws.getCell(rowNo,1);
+        const nameCell=ws.getCell(rowNo,2);
+        roleCell.value=exportRoleLabel[person.primaryRole]||person.primaryRole;
+        nameCell.value=person.name;
+        roleCell.font={bold:true,color:{argb:'FF'+(exportRoleFill[person.primaryRole]||'444444')}};
+        nameCell.font={bold:true};
+        roleCell.alignment={vertical:'middle'};
+        nameCell.alignment={vertical:'middle'};
+
+        for(let c=1;c<=lastTimeCol;c++){
+          styleThinBorder(ws.getCell(rowNo,c));
+        }
+
+        // Paint 30-min cells by actual assignment.
+        for(const seg of person.segs){
+          const segStart=new Date(seg.starts_at).getTime();
+          const segEnd=new Date(seg.ends_at).getTime();
+          const fill=exportRoleFill[seg.role]||'999999';
+
+          let firstPaint=null,lastPaint=null;
+
+          for(let i=0;i<slots.length;i++){
+            const slotStart=slots[i];
+            const slotEnd=slotStart+30*60000;
+            if(segStart<slotEnd && segEnd>slotStart){
+              const c=firstTimeCol+i;
+              const cell=ws.getCell(rowNo,c);
+              cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+fill}};
+              if(firstPaint===null)firstPaint=c;
+              lastPaint=c;
+            }
+          }
+
+          if(firstPaint!==null){
+            // Put concise text near the center of each assignment bar.
+            const mid=Math.floor((firstPaint+lastPaint)/2);
+            const midCell=ws.getCell(rowNo,mid);
+            midCell.value=`${exportRoleLabel[seg.role]||seg.role} ${excelTimeText(seg.starts_at)}-${excelTimeText(seg.ends_at)}`;
+            midCell.font={bold:true,color:{argb:'FFFFFFFF'},size:9};
+            midCell.alignment={horizontal:'center',vertical:'middle'};
+          }
+        }
+
+        ws.getRow(rowNo).height=24;
+        rowNo++;
       }
 
-      // Role totals below
-      ws.addRow([]);
-      const totalTitle=ws.addRow(['職種別合計','','','','','']);
-      totalTitle.getCell(1).font={bold:true,color:{argb:'FFB5121B'}};
-
+      // Legend
+      rowNo+=1;
+      ws.getCell(rowNo,1).value='凡例';
+      ws.getCell(rowNo,1).font={bold:true};
+      let legendCol=2;
       for(const role of exportRoleOrder){
-        const rr=daySorted.filter(x=>x.role===role);
-        if(!rr.length)continue;
-        const uniquePeople=new Set(rr.map(x=>x.user_id)).size;
-        const totalHours=rr.reduce((sum,x)=>sum+excelMinutes(x.starts_at,x.ends_at),0)/60;
-        const tr=ws.addRow([
-          exportRoleLabel[role],
-          `${uniquePeople}人`,
-          '',
-          '',
-          totalHours,
-          ''
-        ]);
-        tr.getCell(5).numFmt='0.00" h"';
-        excelStyleDataRow(tr,role);
+        if(!rows.some(x=>x.role===role))continue;
+        const cell=ws.getCell(rowNo,legendCol++);
+        cell.value=exportRoleLabel[role];
+        cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+exportRoleFill[role]}};
+        cell.font={bold:true,color:{argb:'FFFFFFFF'}};
+        cell.alignment={horizontal:'center'};
       }
 
-      ws.columns=[
-        {width:18},{width:20},{width:10},{width:10},{width:12},{width:22}
-      ];
-      ws.autoFilter={from:'A3',to:'F3'};
+      // Widths
+      ws.getColumn(1).width=15;
+      ws.getColumn(2).width=18;
+      for(let c=firstTimeCol;c<=lastTimeCol;c++)ws.getColumn(c).width=6.2;
+
+      // Center all timeline area
+      if(lastTimeCol>=firstTimeCol && rowNo>=4){
+        const range=ws.getRange?.(
+          `${excelColName(firstTimeCol)}3:${excelColName(lastTimeCol)}${rowNo}`
+        );
+        if(range)range.alignment={horizontal:'center',vertical:'middle'};
+      }
     }
 
     const buffer=await wb.xlsx.writeBuffer();
@@ -1114,7 +1183,7 @@ async function exportSavedShiftsToExcel(){
     a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
 
-    exportShiftMsg.innerHTML='<span class="ok">✅ Excelを出力しました</span>';
+    exportShiftMsg.innerHTML='<span class="ok">✅ 棒グラフ形式のExcelを出力しました</span>';
   }catch(e){
     exportShiftMsg.innerHTML='<span class="err">Excel出力エラー：'+
       String(e?.message||e)+'</span>';
