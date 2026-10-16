@@ -3,15 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>シフト調整</title>
+<title>希望シフト調整</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
 :root{
-  --red:#b5121b;--red2:#8f0e15;--bg:#f7f4f2;--card:#fff;--line:#e9e1dd;
-  --ink:#1c1c1e;--muted:#6e6e73;--ok:#15803d;--warn:#9a6700;
+  --red:#b5121b;--red2:#8f0e15;--bg:#f7f4f2;--line:#e9e1dd;--ink:#1c1c1e;--muted:#6e6e73;
   --manager:#8b5cf6;--register:#3b82f6;--cook:#ef5350;--support:#34a853;
-  --shopping_helper:#22a6b3;--shopping_driver:#6366f1;--seller:#d9a40e;--break:#a6abb3;
+  --shopping_helper:#22a6b3;--shopping_driver:#6366f1;--seller:#d9a40e;
   --namew:178px;--pxpermin:1.55px;
 }
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
@@ -25,16 +24,15 @@ main{max-width:1180px;margin:auto;padding:14px}
 select,input,button{font:inherit}
 select,input{width:100%;border:1px solid #d9d1cd;border-radius:11px;padding:10px 11px;background:#fff;color:var(--ink)}
 button{border:0;border-radius:12px;padding:11px 14px;background:#f5efed;color:var(--red);font-weight:900;cursor:pointer}
-button.primary{background:var(--red);color:#fff}
-button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--red);color:#fff}button:disabled{opacity:.45;cursor:not-allowed}
 .small{font-size:11px;color:var(--muted);line-height:1.55}
-.status{font-size:12px;font-weight:800;min-height:18px}.ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:#b00020}
+.status{font-size:12px;font-weight:800;min-height:18px}.ok{color:#15803d}.warn{color:#9a6700}.err{color:#b00020}
 .legend{display:flex;flex-wrap:wrap;gap:7px 12px;margin-top:10px}
 .legend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-weight:800}
 .dot{width:10px;height:10px;border-radius:3px}
 .editor-shell{padding:0;overflow:hidden}
 .editor-topline{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
-.editor-wrap{overflow:auto;max-height:70vh;position:relative;background:#fff}
+.editor-wrap{overflow:auto;max-height:72vh;position:relative;background:#fff}
 .timeline{position:relative;min-width:100%;width:max-content}
 .time-header{height:43px;display:flex;position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
 .corner{position:sticky;left:0;z-index:24;width:var(--namew);min-width:var(--namew);padding:13px 10px;font-size:12px;font-weight:900;background:#fff;border-right:1px solid var(--line)}
@@ -44,27 +42,24 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .group-row{display:flex;min-height:38px;border-bottom:1px solid #efe8e5;background:#faf7f5}
 .group-name{position:sticky;left:0;z-index:12;width:var(--namew);min-width:var(--namew);padding:9px 10px;font-weight:950;font-size:12px;background:#faf7f5;border-right:1px solid var(--line)}
 .group-track{height:38px;position:relative}
-.person-row{display:flex;min-height:54px;border-bottom:1px solid #f0ece9}
+.person-row{display:flex;min-height:58px;border-bottom:1px solid #f0ece9}
 .person-name{position:sticky;left:0;z-index:11;width:var(--namew);min-width:var(--namew);background:#fff;border-right:1px solid var(--line);padding:7px 9px}
 .person-name b{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .person-name .pref{display:block;color:var(--muted);font-size:8.5px;line-height:1.45;margin-top:3px;white-space:normal}
-.person-track{height:54px;position:relative;background-image:linear-gradient(to right,rgba(0,0,0,.035) 1px,transparent 1px);background-size:calc(60 * var(--pxpermin)) 100%}
-.hope-range{position:absolute;top:4px;height:46px;background:rgba(21,128,61,.045);border:1px dashed rgba(21,128,61,.25);border-radius:7px;pointer-events:none}
-.segbar{position:absolute;top:12px;height:30px;border-radius:8px;color:#fff;box-shadow:0 2px 5px rgba(0,0,0,.10);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;white-space:nowrap;overflow:visible;touch-action:none;user-select:none;cursor:grab}
+.person-track{height:58px;position:relative;background-image:linear-gradient(to right,rgba(0,0,0,.035) 1px,transparent 1px);background-size:calc(60 * var(--pxpermin)) 100%}
+.hope-range{position:absolute;top:4px;height:50px;background:rgba(21,128,61,.045);border:1px dashed rgba(21,128,61,.28);border-radius:7px;pointer-events:none}
+.segbar{position:absolute;top:14px;height:30px;border-radius:8px;color:#fff;box-shadow:0 2px 5px rgba(0,0,0,.10);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;white-space:nowrap;overflow:visible;touch-action:none;user-select:none;cursor:grab}
 .segbar.selected{outline:3px solid rgba(181,18,27,.30);outline-offset:2px;z-index:8}
-.segbar.fixed{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 6px,rgba(255,255,255,.02) 6px 12px)}
-.segbar.breakrole{color:#202124}
 .seg-label{pointer-events:none;overflow:hidden;text-overflow:ellipsis;padding:0 13px;max-width:100%}
 .handle{position:absolute;top:0;width:12px;height:100%;cursor:ew-resize;z-index:3}
 .handle.left{left:0}.handle.right{right:0}
 .handle:after{content:"";position:absolute;top:8px;bottom:8px;width:2px;background:rgba(255,255,255,.82);border-radius:2px}
 .handle.left:after{left:4px}.handle.right:after{right:4px}
-.breakrole .handle:after{background:rgba(40,40,40,.45)}
 .role-manager{background:var(--manager)}.role-register{background:var(--register)}.role-cook{background:var(--cook)}
 .role-support{background:var(--support)}.role-shopping_helper{background:var(--shopping_helper)}
-.role-shopping_driver{background:var(--shopping_driver)}.role-seller{background:var(--seller)}.role-break{background:var(--break)}
+.role-shopping_driver{background:var(--shopping_driver)}.role-seller{background:var(--seller)}
 .empty{padding:30px;text-align:center;color:var(--muted)}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:100;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -12px 36px rgba(0,0,0,.16);padding:12px 16px calc(16px + env(safe-area-inset-bottom));transform:translateY(110%);transition:.2s ease;max-height:78vh;overflow:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:100;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -12px 36px rgba(0,0,0,.16);padding:12px 16px calc(16px + env(safe-area-inset-bottom));transform:translateY(110%);transition:.2s ease;max-height:80vh;overflow:auto}
 .sheet.open{transform:translateY(0)}
 .sheet-grab{width:44px;height:5px;background:#ccc;border-radius:999px;margin:0 auto 10px}
 .sheet-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.sheet-head h2{font-size:18px;margin:0}
@@ -72,48 +67,32 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .sheet .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.sheet .actions button{width:100%}
 .cover{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:90;display:none}.cover.open{display:block}
 .warningbox{border:1px solid #f0d59a;background:#fff8e8;border-radius:13px;padding:10px;margin-top:10px;font-size:11px;line-height:1.55}
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
 .summary div{background:#faf7f5;border-radius:10px;padding:8px;text-align:center}.summary b{display:block;font-size:18px}.summary span{font-size:9px;color:var(--muted)}
 .note-box{background:#f7fbff;border:1px solid #d8e8f5;border-radius:13px;padding:10px;margin-top:10px;font-size:11px;line-height:1.6;color:#4b5563}
+.split-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px;align-items:end}
 @media(max-width:700px){
  :root{--namew:145px;--pxpermin:1.35px}
  main{padding:10px}
  .toolbar{display:grid;grid-template-columns:1fr 1fr}
  .toolbar .field{min-width:0}
  .toolbar button{width:100%}
- .summary{grid-template-columns:1fr 1fr}
- .sheet-grid{grid-template-columns:1fr 1fr}
+ .summary{grid-template-columns:1fr 1fr 1fr}
 }
 </style>
 </head>
 <body>
 <header>
   <h1>✏️ 希望シフト調整</h1>
-  <p>みんなが提出した参加可能時間と希望職種から、そのまま編集用タイムラインを作ります。</p>
+  <p>提出された参加可能時間と希望職種だけを使って、管理者がシフトを組みます。</p>
 </header>
 
 <main>
   <div class="card">
     <div class="toolbar">
-      <div class="field">
-        <label>対象日</label>
-        <select id="daySelect"></select>
-      </div>
-      <div class="field">
-        <label>移動・調整単位</label>
-        <select id="snapSelect">
-          <option value="15">15分</option>
-          <option value="30" selected>30分</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>表示倍率</label>
-        <select id="zoomSelect">
-          <option value="1.05">コンパクト</option>
-          <option value="1.35" selected>標準</option>
-          <option value="1.75">拡大</option>
-        </select>
-      </div>
+      <div class="field"><label>対象日</label><select id="daySelect"></select></div>
+      <div class="field"><label>調整単位</label><select id="snapSelect"><option value="15">15分</option><option value="30" selected>30分</option></select></div>
+      <div class="field"><label>表示倍率</label><select id="zoomSelect"><option value="1.05">コンパクト</option><option value="1.35" selected>標準</option><option value="1.75">拡大</option></select></div>
       <button id="undoBtn">↶ 元に戻す</button>
       <button id="resetBtn">↺ 希望から作り直す</button>
       <button class="primary" id="saveBtn">💾 この日のシフトを保存</button>
@@ -122,57 +101,38 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <div id="summary" class="summary"></div>
     <div class="legend" id="legend"></div>
     <div class="note-box">
-      薄い緑の枠が本人の提出した参加可能時間です。最初は第1希望の職種でバーを作成します。左の名前の下に第1〜第3希望を小さく表示します。
+      初期配置は必ず「第1希望」の職種です。役職変更も第1〜第3希望の中からだけ選べます。休憩・固定配置・AI自動編成は使いません。
     </div>
   </div>
 
   <div class="card editor-shell">
-    <div class="editor-topline">
-      <b>スタッフ別タイムライン</b>
-      <span class="small">左：名前・希望 / 横：時間 / 色：現在の役職</span>
-    </div>
-    <div class="editor-wrap" id="editorWrap">
-      <div id="timeline" class="timeline"><div class="empty">読み込み中...</div></div>
-    </div>
+    <div class="editor-topline"><b>スタッフ別タイムライン</b><span class="small">左：名前・希望 / 横：時間 / 色：現在の役職</span></div>
+    <div class="editor-wrap"><div id="timeline" class="timeline"><div class="empty">読み込み中...</div></div></div>
   </div>
 
-  <div class="card">
-    <button onclick="location.href='event-admin.html'">← シフト管理へ戻る</button>
-  </div>
+  <div class="card"><button onclick="location.href='event-admin.html'">← シフト管理へ戻る</button></div>
 </main>
 
 <div id="cover" class="cover"></div>
 <div id="sheet" class="sheet">
   <div class="sheet-grab"></div>
   <div class="sheet-head">
-    <div>
-      <h2 id="sheetTitle">シフト詳細</h2>
-      <div id="sheetSub" class="small"></div>
-    </div>
+    <div><h2 id="sheetTitle">シフト詳細</h2><div id="sheetSub" class="small"></div></div>
     <button id="closeSheet" style="width:auto">×</button>
   </div>
-
   <div id="prefText" class="note-box"></div>
-
   <div class="sheet-grid">
-    <div class="field">
-      <label>役職</label>
-      <select id="editRole"></select>
-    </div>
-    <div class="field">
-      <label>状態</label>
-      <input id="editFixed" disabled>
-    </div>
-    <div class="field">
-      <label>開始</label>
-      <input id="editStart" type="time" step="900">
-    </div>
-    <div class="field">
-      <label>終了</label>
-      <input id="editEnd" type="time" step="900">
-    </div>
+    <div class="field"><label>役職</label><select id="editRole"></select></div>
+    <div class="field"><label>開始</label><input id="editStart" type="time" step="900"></div>
+    <div class="field"><label>終了</label><input id="editEnd" type="time" step="900"></div>
   </div>
   <div id="sheetWarning"></div>
+
+  <div class="split-row">
+    <div class="field"><label>この時刻で区切る</label><input id="splitTime" type="time" step="900"></div>
+    <button id="splitSeg">区切る</button>
+  </div>
+
   <div class="actions">
     <button id="deleteSeg">削除</button>
     <button class="primary" id="applyEdit">変更を反映</button>
@@ -180,85 +140,60 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </div>
 
 <script>
-const sb=supabase.createClient(
-  "https://gsniytemgrbtgfywhqlu.supabase.co",
-  "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
-);
+const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 
 const roles=[
-  ["manager","店長"],
-  ["register","レジ"],
-  ["cook","調理"],
-  ["support","サポート"],
-  ["shopping_helper","買い出し補助"],
-  ["shopping_driver","ドライバー"],
-  ["seller","売り子"],
-  ["break","休憩"]
+  ["manager","店長"],["register","レジ"],["cook","調理"],["support","サポート"],
+  ["shopping_helper","買い出し補助"],["shopping_driver","ドライバー"],["seller","売り子"]
 ];
 const roleLabel=Object.fromEntries(roles);
 const roleOrder=roles.map(x=>x[0]);
-const roleColor={
-  manager:"#8b5cf6",register:"#3b82f6",cook:"#ef5350",support:"#34a853",
-  shopping_helper:"#22a6b3",shopping_driver:"#6366f1",seller:"#d9a40e",break:"#a6abb3"
-};
+const roleColor={manager:"#8b5cf6",register:"#3b82f6",cook:"#ef5350",support:"#34a853",shopping_helper:"#22a6b3",shopping_driver:"#6366f1",seller:"#d9a40e"};
 
-let days=[],staff=[],availability=[],prefs={},fixedRows=[];
-let draft=[],history=[];
-let selectedId=null;
-let pxPerMin=1.35;
+let days=[],staff=[],availability=[],prefs={},draft=[],history=[],selectedId=null,pxPerMin=1.35;
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function clone(v){return JSON.parse(JSON.stringify(v));}
-function staffName(uid){return staff.find(x=>x.user_id===uid)?.staff_name||uid;}
 function currentDay(){return days.find(x=>String(x.id)===String(daySelect.value));}
+function staffName(uid){return staff.find(x=>x.user_id===uid)?.staff_name||uid;}
+function prefFor(uid){return prefs[uid]||{};}
+function allowedRoles(uid){const p=prefFor(uid);return [p.first_role,p.second_role,p.third_role].filter(Boolean);}
+function prefLabel(uid){const xs=allowedRoles(uid).map((r,i)=>`${i+1}.${roleLabel[r]||r}`);return xs.length?xs.join(" / "):"希望職種未提出";}
+function firstRole(uid){return prefFor(uid).first_role||null;}
 function ms(v){return new Date(v).getTime();}
+function iso(v){return new Date(v).toISOString();}
 function minDiff(a,b){return (ms(b)-ms(a))/60000;}
-function iso(t){return new Date(t).toISOString();}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function snapMs(t){const step=Number(snapSelect.value||30)*60000;return Math.round(t/step)*step;}
 function fmtTime(v){return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",hour12:false});}
 function localTimeValue(v){const d=new Date(v);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
-function timeOnDay(hm){const d=currentDay();const base=new Date(d.starts_at);const [h,m]=hm.split(":").map(Number);base.setHours(h,m,0,0);return base.getTime();}
-function makeLocalId(){return "local-"+Date.now()+"-"+Math.random().toString(16).slice(2);}
-function dayBounds(){const d=currentDay();return {start:ms(d.starts_at),end:ms(d.ends_at)};}
-function planForUser(uid){return draft.filter(x=>x.user_id===uid).sort((a,b)=>ms(a.starts_at)-ms(b.starts_at));}
+function timeOnDay(hm){const b=new Date(currentDay().starts_at);const [h,m]=hm.split(":").map(Number);b.setHours(h,m,0,0);return b.getTime();}
+function makeKey(){return "local-"+Date.now()+"-"+Math.random().toString(16).slice(2);}
+function dayBounds(){return {start:ms(currentDay().starts_at),end:ms(currentDay().ends_at)};}
 function availForUser(uid){return availability.filter(x=>x.user_id===uid);}
-function prefFor(uid){return prefs[uid]||{};}
-function prefLabel(uid){
-  const p=prefFor(uid);
-  const xs=[p.first_role,p.second_role,p.third_role].filter(Boolean).map((r,i)=>`${i+1}.${roleLabel[r]||r}`);
-  return xs.length?xs.join(" / "):"希望職種未提出";
-}
-function firstRole(uid){return prefFor(uid).first_role||"seller";}
-function isWithinAvailability(seg){
-  return availForUser(seg.user_id).some(a=>ms(seg.starts_at)>=ms(a.available_from)&&ms(seg.ends_at)<=ms(a.available_to));
-}
-function hasOverlap(seg,excludeKey=null){
-  return draft.some(x=>{
-    if(x.user_id!==seg.user_id)return false;
-    if((x._key||String(x.id))===excludeKey)return false;
-    return ms(x.starts_at)<ms(seg.ends_at)&&ms(x.ends_at)>ms(seg.starts_at);
-  });
-}
-function validateSegment(seg,excludeKey=null){
+function planForUser(uid){return draft.filter(x=>x.user_id===uid).sort((a,b)=>ms(a.starts_at)-ms(b.starts_at));}
+function isWithinAvailability(seg){return availForUser(seg.user_id).some(a=>ms(seg.starts_at)>=ms(a.available_from)&&ms(seg.ends_at)<=ms(a.available_to));}
+function hasOverlap(seg,key=null){return draft.some(x=>x.user_id===seg.user_id&&(x._key||String(x.id))!==key&&ms(x.starts_at)<ms(seg.ends_at)&&ms(x.ends_at)>ms(seg.starts_at));}
+function validateSegment(seg,key=null){
   const b=dayBounds();
   if(ms(seg.starts_at)>=ms(seg.ends_at))return "終了は開始より後にしてください。";
   if(ms(seg.starts_at)<b.start||ms(seg.ends_at)>b.end)return "開催時間の外には配置できません。";
-  if(!isWithinAvailability(seg))return "本人が提出した参加可能時間の外です。";
-  if(hasOverlap(seg,excludeKey))return "同じスタッフの別区間と重なっています。";
+  if(!isWithinAvailability(seg))return "本人の参加可能時間の外です。";
+  if(!allowedRoles(seg.user_id).includes(seg.role))return "本人が希望していない職種には配置できません。";
+  if(hasOverlap(seg,key))return "同じスタッフの別区間と重なっています。";
   return "";
 }
+function setOk(t){status.className="status ok";status.textContent=t}
+function setErr(t){status.className="status err";status.textContent=t}
+function setDirty(t="未保存の変更があります"){status.className="status warn";status.textContent=t}
 function pushHistory(){history.push(clone(draft));if(history.length>40)history.shift();undoBtn.disabled=history.length===0;}
-function setDirty(msg="未保存の変更があります"){status.className="status warn";status.textContent=msg;}
-function setOk(msg){status.className="status ok";status.textContent=msg;}
-function setErr(msg){status.className="status err";status.textContent=msg;}
 
 async function requireAdmin(){
   const {data:{user}}=await sb.auth.getUser();
-  if(!user){location.href="home.html";return false;}
+  if(!user){location.href="home.html";return false}
   const {data,error}=await sb.from("admins").select("user_id").eq("user_id",user.id).maybeSingle();
   if(error)throw error;
-  if(!data){document.body.innerHTML="<main><div class='card'>管理者権限が必要です。</div></main>";return false;}
+  if(!data){document.body.innerHTML="<main><div class='card'>管理者権限が必要です。</div></main>";return false}
   return true;
 }
 
@@ -269,252 +204,172 @@ async function loadBase(){
     sb.rpc("admin_staff_role_preferences")
   ]);
   if(d.error)throw d.error;if(s.error)throw s.error;if(p.error)throw p.error;
-  days=d.data||[];staff=s.data||[];
-  prefs=Object.fromEntries((p.data||[]).map(x=>[x.user_id,x]));
+  days=d.data||[];staff=s.data||[];prefs=Object.fromEntries((p.data||[]).map(x=>[x.user_id,x]));
   daySelect.innerHTML=days.map(x=>`<option value="${x.id}">${esc(x.label)}</option>`).join("");
-  const q=new URLSearchParams(location.search).get("day");
-  if(q&&[...daySelect.options].some(o=>o.value===q))daySelect.value=q;
 }
 
 function buildFromHope(){
-  const rows=[];
-  for(const a of availability){
-    rows.push({
-      id:null,
-      _key:makeLocalId(),
-      event_day_id:+daySelect.value,
-      user_id:a.user_id,
-      role:firstRole(a.user_id),
-      starts_at:a.available_from,
-      ends_at:a.available_to,
-      is_fixed:false,
-      source:"hope"
-    });
-  }
-
-  // Fixed assignments override only their exact overlapping window.
-  // We split the hope interval so fixed sections stay locked without losing the rest.
-  for(const fx of fixedRows){
-    const next=[];
-    for(const seg of rows){
-      if(seg.user_id!==fx.user_id || ms(seg.ends_at)<=ms(fx.starts_at) || ms(seg.starts_at)>=ms(fx.ends_at)){
-        next.push(seg); continue;
-      }
-      const s=ms(seg.starts_at),e=ms(seg.ends_at),fs=Math.max(s,ms(fx.starts_at)),fe=Math.min(e,ms(fx.ends_at));
-      if(s<fs)next.push({...seg,_key:makeLocalId(),starts_at:iso(s),ends_at:iso(fs)});
-      next.push({
-        id:null,_key:makeLocalId(),event_day_id:+daySelect.value,user_id:seg.user_id,
-        role:fx.role,starts_at:iso(fs),ends_at:iso(fe),is_fixed:true,source:"fixed"
-      });
-      if(fe<e)next.push({...seg,_key:makeLocalId(),starts_at:iso(fe),ends_at:iso(e)});
-    }
-    rows.splice(0,rows.length,...next);
-  }
-  return rows.sort((a,b)=>staffName(a.user_id).localeCompare(staffName(b.user_id),"ja")||ms(a.starts_at)-ms(b.starts_at));
+  return availability
+    .filter(a=>firstRole(a.user_id))
+    .map(a=>({
+      id:null,_key:makeKey(),event_day_id:+daySelect.value,user_id:a.user_id,
+      role:firstRole(a.user_id),starts_at:a.available_from,ends_at:a.available_to
+    }))
+    .sort((a,b)=>staffName(a.user_id).localeCompare(staffName(b.user_id),"ja")||ms(a.starts_at)-ms(b.starts_at));
 }
 
 async function loadDay(){
   const d=currentDay();if(!d)return;
   status.textContent="読み込み中...";
-  const [a,f,p]=await Promise.all([
+  const [a,m]=await Promise.all([
     sb.from("staff_availability").select("id,user_id,event_day_id,available_from,available_to,note").eq("event_day_id",d.id).order("available_from"),
-    sb.from("shift_fixed_assignments").select("*").eq("event_day_id",d.id).order("starts_at"),
-    sb.from("shift_plan_assignments").select("*").eq("event_day_id",d.id).order("starts_at")
+    sb.from("shift_manual_assignments").select("*").eq("event_day_id",d.id).order("starts_at")
   ]);
-  if(a.error)throw a.error;if(f.error)throw f.error;if(p.error)throw p.error;
-  availability=a.data||[];fixedRows=f.data||[];
-  const saved=p.data||[];
-  if(saved.length){
-    draft=saved.map(x=>({...x,_key:String(x.id),source:"saved"}));
-    setOk("保存済みシフトを読み込みました。");
-  }else{
-    draft=buildFromHope();
-    setOk("提出された希望から編集用シフトを作成しました。まだ未保存です。");
-  }
-  history=[];undoBtn.disabled=true;selectedId=null;render();
+  if(a.error)throw a.error;if(m.error)throw m.error;
+  availability=a.data||[];
+  const saved=(m.data||[]).filter(x=>allowedRoles(x.user_id).includes(x.role));
+  draft=saved.length?saved.map(x=>({...x,_key:String(x.id)})):buildFromHope();
+  history=[];undoBtn.disabled=true;selectedId=null;
+  setOk(saved.length?"保存済みの手動シフトを読み込みました。":"希望提出から編集用シフトを作成しました。まだ未保存です。");
+  render();
 }
 
-function primaryRole(uid){
-  const sums={};
-  for(const s of planForUser(uid)){
-    if(s.role==="break")continue;
-    sums[s.role]=(sums[s.role]||0)+Math.max(0,minDiff(s.starts_at,s.ends_at));
-  }
-  let best=firstRole(uid),bestN=-1;
-  for(const r of roleOrder){
-    const n=sums[r]||0;
-    if(n>bestN){best=r;bestN=n;}
-  }
-  return best;
-}
-
-function renderLegend(){
-  legend.innerHTML=roles.map(([r,l])=>`<span><i class="dot" style="background:${roleColor[r]}"></i>${l}</span>`).join("");
-}
-
+function groupRole(uid){return firstRole(uid)||"seller";}
+function renderLegend(){legend.innerHTML=roles.map(([r,l])=>`<span><i class="dot" style="background:${roleColor[r]}"></i>${l}</span>`).join("")}
 function renderSummary(){
   const people=new Set(draft.map(x=>x.user_id)).size;
-  const total=draft.filter(x=>x.role!=="break").reduce((s,x)=>s+minDiff(x.starts_at,x.ends_at),0);
-  const breaks=draft.filter(x=>x.role==="break").reduce((s,x)=>s+minDiff(x.starts_at,x.ends_at),0);
+  const hours=draft.reduce((s,x)=>s+minDiff(x.starts_at,x.ends_at),0)/60;
   const unsubmitted=staff.filter(s=>!availability.some(a=>a.user_id===s.user_id)).length;
-  summary.innerHTML=`
-    <div><b>${people}</b><span>希望提出者</span></div>
-    <div><b>${Math.round(total/60*10)/10}</b><span>延べ配置時間</span></div>
-    <div><b>${Math.round(breaks/60*10)/10}</b><span>延べ休憩時間</span></div>
-    <div><b>${unsubmitted}</b><span>この日未提出</span></div>`;
+  summary.innerHTML=`<div><b>${people}</b><span>この日の希望提出者</span></div><div><b>${Math.round(hours*10)/10}</b><span>延べ配置時間</span></div><div><b>${unsubmitted}</b><span>この日未提出</span></div>`;
 }
 
 function render(){
   renderLegend();renderSummary();
-  const d=currentDay();
-  if(!d){timeline.innerHTML='<div class="empty">対象日がありません。</div>';return;}
-  if(!draft.length){
-    timeline.innerHTML='<div class="empty">この日の希望提出がありません。</div>';return;
-  }
-  const b=dayBounds(),totalMin=(b.end-b.start)/60000,trackW=Math.max(680,totalMin*pxPerMin);
+  if(!draft.length){timeline.innerHTML='<div class="empty">この日の希望提出がありません。</div>';return}
+  const b=dayBounds(),trackW=Math.max(680,((b.end-b.start)/60000)*pxPerMin);
   document.documentElement.style.setProperty("--pxpermin",pxPerMin+"px");
 
   const users=[...new Set(draft.map(x=>x.user_id))];
   const grouped={};for(const r of roleOrder)grouped[r]=[];
-  for(const uid of users)(grouped[primaryRole(uid)]??=[]).push(uid);
+  for(const uid of users)(grouped[groupRole(uid)]??=[]).push(uid);
   for(const arr of Object.values(grouped))arr.sort((a,b)=>staffName(a).localeCompare(staffName(b),"ja"));
 
-  let header=`<div class="time-header"><div class="corner">スタッフ</div><div class="time-track" style="width:${trackW}px">`;
+  let html=`<div class="time-header"><div class="corner">スタッフ</div><div class="time-track" style="width:${trackW}px">`;
   let tick=new Date(b.start);tick.setMinutes(0,0,0);if(tick.getTime()<b.start)tick.setHours(tick.getHours()+1);
   for(let t=tick.getTime();t<=b.end;t+=3600000){
     const left=((t-b.start)/60000)*pxPerMin;
-    header+=`<div class="hour-label" style="left:${left}px">${fmtTime(t)}</div>`;
-    const hleft=left-30*pxPerMin;if(hleft>0)header+=`<div class="half-line" style="left:${hleft}px"></div>`;
+    html+=`<div class="hour-label" style="left:${left}px">${fmtTime(t)}</div>`;
+    const half=left-30*pxPerMin;if(half>0)html+=`<div class="half-line" style="left:${half}px"></div>`;
   }
-  header+=`</div></div>`;
+  html+=`</div></div>`;
 
-  let body="";
   for(const r of roleOrder){
     const arr=grouped[r]||[];if(!arr.length)continue;
-    body+=`<div class="group-row"><div class="group-name" style="color:${roleColor[r]}">${esc(roleLabel[r])}（${arr.length}人）</div><div class="group-track" style="width:${trackW}px"></div></div>`;
+    html+=`<div class="group-row"><div class="group-name" style="color:${roleColor[r]}">${esc(roleLabel[r])}（${arr.length}人）</div><div class="group-track" style="width:${trackW}px"></div></div>`;
     for(const uid of arr){
-      body+=`<div class="person-row">
-        <div class="person-name"><b>${esc(staffName(uid))}</b><span class="pref">希望：${esc(prefLabel(uid))}</span></div>
-        <div class="person-track" style="width:${trackW}px">`;
+      html+=`<div class="person-row"><div class="person-name"><b>${esc(staffName(uid))}</b><span class="pref">希望：${esc(prefLabel(uid))}</span></div><div class="person-track" style="width:${trackW}px">`;
       for(const a of availForUser(uid)){
         const l=((ms(a.available_from)-b.start)/60000)*pxPerMin,w=((ms(a.available_to)-ms(a.available_from))/60000)*pxPerMin;
-        body+=`<div class="hope-range" style="left:${Math.max(0,l)}px;width:${Math.max(1,w)}px" title="希望 ${fmtTime(a.available_from)}〜${fmtTime(a.available_to)}"></div>`;
+        html+=`<div class="hope-range" style="left:${l}px;width:${w}px"></div>`;
       }
       for(const s of planForUser(uid)){
         const key=s._key||String(s.id),l=((ms(s.starts_at)-b.start)/60000)*pxPerMin,w=((ms(s.ends_at)-ms(s.starts_at))/60000)*pxPerMin;
-        body+=`<div class="segbar role-${s.role} ${s.role==="break"?"breakrole":""} ${s.is_fixed?"fixed":""} ${selectedId===key?"selected":""}"
-          data-key="${esc(key)}" style="left:${l}px;width:${Math.max(18,w)}px">
-          ${s.is_fixed?"":'<span class="handle left" data-edge="left"></span>'}
-          <span class="seg-label">${esc(roleLabel[s.role])} ${fmtTime(s.starts_at)}–${fmtTime(s.ends_at)}${s.is_fixed?" 🔒":""}</span>
-          ${s.is_fixed?"":'<span class="handle right" data-edge="right"></span>'}
+        html+=`<div class="segbar role-${s.role} ${selectedId===key?"selected":""}" data-key="${esc(key)}" style="left:${l}px;width:${Math.max(18,w)}px">
+          <span class="handle left" data-edge="left"></span><span class="seg-label">${esc(roleLabel[s.role])} ${fmtTime(s.starts_at)}–${fmtTime(s.ends_at)}</span><span class="handle right" data-edge="right"></span>
         </div>`;
       }
-      body+=`</div></div>`;
+      html+=`</div></div>`;
     }
   }
-  timeline.innerHTML=header+body;
-  bindBars();
+  timeline.innerHTML=html;bindBars();
 }
 
 function bindBars(){
   document.querySelectorAll(".segbar").forEach(el=>{
     el.addEventListener("click",()=>openSheet(el.dataset.key));
-    if(!el.classList.contains("fixed"))el.addEventListener("pointerdown",startPointerEdit);
+    el.addEventListener("pointerdown",startPointerEdit);
   });
 }
+
 function startPointerEdit(e){
-  const bar=e.currentTarget,key=bar.dataset.key,seg=draft.find(x=>(x._key||String(x.id))===key);
-  if(!seg||seg.is_fixed)return;
-  if(e.target?.dataset?.edge)e.stopPropagation();
+  const key=e.currentTarget.dataset.key,seg=draft.find(x=>(x._key||String(x.id))===key);if(!seg)return;
   e.preventDefault();
-  const edge=e.target?.dataset?.edge||"move",startX=e.clientX,origStart=ms(seg.starts_at),origEnd=ms(seg.ends_at);
-  const minDuration=Number(snapSelect.value)*60000,b=dayBounds(),before=clone(draft);
+  const edge=e.target?.dataset?.edge||"move",startX=e.clientX,os=ms(seg.starts_at),oe=ms(seg.ends_at),before=clone(draft),b=dayBounds(),minDur=Number(snapSelect.value)*60000;
   let moved=false;
   const move=ev=>{
     const delta=Math.round(((ev.clientX-startX)/pxPerMin)/Number(snapSelect.value))*Number(snapSelect.value)*60000;
     if(Math.abs(ev.clientX-startX)>3)moved=true;
-    let ns=origStart,ne=origEnd;
-    if(edge==="left")ns=clamp(snapMs(origStart+delta),b.start,origEnd-minDuration);
-    else if(edge==="right")ne=clamp(snapMs(origEnd+delta),origStart+minDuration,b.end);
-    else{const dur=origEnd-origStart;ns=clamp(snapMs(origStart+delta),b.start,b.end-dur);ne=ns+dur;}
-    const candidate={...seg,starts_at:iso(ns),ends_at:iso(ne)};
-    const err=validateSegment(candidate,key);
-    if(!err){Object.assign(seg,candidate);setDirty();render();}
+    let ns=os,ne=oe;
+    if(edge==="left")ns=clamp(snapMs(os+delta),b.start,oe-minDur);
+    else if(edge==="right")ne=clamp(snapMs(oe+delta),os+minDur,b.end);
+    else{const dur=oe-os;ns=clamp(snapMs(os+delta),b.start,b.end-dur);ne=ns+dur}
+    const cand={...seg,starts_at:iso(ns),ends_at:iso(ne)};
+    if(!validateSegment(cand,key)){Object.assign(seg,cand);setDirty();render()}
   };
-  const up=()=>{
-    document.removeEventListener("pointermove",move);
-    if(moved){history.push(before);if(history.length>40)history.shift();undoBtn.disabled=false;}
-  };
-  document.addEventListener("pointermove",move);
-  document.addEventListener("pointerup",up,{once:true});
+  const up=()=>{document.removeEventListener("pointermove",move);if(moved){history.push(before);if(history.length>40)history.shift();undoBtn.disabled=false}};
+  document.addEventListener("pointermove",move);document.addEventListener("pointerup",up,{once:true});
 }
 
 function openSheet(key){
   const seg=draft.find(x=>(x._key||String(x.id))===key);if(!seg)return;
-  selectedId=key;
-  sheetTitle.textContent=staffName(seg.user_id);
-  sheetSub.textContent=`${roleLabel[seg.role]}　${fmtTime(seg.starts_at)}〜${fmtTime(seg.ends_at)}`;
+  selectedId=key;sheetTitle.textContent=staffName(seg.user_id);sheetSub.textContent=`${roleLabel[seg.role]} ${fmtTime(seg.starts_at)}〜${fmtTime(seg.ends_at)}`;
   prefText.textContent="希望職種："+prefLabel(seg.user_id);
-  editRole.innerHTML=roles.map(([r,l])=>`<option value="${r}">${l}</option>`).join("");
+  editRole.innerHTML=allowedRoles(seg.user_id).map(r=>`<option value="${r}">${roleLabel[r]}</option>`).join("");
   editRole.value=seg.role;editStart.value=localTimeValue(seg.starts_at);editEnd.value=localTimeValue(seg.ends_at);
-  editFixed.value=seg.is_fixed?"固定配置（変更不可）":"通常区間";
-  editRole.disabled=!!seg.is_fixed;editStart.disabled=!!seg.is_fixed;editEnd.disabled=!!seg.is_fixed;
-  deleteSeg.disabled=!!seg.is_fixed;applyEdit.disabled=!!seg.is_fixed;
-  sheetWarning.innerHTML=seg.is_fixed?'<div class="warningbox">🔒 固定配置はこの画面では動かしません。</div>':"";
-  cover.classList.add("open");sheet.classList.add("open");render();
+  const mid=ms(seg.starts_at)+(ms(seg.ends_at)-ms(seg.starts_at))/2;splitTime.value=localTimeValue(mid);
+  sheetWarning.innerHTML="";cover.classList.add("open");sheet.classList.add("open");render();
 }
-function closeEditorSheet(){cover.classList.remove("open");sheet.classList.remove("open");selectedId=null;render();}
-closeSheet.onclick=closeEditorSheet;cover.onclick=closeEditorSheet;
+function closeSheetFn(){cover.classList.remove("open");sheet.classList.remove("open");selectedId=null;render()}
+closeSheet.onclick=closeSheetFn;cover.onclick=closeSheetFn;
 
 applyEdit.onclick=()=>{
-  const seg=draft.find(x=>(x._key||String(x.id))===selectedId);if(!seg||seg.is_fixed)return;
-  const candidate={...seg,role:editRole.value,starts_at:iso(timeOnDay(editStart.value)),ends_at:iso(timeOnDay(editEnd.value))};
-  const err=validateSegment(candidate,selectedId);
-  if(err){sheetWarning.innerHTML=`<div class="warningbox">${esc(err)}</div>`;return;}
-  pushHistory();Object.assign(seg,candidate);setDirty();closeEditorSheet();
+  const seg=draft.find(x=>(x._key||String(x.id))===selectedId);if(!seg)return;
+  const cand={...seg,role:editRole.value,starts_at:iso(timeOnDay(editStart.value)),ends_at:iso(timeOnDay(editEnd.value))};
+  const err=validateSegment(cand,selectedId);if(err){sheetWarning.innerHTML=`<div class="warningbox">${esc(err)}</div>`;return}
+  pushHistory();Object.assign(seg,cand);setDirty();closeSheetFn();
 };
-deleteSeg.onclick=()=>{
-  const seg=draft.find(x=>(x._key||String(x.id))===selectedId);if(!seg||seg.is_fixed)return;
-  if(!confirm(`${staffName(seg.user_id)} の区間を削除しますか？`))return;
-  pushHistory();draft=draft.filter(x=>(x._key||String(x.id))!==selectedId);setDirty();closeEditorSheet();
-};
-undoBtn.onclick=()=>{if(!history.length)return;draft=history.pop();undoBtn.disabled=history.length===0;setDirty("1つ前の状態に戻しました。");render();};
 
-resetBtn.onclick=()=>{
-  if(!confirm("現在の調整内容を破棄して、みんなの提出希望から作り直しますか？"))return;
-  pushHistory();draft=buildFromHope();setDirty("希望提出から作り直しました。まだ未保存です。");render();
+splitSeg.onclick=()=>{
+  const seg=draft.find(x=>(x._key||String(x.id))===selectedId);if(!seg)return;
+  const t=timeOnDay(splitTime.value);
+  if(t<=ms(seg.starts_at)||t>=ms(seg.ends_at)){sheetWarning.innerHTML='<div class="warningbox">区切り時刻は現在の区間の途中にしてください。</div>';return}
+  pushHistory();
+  const a={...seg,id:null,_key:makeKey(),ends_at:iso(t)};
+  const b={...seg,id:null,_key:makeKey(),starts_at:iso(t)};
+  draft=draft.filter(x=>(x._key||String(x.id))!==selectedId).concat([a,b]);
+  setDirty();closeSheetFn();
 };
+
+deleteSeg.onclick=()=>{
+  const seg=draft.find(x=>(x._key||String(x.id))===selectedId);if(!seg)return;
+  if(!confirm(`${staffName(seg.user_id)} の区間を削除しますか？`))return;
+  pushHistory();draft=draft.filter(x=>(x._key||String(x.id))!==selectedId);setDirty();closeSheetFn();
+};
+
+undoBtn.onclick=()=>{if(!history.length)return;draft=history.pop();undoBtn.disabled=history.length===0;setDirty("1つ前に戻しました。");render()};
+resetBtn.onclick=()=>{if(!confirm("保存前の調整内容を破棄して、第1希望から作り直しますか？"))return;pushHistory();draft=buildFromHope();setDirty("希望から作り直しました。");render()};
 
 async function saveDraft(){
-  const d=currentDay();if(!d)return;
-  for(const s of draft){const err=validateSegment(s,s._key||String(s.id));if(err){setErr(`${staffName(s.user_id)}：${err}`);return;}}
-  if(!confirm(`${d.label} のシフトを保存しますか？`))return;
+  for(const s of draft){const err=validateSegment(s,s._key||String(s.id));if(err){setErr(`${staffName(s.user_id)}：${err}`);return}}
+  if(!confirm(`${currentDay().label} のシフトを保存しますか？`))return;
   saveBtn.disabled=true;setOk("保存中...");
   try{
-    const {error:delErr}=await sb.from("shift_plan_assignments").delete().eq("event_day_id",d.id);if(delErr)throw delErr;
+    const {error:e1}=await sb.from("shift_manual_assignments").delete().eq("event_day_id",+daySelect.value);if(e1)throw e1;
     if(draft.length){
-      const payload=draft.map(x=>({event_day_id:+d.id,user_id:x.user_id,role:x.role,starts_at:x.starts_at,ends_at:x.ends_at,is_fixed:!!x.is_fixed}));
-      const {error:insErr}=await sb.from("shift_plan_assignments").insert(payload);if(insErr)throw insErr;
+      const payload=draft.map(x=>({event_day_id:+daySelect.value,user_id:x.user_id,role:x.role,starts_at:x.starts_at,ends_at:x.ends_at}));
+      const {error:e2}=await sb.from("shift_manual_assignments").insert(payload);if(e2)throw e2;
     }
-    history=[];undoBtn.disabled=true;setOk("✅ 調整したシフトを保存しました。");
-    await loadDay();
-  }catch(e){setErr("保存エラー："+(e.message||String(e)));}
-  finally{saveBtn.disabled=false;}
+    await loadDay();setOk("✅ 手動シフトを保存しました。");
+  }catch(e){setErr("保存エラー："+(e.message||String(e)))}finally{saveBtn.disabled=false}
 }
 saveBtn.onclick=saveDraft;
-daySelect.onchange=()=>loadDay().catch(e=>setErr(e.message||String(e)));
-snapSelect.onchange=render;
-zoomSelect.onchange=()=>{pxPerMin=Number(zoomSelect.value);render();};
 
-window.addEventListener("beforeunload",e=>{if(status.classList.contains("warn")){e.preventDefault();e.returnValue="";}});
+daySelect.onchange=()=>loadDay().catch(e=>setErr(e.message||String(e)));
+snapSelect.onchange=render;zoomSelect.onchange=()=>{pxPerMin=Number(zoomSelect.value);render()};
 
 (async()=>{
-  try{
-    if(!await requireAdmin())return;
-    await loadBase();pxPerMin=Number(zoomSelect.value);await loadDay();
-  }catch(e){
-    document.querySelector("main").insertAdjacentHTML("afterbegin",`<div class="card err">読み込みエラー：${esc(e.message||String(e))}</div>`);
-  }
+  try{if(!await requireAdmin())return;await loadBase();pxPerMin=Number(zoomSelect.value);await loadDay()}
+  catch(e){document.querySelector("main").insertAdjacentHTML("afterbegin",`<div class="card err">読み込みエラー：${esc(e.message||String(e))}</div>`)}
 })();
 </script>
 </body>
