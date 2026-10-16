@@ -408,7 +408,7 @@ input[type="time"]::-webkit-datetime-edit{
   <button class="primary" type="button" onclick="location.href='shift-editor.html'">✏️ 希望からシフトを作成・調整する</button>
   <button type="button" id="exportAllShifts">📊 全日程シフトを棒グラフExcel出力</button>
   <div id="exportShiftMsg"></div>
-  <p class="small">準備日は本祭3日間の保存シフトから各人の主担当役職（合計時間が最長）で色分け・グループ化します。本祭に参加しない人は無地、片付け日は全員無地で出力します。</p>
+  <p class="small">準備日・片付け日は、その日に提出した参加可能時間を棒で表示します。準備日は本祭3日間の保存シフトから各人の主担当役職（合計時間が最長）で色分け・グループ化し、本祭に参加しない人は無地。片付け日は全員無地です。</p>
 
   <div id="shiftMissingOverview"></div>
 
@@ -984,6 +984,33 @@ function availabilityUsersForDay(dayId,allAvailability){
   return [...new Set(allAvailability.filter(a=>Number(a.event_day_id)===Number(dayId)).map(a=>a.user_id))];
 }
 
+function mergedAvailabilitySegmentsForDay(uid,dayId,allAvailability){
+  const xs=allAvailability
+    .filter(a=>a.user_id===uid && Number(a.event_day_id)===Number(dayId))
+    .map(a=>({start:new Date(a.available_from).getTime(),end:new Date(a.available_to).getTime()}))
+    .filter(x=>x.end>x.start)
+    .sort((a,b)=>a.start-b.start);
+
+  const merged=[];
+  for(const cur of xs){
+    if(!merged.length || cur.start>merged[merged.length-1].end){
+      merged.push({...cur});
+    }else{
+      merged[merged.length-1].end=Math.max(merged[merged.length-1].end,cur.end);
+    }
+  }
+
+  return merged.map((x,i)=>({
+    id:`availability-${uid}-${dayId}-${i}`,
+    user_id:uid,
+    event_day_id:Number(dayId),
+    role:null,
+    starts_at:new Date(x.start).toISOString(),
+    ends_at:new Date(x.end).toISOString(),
+    source:'availability'
+  }));
+}
+
 function primaryRoleForUser(rows){
   const totals={};
   const first={};
@@ -1093,8 +1120,16 @@ async function exportSavedShiftsToExcel(){
       }
 
       const people=userIds.map(uid=>{
-        const segs=[...(byUser[uid]||[])].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+        let segs;
         let primaryRole=null;
+
+        if(kind==='prep'||kind==='cleanup'){
+          // 準備日・片付け日は、その日に提出した参加可能時間を棒として使う。
+          segs=mergedAvailabilitySegmentsForDay(uid,day.id,allAvailability);
+        }else{
+          segs=[...(byUser[uid]||[])].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+        }
+
         if(kind==='prep')primaryRole=dominantFestivalRole(uid,allDays,allShifts);
         else if(kind==='festival')primaryRole=primaryRoleForUser(segs);
         return {uid,name:staffMap[uid]||uid,segs,primaryRole};
