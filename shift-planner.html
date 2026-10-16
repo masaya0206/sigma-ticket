@@ -159,6 +159,7 @@ details.section[open]>summary::after{content:"−"} .section-body{border-top:1px
       希望時間外には配置しません。固定配置中でも休憩は必ず適用します。必要人数を満たせない場合は不足を警告します。
     </p>
     <button class="primary" id="generateBtn">✨ 完成案を生成・下書き保存</button>
+    <button id="openEditorBtn">✏️ 保存済み完成案を微調整</button>
     <div id="generateMsg"></div>
     <div id="planSummary"></div>
   </div>
@@ -1129,6 +1130,10 @@ function mergePlanSegments(rows){
   }
   return out.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)||staffName(a.user_id).localeCompare(staffName(b.user_id),"ja"));
 }
+
+openEditorBtn.onclick=()=>{
+  location.href=`shift-editor.html?day=${encodeURIComponent(daySelect.value)}`;
+};
 
 generateBtn.onclick=async()=>{
   savePlannerSettings();
