@@ -5,10 +5,22 @@
 <script src="./offline-work-store.js"></script>
 <script src="./connection-status.js"></script>
 <style>
-:root{--r:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--green:#15803d}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:white;padding:42px 18px 24px;border-radius:0 0 28px 28px}main{max-width:620px;margin:auto;padding:16px}.card{background:#fff;border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}button{width:100%;border:0;border-radius:13px;padding:14px;margin-top:10px;font-weight:900;font-size:16px}.primary{background:var(--r);color:#fff}.dark{background:#2c2c2e;color:#fff}.small{font-size:12px;color:var(--muted);line-height:1.6}.ok{color:var(--green);font-weight:900}.err{color:#b00020;font-weight:900}.pill{display:inline-block;padding:6px 9px;border-radius:999px;background:#fff3d6;color:#8a5a00;font-size:12px;font-weight:900}#reader{overflow:hidden;border-radius:14px;margin-top:12px}</style></head><body>
+:root{--r:#b5121b;--bg:#f7f4f2;--ink:#1c1c1e;--muted:#6e6e73;--green:#15803d}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}header{background:linear-gradient(145deg,#b5121b,#8f0e15);color:white;padding:42px 18px 24px;border-radius:0 0 28px 28px}main{max-width:620px;margin:auto;padding:16px}.card{background:#fff;border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 8px 24px rgba(74,25,25,.07)}button{width:100%;border:0;border-radius:13px;padding:14px;margin-top:10px;font-weight:900;font-size:16px}.primary{background:var(--r);color:#fff}.dark{background:#2c2c2e;color:#fff}.small{font-size:12px;color:var(--muted);line-height:1.6}.ok{color:var(--green);font-weight:900}.err{color:#b00020;font-weight:900}.warn{color:#9a6700;font-weight:900}.pill{display:inline-block;padding:6px 9px;border-radius:999px;background:#fff3d6;color:#8a5a00;font-size:12px;font-weight:900}#reader{overflow:hidden;border-radius:14px;margin-top:12px}</style></head><body>
 <header><h1 style="margin:0">勤怠QR</h1><p style="margin:7px 0 0;opacity:.85">オンライン・オフライン共通の出勤QR</p></header><main>
 <section class="card"><span class="pill">同じQRで出勤</span><div id="status" style="margin-top:10px;font-weight:900">状態を確認中...</div><div id="detail" class="small"></div></section>
 <section id="clockInCard" class="card" style="display:none"><h2>出勤</h2><p class="small">店長・管理者が表示している時間式QRを読み取ってください。オンライン時はそのままサーバーへ記録し、オフライン時は端末内へ暫定保存します。</p><div id="reader"></div><button id="startScan" class="primary">QRを読み取る</button><div id="scanMsg" class="small"></div></section>
+<section id="manualRoleCard" class="card" style="display:none">
+  <h2>役割を指定して出勤</h2>
+  <p class="small">QRの検証は完了しています。近いシフトがないため、店長・管理者の承認で役割を指定してください。</p>
+  <label class="small">役割</label>
+  <select id="manualRole" style="width:100%;margin-top:6px;padding:13px;border:1px solid #ddd;border-radius:12px;font:inherit">
+    <option value="seller">売り子</option><option value="register">レジ</option><option value="support">サポート</option><option value="cook">調理</option><option value="manager">店長</option><option value="shopping_helper">買い出し補助</option><option value="shopping_driver">ドライバー</option>
+  </select>
+  <label class="small" style="display:block;margin-top:12px">店長・管理者パスワード</label>
+  <input id="manualRolePassword" type="password" autocomplete="off" placeholder="パスワード" style="width:100%;margin-top:6px;padding:13px;border:1px solid #ddd;border-radius:12px;font:inherit">
+  <button id="manualRoleConfirmBtn" class="primary">この役割で出勤</button>
+  <div id="manualRoleMsg" class="small"></div>
+</section>
 <section id="clockOutCard" class="card" style="display:none"><h2>退勤</h2><p class="small">現在の勤務を終了します。オフライン時は端末内へ保存し、復旧後に同期します。</p><button id="clockOutBtn" class="dark">退勤する</button></section>
 <section class="card"><button onclick="location.href='offline-seller.html'">券発行</button><button onclick="location.href='offline-center.html'">オフライン対応へ戻る</button><div id="msg" class="small"></div></section>
 </main><script>
@@ -16,7 +28,7 @@ const SUPABASE_URL='https://gsniytemgrbtgfywhqlu.supabase.co';
 const SUPABASE_KEY='sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn';
 const sb=window.supabase?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
 const roleText=r=>({seller:'売り子',manager:'店長',register:'レジ',support:'サポート',cook:'調理',shopping_driver:'ドライバー',shopping_helper:'買い出し補助'})[r]||'未設定';
-let state=null,snapshot=null,scanner=null,busy=false;
+let state=null,snapshot=null,scanner=null,busy=false,pendingQr=null,pendingReadAt=null;
 function uuid(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 
 async function refreshSnapshotFromServer(){
@@ -103,7 +115,12 @@ async function handleQr(text){
     const role=SigmaOfflineWorkStore.resolveRoleFromSnapshot(snapshot,readAt,120);
 
     if(!role){
-      scanMsg.innerHTML='<span class="ok">✅ QRの署名と時刻は正常です。</span><br><span class="err">前後2時間以内にシフトがないため、出勤記録は作成しません。テストとしてQR検証は成功しています。</span>';
+      pendingQr=q; pendingReadAt=readAt;
+      scanMsg.innerHTML='<span class="ok">✅ QRの署名と時刻は正常です。</span><br><span class="warn">近いシフトがありません。下で役割と承認パスワードを入力してください。</span>';
+      manualRoleCard.style.display='block';
+      manualRolePassword.value=''; manualRoleMsg.textContent='';
+      try{await scanner?.stop();}catch(_){ }
+      startScan.style.display='block';
       return;
     }
 
@@ -127,6 +144,38 @@ async function handleQr(text){
   }catch(e){scanMsg.innerHTML=`<span class="err">${e?.message||e}</span>`;}
   finally{busy=false;}
 }
+
+manualRoleConfirmBtn.onclick=async()=>{
+  if(!pendingQr||!pendingReadAt){manualRoleMsg.innerHTML='<span class="err">先に勤怠QRを読み取ってください。</span>';return;}
+  const role=manualRole.value;
+  const password=manualRolePassword.value;
+  if(!password){manualRoleMsg.innerHTML='<span class="err">店長・管理者パスワードを入力してください。</span>';return;}
+  manualRoleConfirmBtn.disabled=true; manualRoleMsg.textContent='確認中...';
+  try{
+    const proof=await SigmaOfflineWorkStore.managerPasswordProof(password);
+    if(navigator.onLine&&sb){
+      const {data,error}=await sb.rpc('approve_shiftless_clock_in_v91',{
+        p_role:role,p_password_proof:proof,p_occurred_at:pendingReadAt,
+        p_qr_slot_epoch:pendingQr.slot_epoch,p_qr_key_id:pendingQr.key_id,p_qr_signature:pendingQr.signature
+      });
+      if(error) throw error;
+      await SigmaOfflineWorkStore.setLocalWorkState({working:true,role,clock_in:pendingReadAt,source:'server_shiftless',event_id:data?.event_id||null});
+      scanMsg.innerHTML=`<span class="ok">✅ ${roleText(role)}として出勤しました。</span>`;
+    }else{
+      const ok=await SigmaOfflineWorkStore.verifyManagerPassword(password);
+      if(!ok) throw new Error('パスワードが違います');
+      const ev={event_id:uuid(),event_type:'clock_in_manual_role',occurred_at:pendingReadAt,
+        qr_version:pendingQr.qr_version,qr_slot_epoch:pendingQr.slot_epoch,qr_key_id:pendingQr.key_id,
+        qr_signature:pendingQr.signature,role,password_proof:proof};
+      await SigmaOfflineWorkStore.addEvent(ev);
+      await SigmaOfflineWorkStore.setLocalWorkState({working:true,role,clock_in:pendingReadAt,source:'offline_shiftless',event_id:ev.event_id});
+      scanMsg.innerHTML=`<span class="ok">✅ ${roleText(role)}として暫定出勤しました。通信復旧後に同期します。</span>`;
+    }
+    pendingQr=null; pendingReadAt=null; manualRoleCard.style.display='none';
+    await refresh();
+  }catch(e){manualRoleMsg.innerHTML=`<span class="err">${e?.message||e}</span>`;}
+  finally{manualRoleConfirmBtn.disabled=false;}
+};
 
 startScan.onclick=async()=>{
   scanMsg.textContent='カメラを起動しています...';

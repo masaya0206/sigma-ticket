@@ -231,7 +231,20 @@
   async function getManagerQrBank(){return await getMeta('manager_qr_bank',null);}
   async function getManagerQrBankMeta(){return null;}
 
+  async function managerPasswordProof(password){
+    const bytes=new TextEncoder().encode(String(password||''));
+    const digest=await crypto.subtle.digest('SHA-256',bytes);
+    return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  async function setManagerPasswordVerifier(hash){return await setMeta('manager_password_verifier',hash||null);}
+  async function verifyManagerPassword(password){
+    const expected=await getMeta('manager_password_verifier',null);
+    if(!expected) throw new Error('承認パスワード情報が端末に保存されていません。オンライン時にポータルを開いてください。');
+    return (await managerPasswordProof(password))===expected;
+  }
+
   window.SigmaOfflineWorkStore={
+    managerPasswordProof,setManagerPasswordVerifier,verifyManagerPassword,
     saveSnapshot,getSnapshot,
     getLocalWorkState,setLocalWorkState,
     addEvent,listEvents,listPendingEvents,markEventSynced,markEventError,

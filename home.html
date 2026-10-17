@@ -2299,6 +2299,7 @@ const planned =
         const user = session.user;
         const {data:staff,error:staffError} = await supabaseClient.from("staff_members").select("staff_name,is_active").eq("user_id",user.id).maybeSingle();
         if(staffError || !staff?.is_active) return {skipped:true};
+        try{const {data:v}=await supabaseClient.rpc("my_offline_manager_password_verifier");if(v&&window.SigmaOfflineWorkStore?.setManagerPasswordVerifier)await SigmaOfflineWorkStore.setManagerPasswordVerifier(v);}catch(_){}
         const results = await Promise.allSettled([refreshOfflineDataAfterLogin(user,staff),cacheOfflineWorkSnapshot()]);
         try{if(window.SigmaOfflineStore?.setMeta){await SigmaOfflineStore.setMeta("last_full_auto_backup",{saved_at:new Date().toISOString(),reason,ok:results.map(x=>x.status)});}}catch(_){}
         await refreshOfflineBackupStatus();
@@ -2348,8 +2349,15 @@ const planned =
       const events=await SigmaOfflineWorkStore.listPendingEvents();
       for(const ev of events){
         try{
+          const useManual=ev.event_type==="clock_in_manual_role";
           const useV2=ev.qr_version==="MPA2" || ev.qr_key_id || ev.qr_slot_epoch;
-          const call=useV2
+          const call=useManual
+            ? await supabaseClient.rpc("sync_shiftless_clock_in_v91",{
+                p_event_id:ev.event_id,p_role:ev.role,p_password_proof:ev.password_proof,
+                p_occurred_at:ev.occurred_at,p_qr_slot_epoch:ev.qr_slot_epoch,
+                p_qr_key_id:ev.qr_key_id,p_qr_signature:ev.qr_signature
+              })
+            : useV2
             ? await supabaseClient.rpc("sync_offline_attendance_event_v2",{
                 p_event_id:ev.event_id,
                 p_event_type:ev.event_type,
