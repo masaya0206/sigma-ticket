@@ -1,0 +1,26 @@
+(()=>{
+  const DB_NAME='sigma_offline_work_v1';
+  const DB_VERSION=1;
+  function openDb(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta',{keyPath:'key'});if(!db.objectStoreNames.contains('events'))db.createObjectStore('events',{keyPath:'event_id'});};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+  async function tx(store,mode,fn){const db=await openDb();return new Promise((resolve,reject)=>{const t=db.transaction(store,mode),s=t.objectStore(store);let value;try{value=fn(s);}catch(e){reject(e);return;}t.oncomplete=()=>resolve(value);t.onerror=()=>reject(t.error);});}
+  async function setMeta(key,value){await tx('meta','readwrite',s=>s.put({key,value}));return value;}
+  async function getMeta(key,def=null){const db=await openDb();return new Promise((resolve,reject)=>{const t=db.transaction('meta','readonly');const r=t.objectStore('meta').get(key);r.onsuccess=()=>resolve(r.result?.value??def);r.onerror=()=>reject(r.error);});}
+  async function saveSnapshot(data){await setMeta('snapshot',{...data,saved_at:new Date().toISOString()});if(data?.current_work_state)await setMeta('local_work_state',data.current_work_state);return data;}
+  async function getSnapshot(){return await getMeta('snapshot',null);}
+  async function saveManagerQrBank(data){await setMeta('manager_qr_bank',{...data,saved_at:new Date().toISOString()});return data;}
+  async function getManagerQrBank(){return await getMeta('manager_qr_bank',null);}
+  async function getManagerQrBankMeta(){const x=await getManagerQrBank();return x?{slot_count:(x.slots||[]).length,saved_at:x.saved_at}:null;}
+  async function getLocalWorkState(){return await getMeta('local_work_state',{working:false,role:null,clock_in:null});}
+  async function setLocalWorkState(v){return await setMeta('local_work_state',v);}
+  async function addEvent(ev){await tx('events','readwrite',s=>s.put({...ev,sync_status:ev.sync_status||'pending',created_local_at:new Date().toISOString()}));return ev;}
+  async function listEvents(){const db=await openDb();return new Promise((resolve,reject)=>{const t=db.transaction('events','readonly');const r=t.objectStore('events').getAll();r.onsuccess=()=>resolve((r.result||[]).sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at))||String(a.event_id).localeCompare(String(b.event_id))));r.onerror=()=>reject(r.error);});}
+  async function listPendingEvents(){return (await listEvents()).filter(x=>x.sync_status!=='synced');}
+  async function patchEvent(id,patch){const db=await openDb();return new Promise((resolve,reject)=>{const t=db.transaction('events','readwrite'),s=t.objectStore('events'),g=s.get(id);g.onsuccess=()=>{if(!g.result){resolve();return;}s.put({...g.result,...patch});};t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);});}
+  async function markEventSynced(id,result){return patchEvent(id,{sync_status:'synced',synced_at:new Date().toISOString(),server_result:result,sync_error:null});}
+  async function markEventError(id,msg){return patchEvent(id,{sync_status:'pending',sync_error:msg});}
+  async function sha256Hex(text){const b=new TextEncoder().encode(text);const h=await crypto.subtle.digest('SHA-256',b);return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+  function parseTime(v){return new Date(v).getTime();}
+  function resolveRoleFromSnapshot(snapshot,atIso,maxGapMinutes=120){const at=parseTime(atIso);const shifts=(snapshot?.shifts||[]).filter(x=>parseTime(x.ends_at)>parseTime(x.starts_at)).sort((a,b)=>parseTime(a.starts_at)-parseTime(b.starts_at));const active=shifts.filter(x=>parseTime(x.starts_at)<=at&&parseTime(x.ends_at)>=at);if(active.length)return active[0].role;const next=shifts.filter(x=>parseTime(x.starts_at)>at&&parseTime(x.starts_at)-at<=maxGapMinutes*60000).sort((a,b)=>parseTime(a.starts_at)-parseTime(b.starts_at))[0];if(next)return next.role;const prev=shifts.filter(x=>parseTime(x.ends_at)<at&&at-parseTime(x.ends_at)<=maxGapMinutes*60000).sort((a,b)=>parseTime(b.ends_at)-parseTime(a.ends_at))[0];return prev?.role||null;}
+  async function validateQrPayload(payload,readAtIso){const snapshot=await getSnapshot();if(!snapshot)throw new Error('オフライン勤務データが保存されていません');const parts=String(payload||'').trim().split('|');if(parts.length!==3||parts[0]!=='MPA1')throw new Error('勤怠QRではありません');const slotEpoch=Number(parts[1]),token=parts[2];if(!Number.isFinite(slotEpoch)||!token)throw new Error('QRの形式が不正です');const slotAt=new Date(slotEpoch*1000).toISOString();const diff=Math.abs(new Date(readAtIso).getTime()-slotEpoch*1000);if(diff>90000)throw new Error('QRの有効時間を過ぎています');const row=(snapshot.qr_hashes||[]).find(x=>Math.abs(new Date(x.slot_at).getTime()-slotEpoch*1000)<1000);if(!row)throw new Error('このQR時刻の検証データが端末にありません');const hash=await sha256Hex(token);if(hash!==row.token_hash)throw new Error('QRを確認できませんでした');return {slot_at:slotAt,token};}
+  window.SigmaOfflineWorkStore={saveSnapshot,getSnapshot,saveManagerQrBank,getManagerQrBank,getManagerQrBankMeta,getLocalWorkState,setLocalWorkState,addEvent,listEvents,listPendingEvents,markEventSynced,markEventError,resolveRoleFromSnapshot,validateQrPayload,sha256Hex};
+})();

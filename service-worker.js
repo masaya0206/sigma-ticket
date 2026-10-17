@@ -1,9 +1,12 @@
-const CACHE_NAME = "sigma-faceid-backup-sync-v57";
+const CACHE_NAME = "sigma-offline-attendance-v85";
 
 const CORE_ASSETS = [
   "./home.html",
   "./offline-scanner.html",
   "./offline-seller.html",
+  "./offline-work-store.js",
+  "./offline-attendance-qr.html",
+  "./offline-attendance.html",
   "./presale.html",
   "./presale-collection.html",
   "./presale-collection-admin.html",
