@@ -2,7 +2,6 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>スタッフ・勤怠</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/html5-qrcode"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f7f4f2;color:#1c1c1e}
@@ -124,11 +123,10 @@ table{
 
 </head><body><header><h1>👤 スタッフ・勤怠</h1></header><main>
 <div class="card"><h2>現在の状態</h2><div id="status">読み込み中...</div></div>
-<div class="card"><h2>動的QRで出勤・退勤</h2><p class="small">会場に表示されている最新QRを読み取ります。同じQRを同じ人が2回使うことはできません。</p><button class="primary" id="scanBtn">QRを読み取る</button><button id="stopBtn" style="display:none">カメラを止める</button><div id="reader"></div><div id="scanMsg"></div></div>
+<div class="card"><h2>時間式QRで出勤・退勤</h2><p class="small">オンライン・オフライン共通の勤怠QRを使用します。出勤は時間式QRの読み取り、退勤は勤務中画面から行います。</p><button class="primary" onclick="location.href=\'offline-attendance.html\'">勤怠QRを開く</button></div>
 <div class="card"><button onclick="location.href='shift.html'">🗓 希望シフトを提出</button><button onclick="location.href='work.html'">← 勤怠・シフト</button></div>
 </main><script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
-let scanner=null,busy=false;
 const roleName=r=>{if(["front","back","tent"].includes(r))r="manager";return ({seller:"売り子",manager:"店長",cook:"調理",support:"サポート",register:"レジ",shopping_driver:"買い出し運転手",shopping_helper:"買い出し手伝い"}[r]||r||"—")};
 async function auth(){const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return null}return user}
 async function load(){
@@ -141,7 +139,7 @@ async function load(){
  if(ws.error) status.innerHTML='<span class="err">'+ws.error.message+'</span>';
  else {
    const x=ws.data||{};
-   status.innerHTML=x.working?`<div class="big">勤務中</div><div>現在役職：<b>${roleName(x.role)}</b></div><div class="small">出勤 ${new Date(x.clock_in).toLocaleString('ja-JP')}</div>`:`<div class="big">退勤中</div><div class="small">QRを読み取ると売り子として出勤します。</div>`;
+   status.innerHTML=x.working?`<div class="big">勤務中</div><div>現在役職：<b>${roleName(x.role)}</b></div><div class="small">出勤 ${new Date(x.clock_in).toLocaleString('ja-JP')}</div>`:`<div class="big">退勤中</div><div class="small">時間式QRを読み取ると、完成シフトから役割を自動判定して出勤します。</div>`;
  }
  if(!pre.error){
    prePt.textContent=Number(pre.data?.presale_points||0).toFixed(1)+' pt';
@@ -154,24 +152,6 @@ async function load(){
  day+=Number(sp.has_final?sp.final_points:sp.provisional_points||0);
  dayPt.textContent=day.toFixed(1)+' pt'+(fin.data?.length&&sp.has_final?'（確定）':'（暫定）');
 }
-async function startScan(){
- if(scanner)return;
- scanner=new Html5Qrcode("reader");
- scanBtn.style.display='none';stopBtn.style.display='block';scanMsg.textContent='カメラを起動しています...';
- try{
-   await scanner.start({facingMode:"environment"},{fps:10,qrbox:250},async text=>{
-     if(busy)return;busy=true;
-     let token=text;
-     try{const u=new URL(text);token=u.searchParams.get('attendance_token')||text}catch(e){}
-     const {data,error}=await sb.rpc('toggle_attendance_by_qr',{p_token:token});
-     scanMsg.innerHTML=error?'<span class="err">エラー：'+error.message+'</span>':'<span class="ok">✅ '+(data.action==='clock_in'?'出勤しました':'退勤しました')+'</span>';
-     if(!error){await stopScan();await load()}
-     busy=false;
-   });
-   scanMsg.textContent='QRを画面中央に入れてください。';
- }catch(e){scanMsg.innerHTML='<span class="err">'+e.message+'</span>';scanner=null;scanBtn.style.display='block';stopBtn.style.display='none'}
-}
-async function stopScan(){if(scanner){try{await scanner.stop()}catch(e){}try{await scanner.clear()}catch(e){}scanner=null}scanBtn.style.display='block';stopBtn.style.display='none'}
-scanBtn.onclick=startScan;stopBtn.onclick=stopScan;load();
+load();
 </script><nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="active" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 </body></html>

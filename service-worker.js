@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-dynamic-attendance-qr-v89";
+const CACHE_NAME = "sigma-unified-attendance-v90";
 
 const CORE_ASSETS = [
   "./connection-status.js",
@@ -8,6 +8,8 @@ const CORE_ASSETS = [
   "./offline-seller.html",
   "./offline-work-store.js",
   "./offline-attendance-qr.html",
+  "./attendance-qr.html",
+  "./staff.html",
   "./offline-attendance.html",
   "./presale.html",
   "./presale-collection.html",

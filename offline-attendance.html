@@ -19,6 +19,39 @@ const roleText=r=>({seller:'売り子',manager:'店長',register:'レジ',suppor
 let state=null,snapshot=null,scanner=null,busy=false;
 function uuid(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 
+async function refreshSnapshotFromServer(){
+  if(!navigator.onLine || !sb) return false;
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.user) return false;
+    const {data,error}=await sb.rpc('offline_work_snapshot');
+    if(error) throw error;
+    snapshot=await SigmaOfflineWorkStore.saveSnapshot(data||{});
+    return true;
+  }catch(e){
+    console.warn('勤務スナップショット更新失敗:',e);
+    return false;
+  }
+}
+
+async function validateCurrentQr(text,readAt){
+  try{
+    return await SigmaOfflineWorkStore.validateQrPayload(text,readAt);
+  }catch(e){
+    const msg=String(e?.message||e);
+    if(navigator.onLine && (
+      msg.includes('公開鍵が端末に保存されていません') ||
+      msg.includes('勤務データが保存されていません')
+    )){
+      const refreshed=await refreshSnapshotFromServer();
+      if(refreshed){
+        return await SigmaOfflineWorkStore.validateQrPayload(text,readAt);
+      }
+    }
+    throw e;
+  }
+}
+
 async function tryImmediateSync(ev){
   if(!navigator.onLine || !sb) return false;
   try{
@@ -43,6 +76,7 @@ async function tryImmediateSync(ev){
 }
 
 async function refresh(){
+  if(navigator.onLine) await refreshSnapshotFromServer();
   snapshot=await SigmaOfflineWorkStore.getSnapshot();
   state=await SigmaOfflineWorkStore.getLocalWorkState();
   if(!snapshot){
@@ -65,7 +99,7 @@ async function handleQr(text){
   if(busy)return;busy=true;
   try{
     const readAt=new Date().toISOString();
-    const q=await SigmaOfflineWorkStore.validateQrPayload(text,readAt);
+    const q=await validateCurrentQr(text,readAt);
     const role=SigmaOfflineWorkStore.resolveRoleFromSnapshot(snapshot,readAt,120);
 
     if(!role){
