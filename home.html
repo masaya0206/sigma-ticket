@@ -2315,12 +2315,30 @@ const planned =
     async function cacheOfflineWorkSnapshot(){
       if(!window.SigmaOfflineWorkStore || portalNetworkState==="offline") return;
       try{
-        const {data,error}=await supabaseClient.rpc("offline_work_snapshot");
+        let {data,error}=await supabaseClient.rpc("offline_work_snapshot");
         if(error) throw error;
         await SigmaOfflineWorkStore.saveSnapshot(data||{});
+
+        // 店長/管理者端末はQR生成鍵を1つだけ保持し、公開鍵だけをサーバーへ登録。
+        // QR自体は30秒ごとに端末内で生成するため、事前QRバンクは不要。
         if(data?.manager_qr_allowed){
-          const {data:bank,error:be}=await supabaseClient.rpc("offline_attendance_manager_bank");
-          if(!be && bank) await SigmaOfflineWorkStore.saveManagerQrBank(bank);
+          try{
+            const identity=await SigmaOfflineWorkStore.ensureQrSigningIdentity();
+            const {error:keyError}=await supabaseClient.rpc("register_attendance_qr_signing_key",{
+              p_key_id:identity.key_id,
+              p_public_jwk:identity.public_jwk
+            });
+            if(keyError) throw keyError;
+
+            // 登録直後の公開鍵も自端末スナップショットへ含める。
+            const refreshed=await supabaseClient.rpc("offline_work_snapshot");
+            if(!refreshed.error && refreshed.data){
+              data=refreshed.data;
+              await SigmaOfflineWorkStore.saveSnapshot(data);
+            }
+          }catch(e){
+            console.warn("勤怠QR生成鍵の自動登録に失敗:",e);
+          }
         }
       }catch(_){ }
     }
@@ -2330,14 +2348,26 @@ const planned =
       const events=await SigmaOfflineWorkStore.listPendingEvents();
       for(const ev of events){
         try{
-          const {data,error}=await supabaseClient.rpc("sync_offline_attendance_event",{
-            p_event_id:ev.event_id,
-            p_event_type:ev.event_type,
-            p_occurred_at:ev.occurred_at,
-            p_qr_slot_at:ev.qr_slot_at||null,
-            p_qr_token:ev.qr_token||null,
-            p_local_role:ev.role||null
-          });
+          const useV2=ev.qr_version==="MPA2" || ev.qr_key_id || ev.qr_slot_epoch;
+          const call=useV2
+            ? await supabaseClient.rpc("sync_offline_attendance_event_v2",{
+                p_event_id:ev.event_id,
+                p_event_type:ev.event_type,
+                p_occurred_at:ev.occurred_at,
+                p_qr_slot_epoch:ev.qr_slot_epoch||null,
+                p_qr_key_id:ev.qr_key_id||null,
+                p_qr_signature:ev.qr_signature||null,
+                p_local_role:ev.role||null
+              })
+            : await supabaseClient.rpc("sync_offline_attendance_event",{
+                p_event_id:ev.event_id,
+                p_event_type:ev.event_type,
+                p_occurred_at:ev.occurred_at,
+                p_qr_slot_at:ev.qr_slot_at||null,
+                p_qr_token:ev.qr_token||null,
+                p_local_role:ev.role||null
+              });
+          const {data,error}=call;
           if(error) throw error;
           await SigmaOfflineWorkStore.markEventSynced(ev.event_id,data||{});
         }catch(e){
