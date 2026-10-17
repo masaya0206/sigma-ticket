@@ -1,6 +1,7 @@
-const CACHE_NAME = "sigma-offline-attendance-v85";
+const CACHE_NAME = "sigma-connection-status-v86";
 
 const CORE_ASSETS = [
+  "./connection-status.js",
   "./home.html",
   "./offline-scanner.html",
   "./offline-seller.html",
@@ -104,22 +105,35 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // HTMLは常にオンラインの最新版を優先。
-  // これによりノルマ集金担当解除などの権限変更が古いキャッシュに邪魔されにくくなる。
+  // HTMLはオンライン最新版を優先しつつ、全画面へ共通の通信状態バーを注入。
+  // オフライン時は保存済みHTMLにも同じバーを付与する。
   if (request.mode === "navigate" || request.destination === "document") {
-    event.respondWith(
-      fetch(request)
-        .then(async response => {
-          try {
-            if (response && response.ok) {
-              const cache = await caches.open(CACHE_NAME);
-              await cache.put(request, response.clone());
-            }
-          } catch (_) {}
-          return response;
-        })
-        .catch(() => caches.match(request).then(cached => cached || caches.match("./home.html")))
-    );
+    const injectConnectionStatus = async response => {
+      if (!response) return response;
+      const type = response.headers.get("content-type") || "";
+      if (!type.includes("text/html")) return response;
+      try {
+        let html = await response.clone().text();
+        if (!html.includes("connection-status.js")) {
+          const script = '<script src="./connection-status.js"></script>';
+          if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, script + "</body>");
+          else html += script;
+        }
+        const headers = new Headers(response.headers);
+        headers.delete("content-length");
+        return new Response(html,{status:response.status,statusText:response.statusText,headers});
+      } catch (_) { return response; }
+    };
+    event.respondWith((async()=>{
+      try {
+        const network=await fetch(request);
+        if(network&&network.ok){try{const cache=await caches.open(CACHE_NAME);await cache.put(request,network.clone());}catch(_){}}
+        return await injectConnectionStatus(network);
+      } catch (_) {
+        const cached=await caches.match(request)||await caches.match("./home.html");
+        return await injectConnectionStatus(cached);
+      }
+    })());
     return;
   }
 
