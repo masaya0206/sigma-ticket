@@ -8,6 +8,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./offline-store.js?v=57"></script>
+  <script src="./offline-work-store.js"></script>
 
   <meta name="theme-color" content="#b5121b">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -661,34 +662,8 @@ table{
         </button>
 
         <div id="loginOfflineTools" style="display:block;margin-top:12px;padding-top:12px;border-top:1px solid #ece7e4;">
-          <div style="font-size:13px;font-weight:800;color:#6e5b34;margin-bottom:8px;">非常用・通信トラブル時</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button
-              type="button"
-              class="secondary-button"
-              onclick="location.href='offline-scanner.html'"
-              style="margin:0;"
-            >
-              非常用QR受付
-            </button>
-            <button
-              type="button"
-              class="secondary-button"
-              onclick="location.href='offline-seller.html'"
-              style="margin:0;"
-            >
-              非常用当日券発行
-            </button>
-            <button
-              type="button"
-              class="secondary-button"
-              onclick="location.href='offline-attendance.html'"
-              style="grid-column:1 / -1;margin:0;"
-            >
-              オフライン出勤・退勤
-            </button>
-          </div>
-          <div style="margin-top:8px;font-size:12px;line-height:1.5;color:#8a6b3f;">出勤前に通信できない場合は「オフライン出勤・退勤」から時間式QRを読み取れます。通常時はログインを推奨します。</div>
+          <button type="button" class="secondary-button" onclick="location.href='offline-center.html'" style="margin:0;">オフライン対応</button>
+          <div style="margin-top:8px;font-size:12px;line-height:1.5;color:#8a6b3f;">通信トラブル時の出勤・退勤、券発行、QR受付はこちらから利用できます。</div>
         </div>
 
         <p
@@ -851,12 +826,11 @@ table{
           <div id="offlineBackupCard" style="margin-top:14px;background:#fffaf0;border:1px solid #f0d7a5;border-radius:18px;padding:15px;">
             <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
               <div style="min-width:0;">
-                <div style="font-weight:900;font-size:16px;">非常用オフラインバックアップ</div>
+                <div style="font-weight:900;font-size:16px;">オフライン対応</div>
                 <div id="offlineBackupStatus" style="margin-top:5px;color:#6e5b34;font-size:13px;line-height:1.5;">保存状況を確認しています...</div>
               </div>
               <span id="offlineBackupBadge" style="font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eee;color:#555;white-space:nowrap;">確認中</span>
             </div>
-
             <div style="margin-top:11px;padding:10px 11px;border-radius:13px;background:rgba(255,255,255,.72);border:1px solid rgba(154,103,0,.10);">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div id="connectionText" style="color:#6e5b34;font-size:12px;line-height:1.5;">通信状況を確認しています...</div>
@@ -864,20 +838,8 @@ table{
               </div>
               <div id="offlineWorkStatus" style="margin-top:6px;font-size:12px;color:#5d4b42;line-height:1.5;"></div>
             </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-              <button id="saveOfflineBackupBtn" onclick="saveOfflineBackup()" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">この端末に保存</button>
-              <button onclick="location.href='offline-scanner.html'" style="border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#2c2c2e;color:#fff;">非常用QR受付</button>
-              <button onclick="location.href='offline-seller.html'" style="grid-column:1 / -1;border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#b5121b;color:#fff;">非常用当日券発行</button>
-            </div>
-
-            <div id="offlineWorkActions" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-              <button id="offlineClockInBtn" onclick="location.href='offline-attendance.html'" style="display:none;border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#b5121b;color:#fff;">オフライン出勤</button>
-              <button id="offlineClockOutBtn" onclick="location.href='offline-attendance.html'" style="display:none;border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#2c2c2e;color:#fff;">オフライン退勤</button>
-              <button id="offlineQrBtn" onclick="location.href='offline-attendance-qr.html'" style="display:none;border:0;border-radius:12px;padding:12px 10px;font-weight:900;background:#8f0e15;color:#fff;">出勤QRを表示</button>
-            </div>
-
-            <div id="offlineBackupMessage" style="font-size:12px;color:#6e6e73;line-height:1.5;margin-top:9px;"></div>
+            <button onclick="location.href='offline-center.html'" style="width:100%;margin-top:12px;border:0;border-radius:13px;padding:14px 12px;font-weight:900;background:#b5121b;color:#fff;">オフライン対応を開く</button>
+            <div id="offlineBackupMessage" style="font-size:12px;color:#6e6e73;line-height:1.5;margin-top:9px;">オンライン中は必要なデータをこの端末へ自動保存します。</div>
           </div>
 
           <div id="roleSection" class="role-section">
@@ -2058,6 +2020,8 @@ table{
       await refreshPortal();
       await refreshOfflineBackupStatus();
       await refreshCollectionAccess();
+      await autoSaveOfflineData("portal-open");
+      startOfflineAutoSave();
     }
 
 
@@ -2321,6 +2285,31 @@ const planned =
 
     function rolePageForOffline(role){
       return ({seller:"offline-seller.html",manager:"home.html",register:"home.html",support:"home.html",cook:"home.html",shopping_driver:"home.html",shopping_helper:"home.html"})[role]||"home.html";
+    }
+
+    let offlineAutoSaveBusy = false;
+    let offlineAutoSaveTimer = null;
+
+    async function autoSaveOfflineData(reason="periodic"){
+      if(offlineAutoSaveBusy || !navigator.onLine) return {skipped:true};
+      offlineAutoSaveBusy = true;
+      try{
+        const {data:{session}} = await supabaseClient.auth.getSession();
+        if(!session?.user) return {skipped:true};
+        const user = session.user;
+        const {data:staff,error:staffError} = await supabaseClient.from("staff_members").select("staff_name,is_active").eq("user_id",user.id).maybeSingle();
+        if(staffError || !staff?.is_active) return {skipped:true};
+        const results = await Promise.allSettled([refreshOfflineDataAfterLogin(user,staff),cacheOfflineWorkSnapshot()]);
+        try{if(window.SigmaOfflineStore?.setMeta){await SigmaOfflineStore.setMeta("last_full_auto_backup",{saved_at:new Date().toISOString(),reason,ok:results.map(x=>x.status)});}}catch(_){}
+        await refreshOfflineBackupStatus();
+        return {saved:true};
+      }catch(e){console.warn("オフライン用データ自動保存失敗:",e);return {error:e?.message||String(e)};}
+      finally{offlineAutoSaveBusy=false;}
+    }
+
+    function startOfflineAutoSave(){
+      if(offlineAutoSaveTimer) clearInterval(offlineAutoSaveTimer);
+      offlineAutoSaveTimer=setInterval(()=>{if(document.visibilityState==="visible" && navigator.onLine){autoSaveOfflineData("periodic-2min");}},120000);
     }
 
     async function cacheOfflineWorkSnapshot(){
@@ -2590,8 +2579,9 @@ const planned =
     window.addEventListener(
       "offline",
       async () => {
-        document.getElementById("portalArea").style.display = "none";
-        document.getElementById("loginArea").style.display = "block";
+        portalPingFails=3;
+        portalNetworkState="offline";
+        await refreshOfflineWorkUi();
         await refreshLoginCollectionAccess();
         refreshLoginOfflineTools();
       }
@@ -2686,9 +2676,9 @@ const planned =
     }
 
 
-    window.addEventListener("online",()=>{portalPingFails=0;checkConnectivity();});
+    window.addEventListener("online",()=>{portalPingFails=0;checkConnectivity();autoSaveOfflineData("online-recovery");});
     window.addEventListener("offline",()=>{portalPingFails=3;portalNetworkState="offline";refreshOfflineWorkUi();});
-    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")checkConnectivity();});
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnectivity();autoSaveOfflineData("app-visible");}});
     setInterval(checkConnectivity,7000);
     setTimeout(checkConnectivity,500);
 

@@ -1,8 +1,9 @@
-const CACHE_NAME = "sigma-connection-status-v87";
+const CACHE_NAME = "sigma-offline-center-v88";
 
 const CORE_ASSETS = [
   "./connection-status.js",
   "./home.html",
+  "./offline-center.html",
   "./offline-scanner.html",
   "./offline-seller.html",
   "./offline-work-store.js",
