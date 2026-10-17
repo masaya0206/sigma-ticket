@@ -123,34 +123,28 @@ table{
 
 </head><body><header><h1>👤 スタッフ・勤怠</h1></header><main>
 <div class="card"><h2>現在の状態</h2><div id="status">読み込み中...</div></div>
-<div class="card"><h2>時間式QRで出勤・退勤</h2><p class="small">オンライン・オフライン共通の勤怠QRを使用します。出勤は時間式QRの読み取り、退勤は勤務中画面から行います。</p><button class="primary" onclick="location.href=\'offline-attendance.html\'">勤怠QRを開く</button></div>
+<div class="card"><h2>時間式QRで出勤・退勤</h2><p class="small">オンライン・オフライン共通の勤怠QRを使用します。出勤は時間式QRの読み取り、退勤は勤務中画面から行います。</p><button class="primary" onclick="location.href='offline-attendance.html'">勤怠QRを開く</button></div>
 <div class="card"><button onclick="location.href='shift.html'">🗓 希望シフトを提出</button><button onclick="location.href='work.html'">← 勤怠・シフト</button></div>
 </main><script>
 const sb=supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
 const roleName=r=>{if(["front","back","tent"].includes(r))r="manager";return ({seller:"売り子",manager:"店長",cook:"調理",support:"サポート",register:"レジ",shopping_driver:"買い出し運転手",shopping_helper:"買い出し手伝い"}[r]||r||"—")};
 async function auth(){const {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return null}return user}
 async function load(){
- const u=await auth();if(!u)return;
- const [ws,pre,prov,fin,shop]=await Promise.all([
-   sb.rpc('my_work_status'), sb.rpc('my_presale_status'),
-   sb.rpc('my_point_summary',{p_final:false}), sb.rpc('my_point_summary',{p_final:true}),
-   sb.rpc('my_shopping_point_summary')
- ]);
- if(ws.error) status.innerHTML='<span class="err">'+ws.error.message+'</span>';
- else {
-   const x=ws.data||{};
-   status.innerHTML=x.working?`<div class="big">勤務中</div><div>現在役職：<b>${roleName(x.role)}</b></div><div class="small">出勤 ${new Date(x.clock_in).toLocaleString('ja-JP')}</div>`:`<div class="big">退勤中</div><div class="small">時間式QRを読み取ると、完成シフトから役割を自動判定して出勤します。</div>`;
- }
- if(!pre.error){
-   prePt.textContent=Number(pre.data?.presale_points||0).toFixed(1)+' pt';
-   residual.textContent=(pre.data?.residual_remaining||0)+' 枚';
-   residualValue.textContent='残券相当額 '+Number(pre.data?.residual_value||0).toLocaleString()+'円';
- }
- const rows=fin.data?.length?fin.data:(prov.data||[]);
- let day=0;for(const r of rows) day+=Number(r.points||0);
- const sp=shop.data||{};
- day+=Number(sp.has_final?sp.final_points:sp.provisional_points||0);
- dayPt.textContent=day.toFixed(1)+' pt'+(fin.data?.length&&sp.has_final?'（確定）':'（暫定）');
+  const statusEl=document.getElementById('status');
+  try{
+    const u=await auth();
+    if(!u)return;
+    const {data:x,error}=await sb.rpc('my_work_status');
+    if(error) throw error;
+    const s=x||{};
+    if(s.working){
+      statusEl.innerHTML=`<div class="big">勤務中</div><div>現在役職：<b>${roleName(s.role)}</b></div><div class="small">出勤 ${s.clock_in?new Date(s.clock_in).toLocaleString('ja-JP'):'—'}</div>`;
+    }else{
+      statusEl.innerHTML=`<div class="big">退勤中</div><div class="small">時間式QRを読み取ると、完成シフトから役割を自動判定して出勤します。</div>`;
+    }
+  }catch(e){
+    statusEl.innerHTML=`<span class="err">状態を取得できませんでした。</span><div class="small">${String(e?.message||e)}</div>`;
+  }
 }
 load();
 </script><nav class="global-bottom-nav" aria-label="メインナビゲーション"><button class="" onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button class="active" onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button class="" onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
