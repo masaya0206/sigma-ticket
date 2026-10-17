@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-connection-status-v86";
+const CACHE_NAME = "sigma-connection-status-v87";
 
 const CORE_ASSETS = [
   "./connection-status.js",

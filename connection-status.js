@@ -11,7 +11,9 @@
     document.head.appendChild(style);
     const bar=document.createElement("div");bar.id="mpConnectionStatusBar";bar.dataset.state="checking";bar.setAttribute("role","status");bar.setAttribute("aria-live","polite");bar.innerHTML='<span class="mp-conn-main">確認中</span><span class="mp-conn-detail"></span>';
     bar.addEventListener("click",()=>{if(bar.dataset.state==="offline"&&!location.pathname.endsWith("/home.html")) location.href="./home.html";});
-    document.body.appendChild(bar);
+    // 画面の一番上へ入れ、レイアウト領域を確保する。
+    // fixedではなくstickyなので、ページタイトルやボタンに重ならない。
+    document.body.prepend(bar);
   }
   function textFor(next){if(next==="online")return["🟢 オンライン",""];if(next==="unstable")return["🟠 通信不安定","操作に失敗する場合はポータルへ"];if(next==="offline")return["🔴 オフライン",location.pathname.endsWith("/home.html")?"非常用オフライン機能を利用できます":"タップしてポータルへ"];return["通信確認中",""];}
   function setState(next){state=next;ensureBar();const bar=document.getElementById("mpConnectionStatusBar"),t=textFor(next);bar.dataset.state=next;bar.querySelector(".mp-conn-main").textContent=t[0];bar.querySelector(".mp-conn-detail").textContent=t[1];window.dispatchEvent(new CustomEvent("mp:connection-status",{detail:{state,lastOk}}));}
