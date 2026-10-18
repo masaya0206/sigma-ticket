@@ -19,7 +19,7 @@
 .recipient-product .muted{font-size:11px}.quantity-detail{margin:-4px 0 9px 0}
 .legend-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;flex-shrink:0}
 #driverProductFilter{margin-bottom:13px}
-</style></head><body><main><nav><button class="secondary" onclick="location.href='home.html'">← ホーム</button><button class="secondary" id="adminBack" onclick="location.href='admin-menu.html'">管理者メニュー</button></nav><div class="hero"><h1>食材保存</h1><p>買い出しから受け渡しまで、ここで確認できます。</p></div>
+.view-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f0e8e9;padding:4px;border-radius:12px;margin:10px 0}.view-switch button{background:transparent;color:#72585c;padding:10px;font-size:13px}.view-switch button.selected{background:white;color:#a91824;box-shadow:0 1px 4px #0001}.timeframe-note{font-size:12px;color:#73696a;margin:0 0 10px} </style></head><body><main><nav><button class="secondary" onclick="location.href='home.html'">← ホーム</button><button class="secondary" id="adminBack" onclick="location.href='admin-menu.html'">管理者メニュー</button></nav><div class="hero"><h1>食材保存</h1><p>買い出しから受け渡しまで、ここで確認できます。</p></div>
 <div class="steps" aria-label="利用の流れ"><div class="step"><b>①</b>商品登録</div><div class="step"><b>②</b>日時共有</div><div class="step"><b>③</b>受取申込</div><div class="step"><b>④</b>預け完了</div></div>
 <div class="stats" aria-label="現在の状況"><div class="stat"><span>登録商品</span><strong id="statItems">—</strong></div><div class="stat"><span>公開予定</span><strong id="statSlots">—</strong></div><div class="stat"><span>受取申込</span><strong id="statRequests">—</strong></div><div class="stat"><span>預け待ち</span><strong id="statPending">—</strong></div></div>
 <div id="notice">ログインを確認中...</div>
@@ -29,7 +29,7 @@
 <input type="hidden" id="editId"><label>商品名</label><input id="itemName" placeholder="例：米"><label>大きさ・規格の詳細</label><textarea id="spec" placeholder="例：5kg袋、縦30cm×横20cm、1箱12本入り"></textarea><div class="grid"><div><label>必要数量</label><input type="number" min="0.01" step="any" id="qty" value="1"></div><div><label>単位</label><select id="unit"><option>袋</option><option>個</option><option>箱</option><option>kg</option><option>パック</option><option>本</option><option>セット</option></select></div></div><label>保存方法</label><select id="storage"><option>常温</option><option>冷蔵</option><option>冷凍</option><option>その他</option></select><label>保存ポイント</label><select id="pointMode" onchange="pointValue.disabled=this.value==='pending'"><option value="pending">未定（後から設定）</option><option value="set">数量1単位あたりのポイントを設定</option></select><input id="pointValue" type="number" min="0" step="any" placeholder="例：2（0ポイントも可）" disabled><label>備考</label><textarea id="itemNotes" placeholder="任意"></textarea><button class="full" id="saveItemButton" onclick="saveItem()">商品を登録</button><button class="full secondary hide" id="cancelEditButton" onclick="resetEditor()">編集をやめる</button></div>
 <div class="card"><h2>② 管理者：買い出しドライバーの指定</h2><p class="small">担当ドライバーの登録は既存の運転手チーム管理を使います。ここでは受け渡し割当を行いません。</p><button class="full" onclick="location.href='shopping-team-admin.html'">ドライバー登録・解除を開く</button></div></section></div>
 <div class="tabpane" id="pane-driver"><div id="driverArea" class="card hide"><h2>③ ドライバー：買い出しに行ける日時を共有</h2><p class="small">登録した時間は他のスタッフに公開されます。複数の時間帯を登録できます。</p><div class="grid"><div><label>開始</label><input type="datetime-local" id="startAt"></div><div><label>終了</label><input type="datetime-local" id="endAt"></div></div><label>備考（受け渡し場所など）</label><textarea id="availabilityNote"></textarea><button class="full" onclick="saveAvailability()">対応可能日時を登録</button></div>
-<div class="card"><h2>買い出し・受け渡し状況</h2><div class="driver-stats"><div class="driver-stat"><span class="k">自分の公開予定</span><span class="v" id="driverStatSlots">—</span></div><div class="driver-stat"><span class="k">預け待ち</span><span class="v" id="driverStatPending">—</span></div><div class="driver-stat"><span class="k">預け完了</span><span class="v" id="driverStatCompleted">—</span></div><div class="driver-stat"><span class="k">受け渡し品目</span><span class="v" id="driverStatQty">—</span></div></div><div class="graph-block"><div class="graph-title">自分の預け進捗</div><div class="stack-track"><div class="stack-seg pending" id="driverProgressPending" style="width:0%"></div><div class="stack-seg completed" id="driverProgressCompleted" style="width:0%"></div></div><div class="stack-meta"><span id="driverProgressMeta">読み込み中...</span><span class="driver-note">黄＝預け待ち / 緑＝預け完了</span></div></div><div class="driver-columns"><div class="graph-block"><div class="graph-title">日別に渡す商品・数量</div><label for="driverProductFilter">商品で絞り込み</label><select id="driverProductFilter" onchange="renderDriverBreakdown()"><option value="">すべての商品</option></select><div id="productLegend" class="product-legend"></div><div id="driverDayChart" class="bar-chart">読み込み中...</div></div><div class="graph-block"><div class="graph-title">品目別の必要数量</div><div id="driverPeopleChart" class="bar-chart">読み込み中...</div></div></div></div>
+<div class="card"><h2>買い出し・受け渡し状況</h2><div class="driver-stats"><div class="driver-stat"><span class="k">自分の公開予定</span><span class="v" id="driverStatSlots">—</span></div><div class="driver-stat"><span class="k">預け待ち</span><span class="v" id="driverStatPending">—</span></div><div class="driver-stat"><span class="k">預け完了</span><span class="v" id="driverStatCompleted">—</span></div><div class="driver-stat"><span class="k">受け渡し品目</span><span class="v" id="driverStatQty">—</span></div></div><div class="graph-block"><div class="graph-title">自分の預け進捗</div><div class="stack-track"><div class="stack-seg pending" id="driverProgressPending" style="width:0%"></div><div class="stack-seg completed" id="driverProgressCompleted" style="width:0%"></div></div><div class="stack-meta"><span id="driverProgressMeta">読み込み中...</span><span class="driver-note">黄＝預け待ち / 緑＝預け完了</span></div></div><div class="driver-columns"><div class="graph-block"><div class="graph-title" id="driverBreakdownTitle">日別に渡す商品・数量</div><div class="view-switch"><button type="button" id="viewDay" onclick="setDriverView('day')">日付ごと</button><button type="button" id="viewSlot" onclick="setDriverView('slot')">日時ごと</button></div><label for="driverProductFilter">商品で絞り込み</label><select id="driverProductFilter" onchange="renderDriverBreakdown()"><option value="">すべての商品</option></select><div id="productLegend" class="product-legend"></div><div id="driverDayChart" class="bar-chart">読み込み中...</div></div><div class="graph-block"><div class="graph-title">品目別の必要数量</div><div id="driverPeopleChart" class="bar-chart">読み込み中...</div></div></div></div>
 <div class="card"><div class="section-head"><h2>自分の登録日時・受け渡し詳細</h2></div><div id="myAvailList">読み込み中...</div></div>
 <div class="card"><h2>渡すもの・預け完了</h2><p class="muted">自分が渡す予定を先に表示します。</p><div id="driverHandoffs">読み込み中...</div></div></div>
 <div class="tabpane" id="pane-staff"><div class="card"><div class="section-head"><h2>受取可能な予定</h2></div><div id="availList">読み込み中...</div></div>
@@ -54,6 +54,10 @@ const PRODUCT_COLORS=['#b02b44','#277bb0','#198b79','#bc852d','#7f62bd','#cc667f
 function productColorMap(){const ordered=[...items].sort((a,b)=>String(a.id).localeCompare(String(b.id)));const result={};ordered.forEach((item,index)=>{result[item.id]=PRODUCT_COLORS[index%PRODUCT_COLORS.length]});return result}
 function productName(id){return items.find(item=>item.id===id)?.name||'商品不明'}
 let driverRows=[];let openDriverDays=new Set();
+let driverView=localStorage.getItem('foodStorageDriverView')==='slot'?'slot':'day';
+function setDriverView(mode){driverView=mode==='slot'?'slot':'day';localStorage.setItem('foodStorageDriverView',driverView);renderDriverBreakdown()}
+function groupDriverSlot(h){const at=new Date(h.scheduled_at||h.created_at).getTime();const matching=available.filter(x=>x.user_id===me&&at>=new Date(x.start_at).getTime()&&at<=new Date(x.end_at).getTime());matching.sort((a,b)=>(new Date(a.end_at)-new Date(a.start_at))-(new Date(b.end_at)-new Date(b.start_at)));return matching[0]||null}
+
 function buildDriverGraphs(myRows){
  driverRows=myRows;
  const mineOpen=myRows.filter(x=>x.status==='assigned'), mineDone=myRows.filter(x=>x.status==='completed');
@@ -80,14 +84,18 @@ function renderDriverBreakdown(){
  filter.innerHTML='<option value="">すべての商品</option>'+productIds.map(id=>`<option value="${esc(id)}">${esc(productName(id))}</option>`).join('');
  filter.value=productIds.includes(old)?old:'';
  const rows=driverRows.filter(h=>!filter.value||h.item_id===filter.value),colors=productColorMap();
+ $('viewDay').classList.toggle('selected',driverView==='day');$('viewSlot').classList.toggle('selected',driverView==='slot');
+ $('viewDay').setAttribute('aria-pressed',String(driverView==='day'));$('viewSlot').setAttribute('aria-pressed',String(driverView==='slot'));
+ $('driverBreakdownTitle').textContent=driverView==='day'?'日別に渡す商品・数量':'時間帯別に渡す商品・数量';
  const byProduct=new Map(),byDay=new Map();
  for(const h of rows){
   const id=h.item_id, qty=h.status==='completed'?Number(h.completed_quantity||0):Number(h.quantity||0);
   if(!byProduct.has(id))byProduct.set(id,{pending:0,completed:0});
   byProduct.get(id)[h.status==='completed'?'completed':'pending']+=qty;
-  const day=dayKey(h.scheduled_at||h.created_at);
-  if(!byDay.has(day))byDay.set(day,{products:new Map(),handoffs:[]});
-  const data=byDay.get(day); data.handoffs.push(h);
+  const slot=driverView==='slot'?groupDriverSlot(h):null;
+  const groupKey=driverView==='slot'?(slot?'slot:'+slot.id:'other:'+dayKey(h.scheduled_at||h.created_at)):'day:'+dayKey(h.scheduled_at||h.created_at);
+  if(!byDay.has(groupKey))byDay.set(groupKey,{products:new Map(),handoffs:[],slot,sortAt:slot?new Date(slot.start_at).getTime():new Date(h.scheduled_at||h.created_at).getTime()});
+  const data=byDay.get(groupKey); data.handoffs.push(h);
   if(!data.products.has(id))data.products.set(id,{pending:0,completed:0});
   data.products.get(id)[h.status==='completed'?'completed':'pending']+=qty;
  }
@@ -101,7 +109,7 @@ function renderDriverBreakdown(){
  };
  $('productLegend').innerHTML=ordered.map(([id])=>`<span class="legend-chip"><span class="legend-dot" style="background:${colors[id]||'#999'}"></span>${esc(productName(id))}</span>`).join('')||'<span class="muted">受け渡し登録後に表示されます</span>';
  $('driverPeopleChart').innerHTML=ordered.map(([id,v])=>bar(id,v)).join('')||'<div class="empty">該当する商品はありません</div>';
- const days=[...byDay.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+ const days=[...byDay.entries()].sort((a,b)=>a[1].sortAt-b[1].sortAt);
  $('driverDayChart').innerHTML=days.map(([day,obj])=>{
   // Group rows by recipient. Sort by quantities in the selected product, or by total requested
   // counts of individual units if different product units are mixed (never show a mixed-unit total).
@@ -124,7 +132,10 @@ function renderDriverBreakdown(){
     return `<div class="recipient-line"><div class="top"><b>${esc(label(r.id))}</b><span class="muted">${time(timing)}</span></div><div class="recipient-products">${summary}</div></div>`;
   }).join('');
   const open=openDriverDays.has(day);
-  return `<div class="day-quantity-group"><button type="button" class="day-expand" aria-expanded="${open}" onclick="toggleDriverDay('${day}')"><span>${esc(day)} <span class="muted">${obj.products.size}品目・${recipients.size}人</span></span><span>${open?'▲':'▼'} 詳細</span></button>${[...obj.products.entries()].map(([id,v])=>bar(id,v)).join('')}<div class="day-recipients ${open?'':'hide'}"><div class="graph-title">受取スタッフ別の内訳（数量の多い順）</div>${recipientHtml}</div></div>`;
+  const slot=obj.slot;
+  const heading=driverView==='day'?day.slice(4):slot?`${time(slot.start_at)} 〜 ${new Date(slot.end_at).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}`:`${day.substring(6)}（時間枠を特定できません）`;
+  const note=driverView==='slot'?(slot?`<div class="timeframe-note">${esc(slot.note||'')} ／ 予定枠内の受け渡し</div>`:'<div class="timeframe-note">一致する公開予定がありません</div>'):'';
+  return `<div class="day-quantity-group"><button type="button" class="day-expand" aria-expanded="${open}" onclick="toggleDriverDay('${day}')"><span>${esc(heading)} <span class="muted">${obj.products.size}品目・${recipients.size}人</span></span><span>${open?'▲':'▼'} 詳細</span></button>${note}${[...obj.products.entries()].map(([id,v])=>bar(id,v)).join('')}<div class="day-recipients ${open?'':'hide'}"><div class="graph-title">受取スタッフ別の内訳（数量の多い順）</div>${recipientHtml}</div></div>`;
  }).join('')||'<div class="empty">まだ受け渡し予定はありません</div>';
 }
 function toggleDriverDay(day){
