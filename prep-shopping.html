@@ -16,7 +16,7 @@
 .day-expand .muted{font-size:12px}.day-recipients{border-top:1px solid #efe0e2;padding-top:10px;margin-top:12px}
 .recipient-line{border:1px solid #efe0e2;border-radius:10px;padding:12px;margin:9px 0;background:#fff}
 .recipient-products{display:grid;gap:7px;margin-top:9px}.recipient-product{font-size:13px;line-height:1.5}
-.recipient-product .muted{font-size:11px}
+.recipient-product .muted{font-size:11px}.pickup-time{font-size:12px;color:#87242e;background:#f8e9eb;border-radius:6px;padding:2px 6px;margin-left:5px;white-space:nowrap}
 .staff-detail{margin-top:9px;border-top:1px solid #f0e4e5;padding-top:9px}.staff-detail summary{cursor:pointer;color:#9a222c;font-weight:750;padding:8px 0}.staff-detail .line{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0;flex-wrap:wrap}.staff-detail input{max-width:95px;padding:7px}.staff-detail .line label{margin:0}.staff-detail .line .small{flex:1;min-width:120px}.staff-detail button.full{margin-top:10px}.fallback-summary{cursor:pointer;font-weight:750}.quantity-detail{margin:-4px 0 9px 0}
 .legend-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;flex-shrink:0}
 #driverProductFilter{margin-bottom:13px}
@@ -128,8 +128,20 @@ function renderDriverBreakdown(){
      const x=byItem.get(h.item_id);
      x[h.status==='completed'?'completed':'pending']+=h.status==='completed'?Number(h.completed_quantity||0):Number(h.quantity||0);
     }
-    const summary=[...byItem.entries()].map(([id,v])=>`<span class="recipient-product"><span class="legend-dot" style="background:${colors[id]||'#999'}"></span>${esc(productName(id))} <b>${format(id,v.pending+v.completed)}</b> <span class="muted">（待ち${format(id,v.pending)}・完了${format(id,v.completed)}）</span></span>`).join('');
+    // Keep each booked handoff time beside its item, even when the view is grouped by date.
+    // A staff member can receive the same product more than once at different hours.
+    const byItemTime=new Map();
+    for(const h of r.rows){
+      const key=h.item_id+'|'+(h.scheduled_at||'');
+      if(!byItemTime.has(key))byItemTime.set(key,{id:h.item_id,at:h.scheduled_at,pending:0,completed:0});
+      const v=byItemTime.get(key);
+      v[h.status==='completed'?'completed':'pending']+=h.status==='completed'?Number(h.completed_quantity||0):Number(h.quantity||0);
+    }
+    const atLabel=v=>v?new Date(v).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'時刻未定';
+    const summary=[...byItemTime.values()].sort((a,b)=>new Date(a.at)-new Date(b.at)).map(v=>`<span class="recipient-product"><span class="legend-dot" style="background:${colors[v.id]||'#999'}"></span>${esc(productName(v.id))} <b>${format(v.id,v.pending+v.completed)}</b> <strong class="pickup-time">${esc(atLabel(v.at))}</strong> <span class="muted">（待ち${format(v.id,v.pending)}・完了${format(v.id,v.completed)}）</span></span>`).join('');
     const timing=r.rows.map(h=>new Date(h.scheduled_at)).sort((a,b)=>a-b)[0];
+    const uniqueTimes=new Set(r.rows.map(h=>h.scheduled_at));
+    const timingLabel=uniqueTimes.size>1?'複数の受取時刻':time(timing);
     const pending=r.rows.filter(h=>h.status==='assigned');
     const lines=r.rows.slice().sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at)).map(h=>{
       const item=items.find(x=>x.id===h.item_id),waiting=h.status==='assigned';
@@ -137,7 +149,7 @@ function renderDriverBreakdown(){
     }).join('');
     // Each group contains only this date/time slot and recipient's handoffs.
     const ids=pending.map(h=>h.id).join(',');
-    return `<div class="recipient-line"><div class="top"><b>${esc(label(r.id))}</b><span class="muted">${time(timing)}</span></div><div class="recipient-products">${summary}</div><details class="staff-detail"><summary>スタッフ詳細・預け完了（未完了${pending.length}件）</summary>${lines}${pending.length?`<button class="full" type="button" onclick="completeStaffGroup('${ids}')">このスタッフへの預けをまとめて完了</button>`:'<div class="pill complete">すべて預け完了</div>'}</details></div>`;
+    return `<div class="recipient-line"><div class="top"><b>${esc(label(r.id))}</b><span class="muted">${esc(timingLabel)}</span></div><div class="recipient-products">${summary}</div><details class="staff-detail"><summary>スタッフ詳細・預け完了（未完了${pending.length}件）</summary>${lines}${pending.length?`<button class="full" type="button" onclick="completeStaffGroup('${ids}')">このスタッフへの預けをまとめて完了</button>`:'<div class="pill complete">すべて預け完了</div>'}</details></div>`;
   }).join('');
   const open=openDriverDays.has(day);
   const slot=obj.slot;
