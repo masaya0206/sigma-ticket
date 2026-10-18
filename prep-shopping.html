@@ -16,7 +16,8 @@
 .day-expand .muted{font-size:12px}.day-recipients{border-top:1px solid #efe0e2;padding-top:10px;margin-top:12px}
 .recipient-line{border:1px solid #efe0e2;border-radius:10px;padding:12px;margin:9px 0;background:#fff}
 .recipient-products{display:grid;gap:7px;margin-top:9px}.recipient-product{font-size:13px;line-height:1.5}
-.recipient-product .muted{font-size:11px}.quantity-detail{margin:-4px 0 9px 0}
+.recipient-product .muted{font-size:11px}
+.staff-detail{margin-top:9px;border-top:1px solid #f0e4e5;padding-top:9px}.staff-detail summary{cursor:pointer;color:#9a222c;font-weight:750;padding:8px 0}.staff-detail .line{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0;flex-wrap:wrap}.staff-detail input{max-width:95px;padding:7px}.staff-detail .line label{margin:0}.staff-detail .line .small{flex:1;min-width:120px}.staff-detail button.full{margin-top:10px}.fallback-summary{cursor:pointer;font-weight:750}.quantity-detail{margin:-4px 0 9px 0}
 .legend-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;flex-shrink:0}
 #driverProductFilter{margin-bottom:13px}
 .view-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f0e8e9;padding:4px;border-radius:12px;margin:10px 0}.view-switch button{background:transparent;color:#72585c;padding:10px;font-size:13px}.view-switch button.selected{background:white;color:#a91824;box-shadow:0 1px 4px #0001}.timeframe-note{font-size:12px;color:#73696a;margin:0 0 10px} </style></head><body><main><nav><button class="secondary" onclick="location.href='home.html'">← ホーム</button><button class="secondary" id="adminBack" onclick="location.href='admin-menu.html'">管理者メニュー</button></nav><div class="hero"><h1>食材保存</h1><p>買い出しから受け渡しまで、ここで確認できます。</p></div>
@@ -31,7 +32,7 @@
 <div class="tabpane" id="pane-driver"><div id="driverArea" class="card hide"><h2>③ ドライバー：買い出しに行ける日時を共有</h2><p class="small">登録した時間は他のスタッフに公開されます。複数の時間帯を登録できます。</p><div class="grid"><div><label>開始</label><input type="datetime-local" id="startAt"></div><div><label>終了</label><input type="datetime-local" id="endAt"></div></div><label>備考（受け渡し場所など）</label><textarea id="availabilityNote"></textarea><button class="full" onclick="saveAvailability()">対応可能日時を登録</button></div>
 <div class="card"><h2>買い出し・受け渡し状況</h2><div class="driver-stats"><div class="driver-stat"><span class="k">自分の公開予定</span><span class="v" id="driverStatSlots">—</span></div><div class="driver-stat"><span class="k">預け待ち</span><span class="v" id="driverStatPending">—</span></div><div class="driver-stat"><span class="k">預け完了</span><span class="v" id="driverStatCompleted">—</span></div><div class="driver-stat"><span class="k">受け渡し品目</span><span class="v" id="driverStatQty">—</span></div></div><div class="graph-block"><div class="graph-title">自分の預け進捗</div><div class="stack-track"><div class="stack-seg pending" id="driverProgressPending" style="width:0%"></div><div class="stack-seg completed" id="driverProgressCompleted" style="width:0%"></div></div><div class="stack-meta"><span id="driverProgressMeta">読み込み中...</span><span class="driver-note">黄＝預け待ち / 緑＝預け完了</span></div></div><div class="driver-columns"><div class="graph-block"><div class="graph-title" id="driverBreakdownTitle">日別に渡す商品・数量</div><div class="view-switch"><button type="button" id="viewDay" onclick="setDriverView('day')">日付ごと</button><button type="button" id="viewSlot" onclick="setDriverView('slot')">日時ごと</button></div><label for="driverProductFilter">商品で絞り込み</label><select id="driverProductFilter" onchange="renderDriverBreakdown()"><option value="">すべての商品</option></select><div id="productLegend" class="product-legend"></div><div id="driverDayChart" class="bar-chart">読み込み中...</div></div><div class="graph-block"><div class="graph-title">品目別の必要数量</div><div id="driverPeopleChart" class="bar-chart">読み込み中...</div></div></div></div>
 <div class="card"><div class="section-head"><h2>自分の登録日時・受け渡し詳細</h2></div><div id="myAvailList">読み込み中...</div></div>
-<div class="card"><h2>渡すもの・預け完了</h2><p class="muted">自分が渡す予定を先に表示します。</p><div id="driverHandoffs">読み込み中...</div></div></div>
+<div class="card"><details><summary class="fallback-summary">商品ごとの個別操作（必要な場合）</summary><p class="muted">通常は上の「日付 → スタッフ詳細」からまとめて完了できます。</p><div id="driverHandoffs">読み込み中...</div></details></div></div>
 <div class="tabpane" id="pane-staff"><div class="card"><div class="section-head"><h2>受取可能な予定</h2></div><div id="availList">読み込み中...</div></div>
 <div class="card" id="receiverArea"><h2>⑤ スタッフ：受取・保存を申し込む</h2><p class="small">ドライバーが共有した時間内で受け取り予定を登録します。受取担当と保存担当は同じ人です。</p><label>ドライバーの予定</label><select id="pickupSlot"></select><label>受け渡し予定日時</label><input type="datetime-local" id="pickupAt"><label>商品</label><select id="pickupItem"></select><label>受取・保存できる数量</label><input type="number" id="pickupQty" min="0.01" step="any" value="1"><label>受け渡し場所・保存場所など（任意）</label><textarea id="pickupNote"></textarea><div id="pickupInfo" class="small"></div><button class="full" onclick="requestPickup()">この内容で受取・保存を登録</button></div>
 </div><div class="tabpane" id="pane-list"><div class="card"><h2>商品別の受取状況</h2><div id="itemsList">読み込み中...</div></div>
@@ -129,7 +130,14 @@ function renderDriverBreakdown(){
     }
     const summary=[...byItem.entries()].map(([id,v])=>`<span class="recipient-product"><span class="legend-dot" style="background:${colors[id]||'#999'}"></span>${esc(productName(id))} <b>${format(id,v.pending+v.completed)}</b> <span class="muted">（待ち${format(id,v.pending)}・完了${format(id,v.completed)}）</span></span>`).join('');
     const timing=r.rows.map(h=>new Date(h.scheduled_at)).sort((a,b)=>a-b)[0];
-    return `<div class="recipient-line"><div class="top"><b>${esc(label(r.id))}</b><span class="muted">${time(timing)}</span></div><div class="recipient-products">${summary}</div></div>`;
+    const pending=r.rows.filter(h=>h.status==='assigned');
+    const lines=r.rows.slice().sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at)).map(h=>{
+      const item=items.find(x=>x.id===h.item_id),waiting=h.status==='assigned';
+      return `<div class="line"><span class="small"><b>${esc(item?.name||'商品')}</b>　${time(h.scheduled_at)}<br>${waiting?'預け待ち':'完了済み'} / ${Number(h.quantity)}${esc(item?.unit||'')}</span>${waiting?`<label>実際に渡した数量 <input class="staff-complete-qty" data-handoff="${h.id}" type="number" min="0.01" max="${Number(h.quantity)}" step="any" value="${Number(h.quantity)}" aria-label="${esc(item?.name||'商品')}の実際に渡した数量"></label>`:`<span class="pill complete">${Number(h.completed_quantity||0)}${esc(item?.unit||'')} 完了</span>`}</div>`;
+    }).join('');
+    // Each group contains only this date/time slot and recipient's handoffs.
+    const ids=pending.map(h=>h.id).join(',');
+    return `<div class="recipient-line"><div class="top"><b>${esc(label(r.id))}</b><span class="muted">${time(timing)}</span></div><div class="recipient-products">${summary}</div><details class="staff-detail"><summary>スタッフ詳細・預け完了（未完了${pending.length}件）</summary>${lines}${pending.length?`<button class="full" type="button" onclick="completeStaffGroup('${ids}')">このスタッフへの預けをまとめて完了</button>`:'<div class="pill complete">すべて預け完了</div>'}</details></div>`;
   }).join('');
   const open=openDriverDays.has(day);
   const slot=obj.slot;
@@ -160,6 +168,32 @@ async function deleteAvailability(id){if(!confirm('この予定を削除しま�
 function slotChanged(){const x=available.find(a=>a.id===$('pickupSlot').value);if(x){const d=new Date(x.start_at),pad=n=>String(n).padStart(2,'0');$('pickupAt').value=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}$('pickupInfo').textContent=x?`対応時間：${time(x.start_at)}〜${time(x.end_at)}。この時間内で受取日時を指定してください。`:'ドライバーの予定がまだありません'}
 async function requestPickup(){const slot=available.find(a=>a.id===$('pickupSlot').value),at=isoLocal($('pickupAt').value);if(!slot||!at||!chk($('pickupQty').value)){message('予定日時・商品・数量を確認してください');return}if(at<slot.start_at||at>slot.end_at){message('ドライバーが対応できる時間内を指定してください');return}const {error}=await sb.rpc('prep_request_pickup',{p_item:$('pickupItem').value,p_slot:slot.id,p_quantity:Number($('pickupQty').value),p_at:at,p_note:$('pickupNote').value.trim()});message(error?'受取登録エラー：'+error.message:'受取・保存予定を登録しました');if(!error){$('pickupNote').value='';await load()}}
 async function cancelPickup(id){if(!confirm('自分の受取予約を取り消しますか？'))return;const {error}=await sb.rpc('prep_cancel_pickup',{p_id:id});message(error?'取消エラー：'+error.message:'受取予約を取り消しました');if(!error)await load()}
+let completingStaff=false;
+async function completeStaffGroup(csv){
+ if(completingStaff)return;
+ const ids=csv.split(',').filter(Boolean),pending=ids.map(id=>handoffs.find(h=>h.id===id)).filter(h=>h&&h.driver_id===me&&h.status==='assigned');
+ if(!pending.length){message('未完了の受け渡しはありません');return}
+ const entries=[];
+ for(const h of pending){
+  const field=document.querySelector(`.staff-complete-qty[data-handoff="${h.id}"]`);
+  const qty=Number(field?.value);
+  if(!field||!chk(field.value)||qty>Number(h.quantity)){message('実際に渡した数量を確認してください');field?.focus();return}
+  entries.push({id:h.id,qty});
+ }
+ const summary=entries.map(e=>{const h=handoffs.find(x=>x.id===e.id),i=items.find(x=>x.id===h.item_id);return `${i?.name||'商品'}：${e.qty}${i?.unit||''}`}).join('\n');
+ if(!confirm(`以下の商品を実際に渡しましたか？\n${summary}\n\n${entries.length}件を完了します。`))return;
+ completingStaff=true;
+ let success=0,failed='';
+ try{
+  for(const entry of entries){
+   const {error}=await sb.rpc('prep_complete_handoff',{p_id:entry.id,p_quantity:entry.qty});
+   if(error){failed=error.message;break}
+   success++;
+  }
+  await load();
+  message(failed?`${success}件完了しました。残りは未完了です：${failed}`:`${success}件の預け完了を記録しました`);
+ }finally{completingStaff=false}
+}
 async function complete(id,max){const v=prompt('実際に渡した数量を入力してください（最大 '+max+'）',max);if(v===null)return;if(!chk(v)||Number(v)>Number(max)){message('数量が正しくありません');return}if(!confirm('食材を実際に渡しましたか？ 完了すると実績が確定します。'))return;const {error,data}=await sb.rpc('prep_complete_handoff',{p_id:id,p_quantity:Number(v)});message(error?'完了エラー：'+error.message:data?.points===null?'預け完了。ポイントは未定のため保留です。':'預け完了。保存ポイント '+data.points+' pt');if(!error)await load()}
 async function load(){const [i,a,h,s]=await Promise.all([sb.from('prep_purchase_items').select('*').order('created_at',{ascending:false}),sb.from('prep_purchase_availability').select('*').eq('availability_type','driver').order('start_at'),sb.from('prep_purchase_handoffs').select('*').order('created_at',{ascending:false}),sb.rpc('prep_staff_list')]);const err=[i,a,h,s].find(x=>x.error);if(err){message('読み込みエラー：'+err.error.message+'（追加SQLを実行したか確認してください）');return}items=i.data||[];staff=s.data||[];available=a.data||[];handoffs=h.data||[];
 const used=id=>handoffs.filter(x=>x.item_id===id&&x.status!=='cancelled').reduce((z,x)=>z+Number(x.quantity),0);
