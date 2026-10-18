@@ -98,6 +98,7 @@ table{
 </style>
 
 </head><body><main><button class="secondary" onclick="history.length>1?history.back():location.href='home.html'">← 前の画面</button><h1>買い出し</h1><p class="muted">運転手チームは管理者が事前登録する固定チームです。1ミッションで実際に行く運転手は1人だけです。</p><p class="muted">ポイント対象になるのは、店長または管理者が複数要請をまとめて正式承認した「買い出しミッション」だけです。</p>
+<div class="card"><h2>事前買い出し</h2><p class="muted">購入予定品、空き時間、受け渡し先・預け完了を管理します。</p><button onclick="location.href='prep-shopping.html'">事前買い出しを開く</button></div>
 <div class="card" id="requestCard"><h2>① 買い出し要請を出す</h2><input id="note" placeholder="例：油2本、米10kg"><button onclick="requestShop()">要請を追加</button><p id="rmsg"></p></div>
 <div class="card" id="approveCard"><h2>② 未処理要請をまとめて承認</h2><div id="requests">読み込み中...</div><button onclick="approveMission()">選択した要請を1ミッションとして承認</button><p id="amsg"></p></div>
 <div class="card"><h2>③ 正式ミッション</h2><div id="missions"></div></div>
