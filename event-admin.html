@@ -417,7 +417,7 @@ input[type="time"]::-webkit-datetime-edit{
   <button class="primary" type="button" onclick="location.href='shift-editor.html'">✏️ 希望からシフトを作成・調整する</button>
   <button type="button" id="exportAllShifts">📊 全日程シフトを棒グラフExcel出力</button>
   <div id="exportShiftMsg"></div>
-  <p class="small">準備日・片付け日は、その日に提出した参加可能時間を棒で表示します。準備日は本祭3日間の主担当役職で色分けし、各役職内は参加時間が長い人順。本祭担当なしと片付け日は中立の薄いグレー棒で見やすく表示します。</p>
+  <p class="small">準備日・片付け日は、シフト編集画面で保存した確定時間を優先して棒で表示します。準備日は本祭3日間の主担当役職で色分けし、各役職内は参加時間が長い人順。本祭担当なしと片付け日は中立の薄いグレー棒で見やすく表示します。</p>
 
   <div id="shiftMissingOverview"></div>
 
@@ -1157,8 +1157,9 @@ async function exportSavedShiftsToExcel(){
 
       let userIds;
       if(kind==='prep'||kind==='cleanup'){
-        // 準備日・片付け日は「その日に希望を出した人」だけを対象にする。
-        userIds=availabilityUsersForDay(day.id,allAvailability);
+        // この日の編集済み手動シフトがある場合は、保存済みの対象者を正とする。
+        // 未作成の場合のみ従来の希望時間を表示する。
+        userIds=rows.length?Object.keys(byUser):availabilityUsersForDay(day.id,allAvailability);
       }else{
         userIds=Object.keys(byUser);
       }
@@ -1167,10 +1168,11 @@ async function exportSavedShiftsToExcel(){
         let segs;
         let primaryRole=null;
 
-        if(kind==='prep'||kind==='cleanup'){
-          // 準備日・片付け日は、その日に提出した参加可能時間を棒として使う。
+        if((kind==='prep'||kind==='cleanup')&&!rows.length){
+          // まだ確定シフトを作成していない場合だけ提出済み希望時間を表示する。
           segs=mergedAvailabilitySegmentsForDay(uid,day.id,allAvailability);
         }else{
+          // 編集・保存済みの確定時間をすべての日程で優先する。
           segs=[...(byUser[uid]||[])].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
         }
 
