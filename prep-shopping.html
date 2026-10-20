@@ -20,12 +20,29 @@
 .staff-detail{margin-top:9px;border-top:1px solid #f0e4e5;padding-top:9px}.staff-detail summary{cursor:pointer;color:#9a222c;font-weight:750;padding:8px 0}.staff-detail .line{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0;flex-wrap:wrap}.staff-detail input{max-width:95px;padding:7px}.staff-detail .line label{margin:0}.staff-detail .line .small{flex:1;min-width:120px}.staff-detail button.full{margin-top:10px}.fallback-summary{cursor:pointer;font-weight:750}.quantity-detail{margin:-4px 0 9px 0}
 .legend-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;flex-shrink:0}
 #driverProductFilter{margin-bottom:13px}
-.view-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f0e8e9;padding:4px;border-radius:12px;margin:10px 0}.view-switch button{background:transparent;color:#72585c;padding:10px;font-size:13px}.view-switch button.selected{background:white;color:#a91824;box-shadow:0 1px 4px #0001}.timeframe-note{font-size:12px;color:#73696a;margin:0 0 10px} .pickup-result{padding:15px;border-radius:12px;font-weight:800;margin:12px 0;border:2px solid}.pickup-result.ok{color:#15613d;background:#e5f7eb;border-color:#66b98c}.pickup-result.fail{color:#8d1b24;background:#fff0f0;border-color:#d37a80}.pickup-result .muted{font-weight:400;margin-top:5px}</style></head><body><main><nav><button class="secondary" onclick="location.href='home.html'">← ホーム</button><button class="secondary" id="adminBack" onclick="location.href='admin-menu.html'">管理者メニュー</button></nav><div class="hero"><h1>食材保存</h1><p>買い出しから受け渡しまで、ここで確認できます。</p></div>
+.view-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f0e8e9;padding:4px;border-radius:12px;margin:10px 0}.view-switch button{background:transparent;color:#72585c;padding:10px;font-size:13px}.view-switch button.selected{background:white;color:#a91824;box-shadow:0 1px 4px #0001}.timeframe-note{font-size:12px;color:#73696a;margin:0 0 10px} .pickup-result{padding:15px;border-radius:12px;font-weight:800;margin:12px 0;border:2px solid}.pickup-result.ok{color:#15613d;background:#e5f7eb;border-color:#66b98c}.pickup-result.fail{color:#8d1b24;background:#fff0f0;border-color:#d37a80}.pickup-result .muted{font-weight:400;margin-top:5px} 
+.admin-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.admin-metric{padding:12px 8px;background:#faf5f5;border:1px solid #ecdede;border-radius:10px;text-align:center}
+.admin-metric span{display:block;color:#72656a;font-size:11px}.admin-metric strong{display:block;color:#9b202b;font-size:23px}
+.admin-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.admin-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.admin-table{width:100%;border-collapse:collapse;min-width:590px;font-size:13px;text-align:left}
+.admin-table th{background:#f6eded;color:#563d42;white-space:nowrap}
+.admin-table th,.admin-table td{padding:11px 9px;border-bottom:1px solid #ecdddd;vertical-align:middle}
+.admin-table tbody tr{cursor:pointer}.admin-table tbody tr:focus{outline:2px solid #a91824}
+.admin-table tbody tr:nth-child(even){background:#fffafa}
+.admin-detail{margin-top:12px;border-radius:12px;border:1px solid #ead5d5;background:#fcf9f9;padding:14px;font-size:13px}
+@media(max-width:500px){.admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-filters{grid-template-columns:1fr}}
+</style></head><body><main><nav><button class="secondary" onclick="location.href='home.html'">← ホーム</button><button class="secondary" id="adminBack" onclick="location.href='admin-menu.html'">管理者メニュー</button></nav><div class="hero"><h1>食材保存</h1><p>買い出しから受け渡しまで、ここで確認できます。</p></div>
 <div class="steps" aria-label="利用の流れ"><div class="step"><b>①</b>商品登録</div><div class="step"><b>②</b>日時共有</div><div class="step"><b>③</b>受取申込</div><div class="step"><b>④</b>預け完了</div></div>
 <div class="stats" aria-label="現在の状況"><div class="stat"><span>登録商品</span><strong id="statItems">—</strong></div><div class="stat"><span>公開予定</span><strong id="statSlots">—</strong></div><div class="stat"><span>受取申込</span><strong id="statRequests">—</strong></div><div class="stat"><span>預け待ち</span><strong id="statPending">—</strong></div></div>
 <div id="notice">ログインを確認中...</div>
-<div class="tabs" role="tablist"><button type="button" id="tabBtn-staff" onclick="showTab('staff')">受け取る</button><button type="button" id="tabBtn-driver" onclick="showTab('driver')">ドライバー</button><button type="button" id="tabBtn-list" onclick="showTab('list')">自分の履歴</button><button type="button" id="tabBtn-admin" onclick="showTab('admin')">管理者</button></div>
+<div class="tabs" role="tablist"><button type="button" id="tabBtn-staff" onclick="showTab('staff')">受け取る</button><button type="button" id="tabBtn-driver" onclick="showTab('driver')">ドライバー</button><button type="button" id="tabBtn-list" onclick="showTab('list')">申請履歴</button><button type="button" id="tabBtn-admin" onclick="showTab('admin')">管理者</button></div>
 <div class="tabpane" id="pane-admin"><section id="adminArea" class="hide">
+<div class="card"><h2>スタッフの受取・保存状況</h2><div class="admin-summary" id="adminSummary"></div>
+<div class="admin-filters"><div><label>スタッフ</label><select id="adminStaffFilter" onchange="renderAdminTable()"><option value="">全スタッフ</option></select></div><div><label>商品</label><select id="adminItemFilter" onchange="renderAdminTable()"><option value="">全商品</option></select></div><div><label>状況</label><select id="adminStatusFilter" onchange="renderAdminTable()"><option value="">すべて</option><option value="assigned">預け待ち</option><option value="completed">預け完了</option><option value="cancelled">取消</option></select></div></div>
+<div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>受取スタッフ</th><th>商品・数量</th><th>日時</th><th>ドライバー</th><th>状況</th></tr></thead><tbody id="adminTableBody"></tbody></table></div>
+<div class="small">行を押すと受け渡し内容の詳細を確認できます。</div><div id="adminSelectedDetail" class="admin-detail hide"></div></div>
 <div class="card"><h2>① 管理者：購入予定品の登録・編集</h2><p class="small">商品の登録と編集のみを行います。受け渡し先の登録は各スタッフが行います。</p>
 <input type="hidden" id="editId"><label>商品名</label><input id="itemName" placeholder="例：米"><label>大きさ・規格の詳細</label><textarea id="spec" placeholder="例：5kg袋、縦30cm×横20cm、1箱12本入り"></textarea><div class="grid"><div><label>必要数量</label><input type="number" min="0.01" step="any" id="qty" value="1"></div><div><label>単位</label><select id="unit"><option>袋</option><option>個</option><option>箱</option><option>kg</option><option>パック</option><option>本</option><option>セット</option></select></div></div><label>保存方法</label><select id="storage"><option>常温</option><option>冷蔵</option><option>冷凍</option><option>その他</option></select><label>保存ポイント</label><select id="pointMode" onchange="pointValue.disabled=this.value==='pending'"><option value="pending">未定（後から設定）</option><option value="set">数量1単位あたりのポイントを設定</option></select><input id="pointValue" type="number" min="0" step="any" placeholder="例：2（0ポイントも可）" disabled><label>備考</label><textarea id="itemNotes" placeholder="任意"></textarea><button class="full" id="saveItemButton" onclick="saveItem()">商品を登録</button><button class="full secondary hide" id="cancelEditButton" onclick="resetEditor()">編集をやめる</button></div>
 <div class="card"><h2>② 管理者：買い出しドライバーの指定</h2><p class="small">担当ドライバーの登録は既存の運転手チーム管理を使います。ここでは受け渡し割当を行いません。</p><button class="full" onclick="location.href='shopping-team-admin.html'">ドライバー登録・解除を開く</button></div></section></div>
@@ -35,8 +52,8 @@
 </div>
 <div class="tabpane" id="pane-staff"><div class="card"><div class="section-head"><h2>受取可能な予定</h2></div><div id="availList">読み込み中...</div></div>
 <div class="card" id="receiverArea"><h2>⑤ スタッフ：受取・保存を申し込む</h2><p class="small">ドライバーが共有した時間内で受け取り予定を登録します。受取担当と保存担当は同じ人です。</p><label>ドライバーの予定</label><select id="pickupSlot"></select><label>受け渡し予定日時</label><input type="datetime-local" id="pickupAt"><label>商品</label><select id="pickupItem"></select><label>受取・保存できる数量</label><input type="number" id="pickupQty" min="0.01" step="any" value="1"><label>受け渡し場所・保存場所など（任意）</label><textarea id="pickupNote"></textarea><div id="pickupInfo" class="small"></div><div id="pickupResult" class="pickup-result hide" role="status" aria-live="assertive"></div><button id="pickupSubmit" class="full" onclick="requestPickup()">この内容で受取・保存を登録</button></div>
-</div><div class="tabpane" id="pane-list"><div class="card"><h2>商品別の受取状況</h2><div id="itemsList">読み込み中...</div></div>
-<div class="card"><h2 id="historyTitle">自分の受取・保存履歴</h2><p class="small" id="historyNote">自分が申し込んだ受け渡し予定と完了履歴を表示します。</p><div id="handoffs">読み込み中...</div></div></div>
+</div><div class="tabpane" id="pane-list">
+<div class="card"><h2 id="historyTitle">申請履歴</h2><p class="small" id="historyNote">自分が申し込んだ受け渡し予定と完了履歴を表示します。</p><div id="handoffs">読み込み中...</div></div></div>
 </main><script>
 const sb=supabase.createClient('https://gsniytemgrbtgfywhqlu.supabase.co','sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn');
 const $=id=>document.getElementById(id);let me=null,admin=false,isDriver=false,staff=[],items=[],available=[],handoffs=[];
@@ -210,19 +227,55 @@ async function completeStaffGroup(csv){if((viewedDriver||me)!==me){message('他�
  }finally{completingStaff=false}
 }
 async function complete(id,max){if(!handoffs.some(h=>h.id===id&&h.driver_id===me)){message('自分が担当する受け渡しだけ操作できます');return}const v=prompt('実際に渡した数量を入力してください（最大 '+max+'）',max);if(v===null)return;if(!chk(v)||Number(v)>Number(max)){message('数量が正しくありません');return}if(!confirm('食材を実際に渡しましたか？ 完了すると実績が確定します。'))return;const {error,data}=await sb.rpc('prep_complete_handoff',{p_id:id,p_quantity:Number(v)});message(error?'完了エラー：'+error.message:data?.points===null?'預け完了。ポイントは未定のため保留です。':'預け完了。保存ポイント '+data.points+' pt');if(!error)await load()}
+
+function adminFmt(n){return Number(Number(n||0).toFixed(3))}
+function renderAdminTable(){
+ if(!admin)return;
+ const staffSel=$('adminStaffFilter'),itemSel=$('adminItemFilter');
+ const sv=staffSel.value,iv=itemSel.value;
+ const staffIds=[...new Set(handoffs.map(h=>h.receiver_id).filter(Boolean))].sort((a,b)=>label(a).localeCompare(label(b),'ja'));
+ staffSel.innerHTML='<option value="">全スタッフ</option>'+staffIds.map(id=>`<option value="${esc(id)}">${esc(label(id))}</option>`).join('');
+ itemSel.innerHTML='<option value="">全商品</option>'+items.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+ staffSel.value=staffIds.includes(sv)?sv:'';
+ itemSel.value=items.some(x=>x.id===iv)?iv:'';
+ const status=$('adminStatusFilter').value;
+ const all=handoffs.filter(h=>(!staffSel.value||h.receiver_id===staffSel.value)&&(!itemSel.value||h.item_id===itemSel.value)&&(!status||h.status===status)).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
+ const pending=all.filter(h=>h.status==='assigned'),completed=all.filter(h=>h.status==='completed'),cancelled=all.filter(h=>h.status==='cancelled');
+ $('adminSummary').innerHTML=[
+   ['申請',all.length],['預け待ち',pending.length],['預け完了',completed.length],['取消',cancelled.length]
+ ].map(([k,v])=>`<div class="admin-metric"><span>${k}</span><strong>${v}</strong></div>`).join('');
+ const body=$('adminTableBody');
+ body.innerHTML=all.map(h=>{
+   const item=items.find(x=>x.id===h.item_id);
+   const q=h.status==='completed'?adminFmt(h.completed_quantity):adminFmt(h.quantity);
+   const state=h.status==='completed'?'預け完了':h.status==='cancelled'?'取消':'預け待ち';
+   return `<tr tabindex="0" role="button" onclick="showAdminDetail('${h.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showAdminDetail('${h.id}')}"><td>${esc(label(h.receiver_id))}</td><td><b>${esc(item?.name||'商品')}</b><div class="small">${q}${esc(item?.unit||'')}</div></td><td>${time(h.scheduled_at)}</td><td>${esc(label(h.driver_id))}</td><td><span class="pill ${h.status==='completed'?'complete':'wait'}">${state}</span></td></tr>`;
+ }).join('')||'<tr><td colspan="5" class="empty">該当する申請はありません</td></tr>';
+ $('adminSelectedDetail').classList.add('hide');
+}
+function showAdminDetail(id){
+ if(!admin)return;
+ const h=handoffs.find(x=>x.id===id);if(!h)return;
+ const item=items.find(x=>x.id===h.item_id);
+ const el=$('adminSelectedDetail');
+ const state=h.status==='completed'?'預け完了':h.status==='cancelled'?'取消':'預け待ち';
+ el.innerHTML=`<div class="top"><b>${esc(label(h.receiver_id))} の受取申請</b><button class="secondary mini-button" onclick="$('adminSelectedDetail').classList.add('hide')">閉じる</button></div><p><b>${esc(item?.name||'商品')} ${adminFmt(h.quantity)}${esc(item?.unit||'')}</b> ／ ${esc(state)}</p><p>ドライバー：${esc(label(h.driver_id))}</p><p>予定：${time(h.scheduled_at)}</p>${h.status==='completed'?`<p>受取済：${adminFmt(h.completed_quantity)}${esc(item?.unit||'')} ／ ${time(h.completed_at)}</p><p>保存ポイント：${h.earned_points===null?'未定':esc(h.earned_points)+'pt'}</p>`:''}`;
+ el.classList.remove('hide');el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 async function load(){const [i,a,h,s]=await Promise.all([sb.from('prep_purchase_items').select('*').order('created_at',{ascending:false}),sb.from('prep_purchase_availability').select('*').eq('availability_type','driver').order('start_at'),sb.from('prep_purchase_handoffs').select('*').order('created_at',{ascending:false}),sb.rpc('prep_staff_list')]);const err=[i,a,h,s].find(x=>x.error);if(err){message('読み込みエラー：'+err.error.message+'（追加SQLを実行したか確認してください）');return}items=i.data||[];staff=s.data||[];available=a.data||[];handoffs=h.data||[];
 // 同一スタッフ・同一商品は複数日の申込のうち最大数量だけ在庫に計上
 const used=id=>{const perPerson=new Map();for(const h of handoffs){if(h.item_id!==id||h.status==='cancelled')continue;const q=h.status==='completed'?Number(h.completed_quantity||0):Number(h.quantity);perPerson.set(h.receiver_id,Math.max(perPerson.get(h.receiver_id)||0,q));}return [...perPerson.values()].reduce((a,b)=>a+b,0)};
 $('pickupItem').innerHTML=items.map(x=>`<option value="${x.id}">${esc(x.name)}（残り ${Math.max(0,Number(x.planned_quantity)-used(x.id))}${esc(x.unit)}）</option>`).join('');
 const oldSlot=$('pickupSlot').value;$('pickupSlot').innerHTML=available.map(x=>`<option value="${x.id}">${esc(label(x.user_id))}：${time(x.start_at)}〜${time(x.end_at)}</option>`).join('');if(available.some(x=>x.id===oldSlot))$('pickupSlot').value=oldSlot;else slotChanged();
 $('statItems').textContent=items.length;$('statSlots').textContent=available.filter(x=>new Date(x.end_at)>=new Date()).length;$('statRequests').textContent=handoffs.filter(x=>x.status!=='cancelled').length;$('statPending').textContent=handoffs.filter(x=>x.status==='assigned').length;
-$('itemsList').innerHTML=items.length?items.map(x=>itemProgress(x,used)).join(''):'<div class="empty">商品はまだ登録されていません</div>';
+
 const slotHtml=x=>`<div class="slot-card"><div class="top"><b>${esc(label(x.user_id))}</b><span class="pill">ドライバー</span></div><div class="when">${time(x.start_at)} 〜 ${time(x.end_at)}</div>${x.note?`<div class="muted">📍 ${esc(x.note)}</div>`:''}${x.user_id===me?`${x.user_id===me?`<button class="secondary mini-button" onclick="deleteAvailability('${x.id}')">この予定を削除</button>`:''}`:`<button class="mini-button" onclick="selectSlot('${x.id}')">この予定で受け取る →</button>`}</div>`;
 $('availList').innerHTML=available.length?available.map(slotHtml).join(''):'<div class="empty">公開された予定はまだありません</div>';
 const driverIds=[...new Set([...available.map(x=>x.user_id),...handoffs.map(x=>x.driver_id)].filter(Boolean))];if(!driverIds.includes(me))driverIds.unshift(me);const selector=$('driverPersonFilter');const selected=viewedDriver||me;selector.innerHTML=driverIds.sort((a,b)=>a===me?-1:b===me?1:label(a).localeCompare(label(b),'ja')).map(id=>`<option value="${esc(id)}">${esc(label(id))}${id===me?'（自分）':''}</option>`).join('');viewedDriver=driverIds.includes(selected)?selected:me;selector.value=viewedDriver;refreshDriverDisplay();
-const ownHistory=handoffs.filter(x=>admin||x.receiver_id===me).sort((a,b)=>new Date(b.scheduled_at)-new Date(a.scheduled_at));
+const ownHistory=handoffs.filter(x=>x.receiver_id===me).sort((a,b)=>new Date(b.scheduled_at)-new Date(a.scheduled_at));
 $('handoffs').innerHTML=ownHistory.length?ownHistory.map(handoffCard).join(''):'<div class="empty">自分の受取・保存履歴はまだありません</div>';
+if(admin){renderAdminTable();}
 message('データを更新しました')}
 $('pickupSlot').addEventListener('change',slotChanged);
-(async()=>{const {data:{user}}=await sb.auth.getUser();if(!user){message('ログインが必要です。ホームからログインしてください');return}me=user.id;const [ad,dr]=await Promise.all([sb.rpc('prep_is_admin'),sb.rpc('prep_is_driver')]);if(ad.error||dr.error){message('権限取得エラー：'+(ad.error?.message||dr.error?.message));return}admin=ad.data===true;isDriver=dr.data===true;$('tabBtn-list').textContent=admin?'一覧':'自分の履歴';$('historyTitle').textContent=admin?'全スタッフの受け渡し履歴':'自分の受取・保存履歴';$('historyNote').textContent=admin?'管理者は全スタッフの登録履歴を確認できます。':'自分が登録した予定・完了・取消の履歴だけを表示します。';$('adminArea').classList.toggle('hide',!admin);$('adminBack').classList.toggle('hide',!admin);$('driverArea').classList.toggle('hide',!isDriver);$('tabBtn-admin').classList.toggle('hide',!admin);$('tabBtn-driver').classList.toggle('hide',!isDriver);showTab(sessionStorage.getItem('foodStorageTab')|| (isDriver?'driver':'staff'));await load()})();
+(async()=>{const {data:{user}}=await sb.auth.getUser();if(!user){message('ログインが必要です。ホームからログインしてください');return}me=user.id;const [ad,dr]=await Promise.all([sb.rpc('prep_is_admin'),sb.rpc('prep_is_driver')]);if(ad.error||dr.error){message('権限取得エラー：'+(ad.error?.message||dr.error?.message));return}admin=ad.data===true;isDriver=dr.data===true;$('tabBtn-list').textContent='申請履歴';$('historyTitle').textContent='申請履歴';$('historyNote').textContent='自分が登録した受取・保存申請だけを表示します。';$('adminArea').classList.toggle('hide',!admin);$('adminBack').classList.toggle('hide',!admin);$('driverArea').classList.toggle('hide',!isDriver);$('tabBtn-admin').classList.toggle('hide',!admin);$('tabBtn-driver').classList.toggle('hide',!isDriver);showTab(sessionStorage.getItem('foodStorageTab')|| (isDriver?'driver':'staff'));await load()})();
 </script></body></html>
