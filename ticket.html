@@ -130,6 +130,9 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .fuuki-top-banner img{display:block;width:min(100%,300px);height:auto;max-height:125px;object-fit:contain;margin:5px auto}
 .fuuki-top-banner .top-sponsor-link{font-size:12px;font-weight:750;color:#9e1a29}
 .fuki-site-link{display:block;text-align:center;text-decoration:none;padding:12px 10px;background:#a91824;color:#fff;border-radius:12px;font-weight:800;font-size:14px;margin-top:12px}
+
+.ticket-fold:has(>.fold-body>.coupon-section)>summary{background:#fff5f5;color:#a91824}
+.ticket-fold:has(>.fold-body>.coupon-section)>summary .fold-heading{font-weight:950}
 </style>
 
 <style id="responsiveOverflowFixV1">
@@ -383,10 +386,11 @@ function foldTicketPage(rootId){
  };
  // 先にスポンサーをカード外へ移動し、チケット本体だけを開閉する。
  if(sponsor) ticket.after(sponsor);
- fold(ticket,'前売り券・QRコード',true,'当日はQRコードを提示してください',false);
+ fold(ticket,'前売り券・QRコード',false,'当日はQRコードを提示してください',false);
  fold(sponsor,'協賛：富貴製麺研究所',false,'チャーシュー提供協賛',true);
  fold(map,'クーポン店舗マップ',false,'店舗案内',false);
- fold(coupons,'使えるクーポン',false,'提携団体の特典',false);
+ const couponCount=coupons?.querySelectorAll('.coupon-card').length||0;
+ fold(coupons,`使えるクーポン（${couponCount}件）`,false,'提携団体の特典をチェック',false);
  // 地図モーダルは折りたたみ外に残して動作を維持する。
  if(modal && modal.parentNode!==root)root.appendChild(modal);
  controls.addEventListener('click',event=>{
