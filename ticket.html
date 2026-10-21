@@ -103,6 +103,26 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .fuki-sponsor-logo{display:block;width:100%;max-width:700px;height:auto;margin:10px auto 6px;object-fit:contain}
 .fuki-sponsor-note{font-size:13px;line-height:1.7;font-weight:650;margin:8px 4px 0}
 @media(min-width:620px){.fuki-sponsor{padding:22px}.fuki-sponsor-note{font-size:15px}}
+
+/* 前売り券：セクション単位の開閉 */
+.ticket-section-controls{display:flex;gap:8px;justify-content:flex-end;margin:14px 0}
+.ticket-section-controls button{width:auto;padding:9px 13px;border-radius:12px;font-size:13px}
+.ticket-fold{margin:14px 0;background:#fff;border:1px solid #e9dede;border-radius:20px;overflow:hidden}
+.ticket-fold>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;padding:17px 18px;font-weight:900;font-size:17px;color:#32252a}
+.ticket-fold>summary::-webkit-details-marker{display:none}
+.ticket-fold>summary::after{content:'⌄';margin-left:auto;color:#a91824;font-size:23px;line-height:1;transition:transform .2s}
+.ticket-fold[open]>summary::after{transform:rotate(180deg)}
+.ticket-fold>summary:focus-visible{outline:3px solid #a91824;outline-offset:-4px}
+.ticket-fold .fold-body{padding:0 12px 12px}
+.ticket-fold .fold-body>.card{margin:0;border:0;box-shadow:none}
+.ticket-fold .fold-body>.fuki-sponsor{margin:0;border:0}
+.ticket-fold .fold-body>.coupon-section{margin:6px 0 0}
+.ticket-fold .fold-body>.card{max-width:100%}
+.ticket-fold .fold-body>.map-modal{position:fixed}
+.ticket-fold .fold-mini-logo{width:68px;height:48px;object-fit:contain;flex:none}
+.ticket-fold .fold-subtitle{display:block;font-size:11px;color:#7d6c70;font-weight:600;margin-top:4px}
+.ticket-fold .fold-heading{min-width:0;flex:1}
+@media(max-width:420px){.ticket-fold>summary{padding:13px;font-size:15px}.ticket-fold .fold-mini-logo{width:58px;height:43px}}
 </style>
 
 <style id="responsiveOverflowFixV1">
@@ -328,6 +348,46 @@ function choiceTicketHtml(ticketKind){
   </div>`;
 }
 
+
+// チケット・協賛・マップ・クーポンの各ブロックを独立して折りたたむ。
+function foldTicketPage(rootId){
+ const root=document.getElementById(rootId);
+ if(!root || root.querySelector('.ticket-section-controls')) return;
+ const ticket=root.querySelector(':scope > .card.ticket');
+ const sponsor=ticket?.querySelector('.fuki-sponsor');
+ const map=root.querySelector(':scope > .card:has(.map-launch-title)');
+ const coupons=root.querySelector(':scope > .coupon-section');
+ const modal=root.querySelector(':scope > .map-modal');
+ if(!ticket && !sponsor && !map && !coupons) return;
+ const controls=document.createElement('div');controls.className='ticket-section-controls';
+ controls.innerHTML='<button type="button" class="secondary" data-fold="open">すべて開く</button><button type="button" class="secondary" data-fold="close">すべて閉じる</button>';
+ root.insertBefore(controls,root.firstChild);
+ const fold=(node,title,open,subtitle,miniLogo)=>{
+   if(!node)return;
+   const panel=document.createElement('details');panel.className='ticket-fold';panel.open=open;
+   const summary=document.createElement('summary');
+   if(miniLogo){const img=document.createElement('img');img.src='fuki-seimen-logo.png';img.alt='富貴製麺研究所';img.className='fold-mini-logo';summary.appendChild(img);}
+   const label=document.createElement('span');label.className='fold-heading';label.textContent=title;
+   if(subtitle){const sub=document.createElement('span');sub.className='fold-subtitle';sub.textContent=subtitle;label.appendChild(sub);}
+   summary.appendChild(label);
+   const body=document.createElement('div');body.className='fold-body';
+   node.parentNode.insertBefore(panel,node);body.appendChild(node);panel.append(summary,body);
+ };
+ // 先にスポンサーをカード外へ移動し、チケット本体だけを開閉する。
+ if(sponsor) ticket.after(sponsor);
+ fold(ticket,'前売り券・QRコード',true,'当日はQRコードを提示してください',false);
+ fold(sponsor,'協賛：富貴製麺研究所',false,'チャーシュー提供協賛',true);
+ fold(map,'クーポン店舗マップ',false,'店舗案内',false);
+ fold(coupons,'使えるクーポン',false,'提携団体の特典',false);
+ // 地図モーダルは折りたたみ外に残して動作を維持する。
+ if(modal && modal.parentNode!==root)root.appendChild(modal);
+ controls.addEventListener('click',event=>{
+   const action=event.target.closest('button')?.dataset.fold;
+   if(!action)return;
+   root.querySelectorAll('.ticket-fold').forEach(node=>node.open=action==='open');
+ });
+}
+
 async function renderTicket(t){
   const ticketKind=t.sale_type==="same_day" ? "当日券" : "前売り券";
   document.title=`第15回紫熊祭 ${ticketKind}`;
@@ -383,6 +443,7 @@ async function renderTicket(t){
   new QRCode(document.getElementById("qrcode"),{
     text:ticketUrl,width:230,height:230
   });
+  foldTicketPage("main");
 }
 
 function showError(message){
