@@ -130,6 +130,10 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 
 .ticket-fold:has(>.fold-body>.coupon-section)>summary{background:#fff5f5;color:#a91824}
 .ticket-fold:has(>.fold-body>.coupon-section)>summary .fold-heading{font-weight:950}
+
+.qr-image-save{display:block;width:100%;margin:12px 0 4px;padding:14px;border-radius:13px;background:#9e1a29!important;color:white!important;font-weight:850;font-size:15px;cursor:pointer}
+.qr-save-help{font-size:12px;line-height:1.65;text-align:left;background:#fff5f5;border:1px solid #f2d5d8;border-radius:12px;padding:11px 13px;color:#76202b;margin:9px 0 15px}
+.qr-save-fallback{display:block;text-align:center;margin:6px 0 12px;font-size:13px;color:#9e1a29;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -281,6 +285,61 @@ async function partnerHtml(ticketKind){
 }
 
 // チケット・協賛・マップ・クーポンの各ブロックを独立して折りたたむ。
+
+// QR券面を画像化。ネットワーク不要で表示できるPNGを生成する。
+async function saveTicketImage(button){
+  const card=button.closest('.card.ticket');
+  const qr=card?.querySelector('#qrcode img, #qrcode canvas');
+  if(!qr){alert('QRコードがまだ生成されていません。少し待ってからお試しください。');return;}
+  const label=button.textContent;
+  button.disabled=true;button.textContent='画像を作成中…';
+  try{
+    const canvas=document.createElement('canvas');canvas.width=750;canvas.height=1080;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,750,1080);
+    ctx.fillStyle='#9c1828';ctx.fillRect(0,0,750,20);
+    ctx.textAlign='center';ctx.fillStyle='#333';
+    ctx.font='bold 29px sans-serif';ctx.fillText(card.querySelector('.ticket-title')?.textContent||'第15回紫熊祭 前売り券',375,85);
+    const product=card.querySelector('.product')?.textContent?.trim()||card.querySelector('.product-choice-title')?.textContent?.trim()||'前売り券';
+    ctx.font='bold 43px sans-serif';ctx.fillText(product.slice(0,20),375,150);
+    const status=card.querySelector('.used-badge,.active-badge,.badge')?.textContent?.trim()||'チケット';
+    ctx.fillStyle='#9c1828';ctx.font='bold 25px sans-serif';ctx.fillText(status,375,203);
+    ctx.fillStyle='#333';
+    const infos=[...card.querySelectorAll('.info')];
+    const seller=infos[0]?.querySelector('b')?.textContent?.trim()||'';
+    const buyer=infos[1]?.querySelector('b')?.textContent?.trim()||'';
+    const shrink=(value,limit)=>value.length>limit?value.slice(0,limit-1)+'…':value;
+    ctx.font='25px sans-serif';ctx.fillText('販売者：'+shrink(seller,26),375,262);ctx.fillText('購入者：'+shrink(buyer,26),375,306);
+    let img=qr;
+    if(qr.tagName.toLowerCase()==='img' && !qr.complete){await new Promise((resolve,reject)=>{qr.addEventListener('load',resolve,{once:true});qr.addEventListener('error',reject,{once:true});});}
+    ctx.fillStyle='#fff';ctx.fillRect(175,340,400,400);
+    ctx.imageSmoothingEnabled=false;ctx.drawImage(img,190,355,370,370);ctx.imageSmoothingEnabled=true;
+    ctx.fillStyle='#333';ctx.font='bold 23px monospace';
+    const code=card.querySelector('.code')?.textContent?.trim()||'';
+    ctx.fillText(shrink(code,42),375,787);
+    ctx.fillStyle='#666';ctx.font='22px sans-serif';ctx.fillText('利用期間：11/1〜11/3（シグマ祭期間中）',375,844);
+    ctx.fillText('当日は保存した画像を受付で提示してください',375,895);
+    ctx.fillStyle='#9c1828';ctx.font='bold 21px sans-serif';ctx.fillText('※利用済み・期限切れの券は使用できません',375,946);
+    if(card.querySelector('.sample-ribbon')){ctx.globalAlpha=.24;ctx.fillStyle='#c00';ctx.font='bold 115px sans-serif';ctx.fillText('SAMPLE',375,580);ctx.globalAlpha=1;}
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    if(!blob)throw Error('画像を作成できませんでした');
+    const filename='sigma-ticket-'+(code.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,35)||'qr')+'.png';
+    const file=new File([blob],filename,{type:'image/png'});
+    // 対応端末では標準共有シートから「画像を保存」が選べる。
+    if(navigator.canShare?.({files:[file]}) && navigator.share){
+      try{await navigator.share({files:[file],title:'シグマ祭 チケットQR画像'});return;}
+      catch(e){if(e?.name==='AbortError')return;}
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    // iOSなどダウンロード非対応の場合は画像を開いて保存可能にする。
+    const help=card.querySelector('.qr-save-fallback');
+    if(help){help.href=url;help.hidden=false;}
+    setTimeout(()=>URL.revokeObjectURL(url),180000);
+  }catch(err){console.error(err);alert('画像の作成に失敗しました。QRコードが表示されている状態でスクリーンショットを撮ってください。');}
+  finally{button.disabled=false;button.textContent=label;}
+}
+
 function foldTicketPage(rootId){
  const root=document.getElementById(rootId);
  if(!root || root.querySelector('.ticket-section-controls')) return;
@@ -340,6 +399,9 @@ async function renderSample(seller,buyer,code){
       <div class="badge-wrap"><span class="badge">見本・利用不可</span></div>
       <div class="grid"><div class="info"><span>販売者</span><b>${esc(seller)}</b></div><div class="info"><span>購入者</span><b>${esc(buyer)}</b></div></div>
       <div id="qrcode"></div><div class="code">${esc(code)}</div>
+      <button type="button" class="qr-image-save" onclick="saveTicketImage(this)">📷 QR画像を保存</button>
+      <div class="qr-save-help"><strong>通信環境が悪い場合でも安心</strong><br>事前にQR画像を保存しておけば、当日インターネットに接続できない場合でも画像を提示できます。<br>※受付側の読み取り・使用済み処理には別途通信またはオフライン対応が必要です。</div>
+      <a class="qr-save-fallback" href="#" target="_blank" rel="noopener" hidden>保存できない場合：画像を開いて長押しで保存</a>
       <div class="top-actions"><button class="secondary" onclick="copyText('${encodeURIComponent(shareUrl)}')">見本URLをコピー</button><button class="secondary" onclick="shareSample('${encodeURIComponent(shareUrl)}')">共有</button></div>
       <p class="note">このQRコードも見本ページに移動するだけです。<br>レジでの使用・商品交換・ポイント計上はできません。</p>
       <section class="fuki-sponsor" aria-label="チャーシュー提供協賛"><div class="fuki-sponsor-heading">チャーシュー提供協賛</div><img class="fuki-sponsor-logo" src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><p class="fuki-sponsor-note">チャーハンに使用するチャーシューは、富貴製麺研究所様よりご提供いただいています。</p><a class="fuki-site-link" href="https://fuuki-seimen.com" target="_blank" rel="noopener noreferrer">富貴製麺の公式ホームページを見る ↗</a></section>
