@@ -33,7 +33,7 @@
 .admin-table tbody tr:nth-child(even){background:#fffafa}
 .admin-detail{margin-top:12px;border-radius:12px;border:1px solid #ead5d5;background:#fcf9f9;padding:14px;font-size:13px}
 @media(max-width:500px){.admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-filters{grid-template-columns:1fr}}
-.admin-staff-entry{border-top:1px solid #eadede;padding:11px 0;display:grid;gap:5px}.admin-staff-entry:first-of-type{margin-top:10px}.admin-detail-row td{padding:4px 8px 16px;background:#fff7f7}.admin-inline-detail{border-left:3px solid #a91824;background:#fff;border-radius:8px;padding:12px}.admin-inline-detail .top{margin-bottom:8px}.admin-product-row{padding:12px 0;border-top:1px solid #eee0e0}.admin-product-row:first-child{border-top:0}.admin-product-row .top{gap:8px}.admin-product-row b{font-size:14px}</style></head><body><main><nav><button class="secondary" onclick="location.href='home.html'">← ホーム</button><button class="secondary" id="adminBack" onclick="location.href='admin-menu.html'">管理者メニュー</button></nav><div class="hero"><h1>食材保存</h1><p>買い出しから受け渡しまで、ここで確認できます。</p></div>
+.admin-staff-entry{border-top:1px solid #eadede;padding:11px 0;display:grid;gap:5px}.admin-staff-entry:first-of-type{margin-top:10px}.admin-detail-row td{padding:4px 8px 16px;background:#fff7f7}.admin-inline-detail{border-left:3px solid #a91824;background:#fff;border-radius:8px;padding:12px}.admin-inline-detail .top{margin-bottom:8px}.admin-product-row{padding:12px 0;border-top:1px solid #eee0e0}.admin-product-row:first-child{border-top:0}.admin-product-row .top{gap:8px}.admin-product-row b{font-size:14px}.admin-qty-total{background:#fcf7f7;border:1px solid #e8d6d9;border-radius:13px;padding:13px;margin:14px 0 3px}.admin-qty-row{display:flex;align-items:center;gap:9px;border-top:1px solid #ede0e0;padding:10px 0;flex-wrap:wrap}.admin-qty-row strong{font-size:19px;color:#9c2330;margin-left:auto}.admin-qty-row .small{width:100%}</style></head><body><main><nav><button class="secondary" onclick="location.href='home.html'">← ホーム</button><button class="secondary" id="adminBack" onclick="location.href='admin-menu.html'">管理者メニュー</button></nav><div class="hero"><h1>食材保存</h1><p>買い出しから受け渡しまで、ここで確認できます。</p></div>
 <div class="steps" aria-label="利用の流れ"><div class="step"><b>①</b>商品登録</div><div class="step"><b>②</b>日時共有</div><div class="step"><b>③</b>受取申込</div><div class="step"><b>④</b>預け完了</div></div>
 <div class="stats" aria-label="現在の状況"><div class="stat"><span>登録商品</span><strong id="statItems">—</strong></div><div class="stat"><span>公開予定</span><strong id="statSlots">—</strong></div><div class="stat"><span>受取申込</span><strong id="statRequests">—</strong></div><div class="stat"><span>預け待ち</span><strong id="statPending">—</strong></div></div>
 <div id="notice">ログインを確認中...</div>
@@ -41,7 +41,8 @@
 <div class="tabpane" id="pane-admin"><section id="adminArea" class="hide">
 <div class="card"><h2>商品の申請状況</h2><p class="small">同じスタッフが同じ商品を複数日申請した場合、最大数量のみ計上します。</p><div id="adminItemProgress"></div></div>
 <div class="card"><h2>スタッフの受取・保存状況</h2><div class="admin-summary" id="adminSummary"></div>
-<div class="admin-filters"><div><label>スタッフ</label><select id="adminStaffFilter" onchange="renderAdminTable()"><option value="">全スタッフ</option></select></div><div><label>商品</label><select id="adminItemFilter" onchange="renderAdminTable()"><option value="">全商品</option></select></div><div><label>状況</label><select id="adminStatusFilter" onchange="renderAdminTable()"><option value="">すべて</option><option value="assigned">預け待ち</option><option value="completed">預け完了</option><option value="cancelled">取消</option></select></div></div>
+<div class="admin-filters"><div><label>スタッフ</label><select id="adminStaffFilter" onchange="renderAdminTable()"><option value="">全スタッフ</option></select></div><div><label>商品</label><select id="adminItemFilter" onchange="renderAdminTable()"><option value="">全商品</option></select></div><div><label>日付</label><select id="adminDateFilter" onchange="renderAdminTable()"><option value="">全日付</option></select></div><div><label>状況</label><select id="adminStatusFilter" onchange="renderAdminTable()"><option value="">すべて</option><option value="assigned">預け待ち</option><option value="completed">預け完了</option><option value="cancelled">取消</option></select></div></div>
+<div id="adminQuantityTotals" class="admin-qty-total" aria-live="polite"></div>
 <button class="secondary" type="button" onclick="exportAdminExcel()" style="margin:10px 0">Excelに出力（現在の絞り込み）</button><div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>受取スタッフ</th><th>申請内容</th><th>進捗</th></tr></thead><tbody id="adminTableBody"></tbody></table></div>
 <div class="small">スタッフ名を押すと、そのすぐ下に詳細が開きます。</div></div>
 <div class="card"><h2>① 管理者：購入予定品の登録・編集</h2><p class="small">商品の登録と編集のみを行います。受け渡し先の登録は各スタッフが行います。</p>
@@ -232,9 +233,10 @@ async function complete(id,max){if(!handoffs.some(h=>h.id===id&&h.driver_id===me
 function adminFmt(n){return Number(Number(n||0).toFixed(3))}
 
 let adminExpandedStaff='';
+function dateKeyAdmin(v){if(!v)return '';const d=new Date(v);if(!Number.isFinite(d.getTime()))return '';const pp=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pp(d.getMonth()+1)}-${pp(d.getDate())}`}
 function filteredAdminRows(){
- const sid=$('adminStaffFilter').value,iid=$('adminItemFilter').value,status=$('adminStatusFilter').value;
- return handoffs.filter(h=>(!sid||h.receiver_id===sid)&&(!iid||h.item_id===iid)&&(!status||h.status===status))
+ const sid=$('adminStaffFilter').value,iid=$('adminItemFilter').value,status=$('adminStatusFilter').value,date=$('adminDateFilter').value;
+ return handoffs.filter(h=>(!sid||h.receiver_id===sid)&&(!iid||h.item_id===iid)&&(!status||h.status===status)&&(!date||dateKeyAdmin(h.scheduled_at)===date))
   .sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
 }
 function staffDetailsHtml(id,rows){
@@ -266,15 +268,26 @@ function renderAdminItemProgress(){
 }
 function renderAdminTable(){
  if(!admin)return;
- const staffSel=$('adminStaffFilter'),itemSel=$('adminItemFilter');
+ const staffSel=$('adminStaffFilter'),itemSel=$('adminItemFilter'),dateSel=$('adminDateFilter');
  const sv=staffSel.value,iv=itemSel.value;
  const staffIds=[...new Set(handoffs.map(h=>h.receiver_id).filter(Boolean))].sort((a,b)=>label(a).localeCompare(label(b),'ja'));
  staffSel.innerHTML='<option value="">全スタッフ</option>'+staffIds.map(id=>`<option value="${esc(id)}">${esc(label(id))}</option>`).join('');
  itemSel.innerHTML='<option value="">全商品</option>'+items.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
  staffSel.value=staffIds.includes(sv)?sv:'';
  itemSel.value=items.some(x=>x.id===iv)?iv:'';
+ const oldDate=dateSel.value;const dates=[...new Set(handoffs.map(h=>dateKeyAdmin(h.scheduled_at)).filter(Boolean))].sort();dateSel.innerHTML='<option value="">全日付</option>'+dates.map(d=>`<option value="${d}">${d.replaceAll('-','/')}</option>`).join('');dateSel.value=dates.includes(oldDate)?oldDate:'';
  const all=filteredAdminRows();
  const pending=all.filter(h=>h.status==='assigned'),completed=all.filter(h=>h.status==='completed'),cancelled=all.filter(h=>h.status==='cancelled');
+ // 同一スタッフ・同一商品が複数の時間帯に申し込んでも最大数量のみ計上。
+ // フィルター後の対象を集計するため、日付指定はその日内で重複を除去する。
+ const totals=new Map();
+ for(const h of all){if(h.status==='cancelled')continue;
+  const id=h.item_id,k=`${h.receiver_id}:${id}`,q=Number(h.status==='completed'?(h.completed_quantity??h.quantity):h.quantity)||0;
+  if(!totals.has(id))totals.set(id,new Map());const byPerson=totals.get(id);byPerson.set(h.receiver_id,Math.max(byPerson.get(h.receiver_id)||0,q));
+ }
+ const quantityHtml=[...totals].map(([id,byPerson])=>{const item=items.find(x=>x.id===id);const sum=[...byPerson.values()].reduce((a,b)=>a+b,0);return `<div class="admin-qty-row"><b>${esc(item?.name||'商品')}</b><strong>${adminFmt(sum)}${esc(item?.unit||'')}</strong><span class="small">${byPerson.size}人・重複除外</span></div>`}).join('');
+ $('adminQuantityTotals').innerHTML=`<div class="top"><b>申請数量の合計</b><span class="small">${$('adminDateFilter').value||'全日付'}／現在の絞り込み</span></div>${quantityHtml||'<div class="small">対象の申請がありません</div>'}`;
+
  $('adminSummary').innerHTML=[['申請',all.length],['預け待ち',pending.length],['預け完了',completed.length],['取消',cancelled.length]].map(([k,v])=>`<div class="admin-metric"><span>${k}</span><strong>${v}</strong></div>`).join('');
  const groups=new Map();
  for(const h of all){if(!groups.has(h.receiver_id))groups.set(h.receiver_id,[]);groups.get(h.receiver_id).push(h)}
