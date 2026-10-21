@@ -246,10 +246,10 @@ function buildMapPartners(coupons){
   return out;
 }
 function mapLaunchHtml(){
-  return `<div class="card"><div class="map-launch-title">🗺️ クーポン店舗マップ</div><div class="map-launch-text">熊大黒髪北キャンパスをもとに、赤門からの道筋と道沿いの店舗位置を分かりやすくまとめた案内図です。</div><button onclick="openCouponMap()">店舗マップを見る</button></div>`;
+  return `<div class="card"><div class="map-launch-title">🗺️ マップ</div><div class="map-launch-text">熊大黒髪北キャンパスをもとに、赤門からの道筋と道沿いの店舗位置を分かりやすくまとめた案内図です。</div><button onclick="openCouponMap()">店舗マップを見る</button></div>`;
 }
 function mapModalHtml(){
-  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">クーポン店舗マップ</div><div class="map-sheet-sub">赤門（会場入口）からの道筋と、道沿いの店舗位置を優先した当日向けの案内図です。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="illustrated-map-wrap"><div class="illustrated-map-stage"><img class="illustrated-map" src="./coupon-campus-illustrated.png" alt="熊本大学黒髪北キャンパスのクーポン店舗マップ"><div id="mapFocusRing" class="map-focus-ring" aria-hidden="true"></div></div></div></div></div>`;
+  return `<div id="couponMapModal" class="map-modal" onclick="if(event.target===this)closeCouponMap()"><div class="map-sheet"><div class="map-sheet-head"><div><div class="map-sheet-title">マップ</div><div class="map-sheet-sub">赤門（会場入口）からの道筋と、道沿いの店舗位置を優先した当日向けの案内図です。</div></div><button type="button" class="map-close" onclick="closeCouponMap()">閉じる</button></div><div class="illustrated-map-wrap"><div class="illustrated-map-stage"><img class="illustrated-map" src="./coupon-campus-illustrated.png" alt="熊本大学黒髪北キャンパスのマップ"><div id="mapFocusRing" class="map-focus-ring" aria-hidden="true"></div></div></div></div></div>`;
 }
 function openCouponMapByName(encodedName){openCouponMap(decodeURIComponent(encodedName||""));}
 function openCouponMap(activeName=""){
@@ -384,13 +384,14 @@ function foldTicketPage(rootId){
    const body=document.createElement('div');body.className='fold-body';
    node.parentNode.insertBefore(panel,node);body.appendChild(node);panel.append(summary,body);
  };
- // 先にスポンサーをカード外へ移動し、チケット本体だけを開閉する。
- if(sponsor) ticket.after(sponsor);
+ // 上部の常設ロゴに統一し、重複した協賛欄は削除する。
+ if(sponsor) sponsor.remove();
+ // クーポンをマップより前へ移動する。
+ if(coupons && map)root.insertBefore(coupons,map);
  fold(ticket,'前売り券・QRコード',false,'当日はQRコードを提示してください',false);
- fold(sponsor,'協賛：富貴製麺研究所',false,'チャーシュー提供協賛',true);
- fold(map,'クーポン店舗マップ',false,'店舗案内',false);
  const couponCount=coupons?.querySelectorAll('.coupon-card').length||0;
  fold(coupons,`使えるクーポン（${couponCount}件）`,false,'提携団体の特典をチェック',false);
+ fold(map,'マップ',false,'店舗案内',false);
  // 地図モーダルは折りたたみ外に残して動作を維持する。
  if(modal && modal.parentNode!==root)root.appendChild(modal);
  controls.addEventListener('click',event=>{
