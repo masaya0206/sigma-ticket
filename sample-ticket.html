@@ -120,6 +120,13 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .ticket-fold .fold-subtitle{display:block;font-size:11px;color:#7d6c70;font-weight:600;margin-top:4px}
 .ticket-fold .fold-heading{min-width:0;flex:1}
 @media(max-width:420px){.ticket-fold>summary{padding:13px;font-size:15px}.ticket-fold .fold-mini-logo{width:58px;height:43px}}
+
+.fuuki-top-banner{display:none;margin:20px 0 0;padding:13px 14px;background:#fff;color:#302326;border-radius:16px;text-align:center;text-decoration:none;box-shadow:0 4px 14px #0002}
+.fuuki-top-banner.is-visible{display:block}
+.fuuki-top-banner .top-sponsor-label{font-size:12px;font-weight:800;color:#a91824;letter-spacing:.04em}
+.fuuki-top-banner img{display:block;width:min(100%,300px);height:auto;max-height:125px;object-fit:contain;margin:5px auto}
+.fuuki-top-banner .top-sponsor-link{font-size:12px;font-weight:750;color:#9e1a29}
+.fuki-site-link{display:block;text-align:center;text-decoration:none;padding:12px 10px;background:#a91824;color:#fff;border-radius:12px;font-weight:800;font-size:14px;margin-top:12px}
 </style>
 </head>
 <body>
@@ -128,6 +135,7 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
     <div class="eyebrow">MATCH POINT × 第十五回紫熊祭</div>
     <h1>見本券発行</h1>
     <p>提携先への説明専用。販売実績には一切入りません。</p>
+    <a class="fuuki-top-banner is-visible" id="fuukiTopBanner" href="https://fuuki-seimen.com" target="_blank" rel="noopener noreferrer" aria-label="協賛 富貴製麺研究所の公式ホームページを開く"><span class="top-sponsor-label">チャーシュー提供協賛</span><img src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><span class="top-sponsor-link">公式ホームページを見る ↗</span></a>
   </div>
 
   <div id="controlArea" class="card control">
@@ -329,7 +337,7 @@ async function renderSample(seller,buyer,code){
       <div id="qrcode"></div><div class="code">${esc(code)}</div>
       <div class="top-actions"><button class="secondary" onclick="copyText('${encodeURIComponent(shareUrl)}')">見本URLをコピー</button><button class="secondary" onclick="shareSample('${encodeURIComponent(shareUrl)}')">共有</button></div>
       <p class="note">このQRコードも見本ページに移動するだけです。<br>レジでの使用・商品交換・ポイント計上はできません。</p>
-      <section class="fuki-sponsor" aria-label="チャーシュー提供協賛"><div class="fuki-sponsor-heading">チャーシュー提供協賛</div><img class="fuki-sponsor-logo" src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><p class="fuki-sponsor-note">チャーハンに使用するチャーシューは、富貴製麺研究所様よりご提供いただいています。</p></section>
+      <section class="fuki-sponsor" aria-label="チャーシュー提供協賛"><div class="fuki-sponsor-heading">チャーシュー提供協賛</div><img class="fuki-sponsor-logo" src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><p class="fuki-sponsor-note">チャーハンに使用するチャーシューは、富貴製麺研究所様よりご提供いただいています。</p><a class="fuki-site-link" href="https://fuuki-seimen.com" target="_blank" rel="noopener noreferrer">富貴製麺の公式ホームページを見る ↗</a></section>
     </div>${partner}`;
   new QRCode(document.getElementById("qrcode"),{text:shareUrl,width:230,height:230});
   foldTicketPage("previewArea");

@@ -123,6 +123,13 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .ticket-fold .fold-subtitle{display:block;font-size:11px;color:#7d6c70;font-weight:600;margin-top:4px}
 .ticket-fold .fold-heading{min-width:0;flex:1}
 @media(max-width:420px){.ticket-fold>summary{padding:13px;font-size:15px}.ticket-fold .fold-mini-logo{width:58px;height:43px}}
+
+.fuuki-top-banner{display:none;margin:20px 0 0;padding:13px 14px;background:#fff;color:#302326;border-radius:16px;text-align:center;text-decoration:none;box-shadow:0 4px 14px #0002}
+.fuuki-top-banner.is-visible{display:block}
+.fuuki-top-banner .top-sponsor-label{font-size:12px;font-weight:800;color:#a91824;letter-spacing:.04em}
+.fuuki-top-banner img{display:block;width:min(100%,300px);height:auto;max-height:125px;object-fit:contain;margin:5px auto}
+.fuuki-top-banner .top-sponsor-link{font-size:12px;font-weight:750;color:#9e1a29}
+.fuki-site-link{display:block;text-align:center;text-decoration:none;padding:12px 10px;background:#a91824;color:#fff;border-radius:12px;font-weight:800;font-size:14px;margin-top:12px}
 </style>
 
 <style id="responsiveOverflowFixV1">
@@ -180,6 +187,7 @@ table{
     <div class="eyebrow">MATCH POINT × 第十五回紫熊祭</div>
     <h1 id="heroTitle">券情報</h1>
     <p id="heroSub">購入者用ページ</p>
+    <a class="fuuki-top-banner" id="fuukiTopBanner" href="https://fuuki-seimen.com" target="_blank" rel="noopener noreferrer" aria-label="協賛 富貴製麺研究所の公式ホームページを開く"><span class="top-sponsor-label">チャーシュー提供協賛</span><img src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><span class="top-sponsor-link">公式ホームページを見る ↗</span></a>
   </div>
 
   <div id="main">
@@ -390,6 +398,7 @@ function foldTicketPage(rootId){
 
 async function renderTicket(t){
   const ticketKind=t.sale_type==="same_day" ? "当日券" : "前売り券";
+  document.getElementById('fuukiTopBanner')?.classList.toggle('is-visible',ticketKind==='前売り券');
   document.title=`シグマ祭 ${ticketKind}`;
   const heroTitle=document.getElementById("heroTitle");
   const heroSub=document.getElementById("heroSub");
@@ -429,7 +438,7 @@ async function renderTicket(t){
         ${ticketKind==="前売り券"?`<br><br><strong style="color:#9a1620;">有効期限を過ぎた場合、または対象商品が売り切れとなった場合でも返金はできません。</strong>`:""}
       </p>
 
-      ${ticketKind==="前売り券"?`<section class="fuki-sponsor" aria-label="チャーシュー提供協賛"><div class="fuki-sponsor-heading">チャーシュー提供協賛</div><img class="fuki-sponsor-logo" src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><p class="fuki-sponsor-note">チャーハンに使用するチャーシューは、富貴製麺研究所様よりご提供いただいています。</p></section>`:""}
+      ${ticketKind==="前売り券"?`<section class="fuki-sponsor" aria-label="チャーシュー提供協賛"><div class="fuki-sponsor-heading">チャーシュー提供協賛</div><img class="fuki-sponsor-logo" src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><p class="fuki-sponsor-note">チャーハンに使用するチャーシューは、富貴製麺研究所様よりご提供いただいています。</p><a class="fuki-site-link" href="https://fuuki-seimen.com" target="_blank" rel="noopener noreferrer">富貴製麺の公式ホームページを見る ↗</a></section>`:""}
       ${used?`
         <p class="small" style="text-align:center">
           ※ Match Pointの商品交換が済んでいても、未使用のクーポンは利用できます。
