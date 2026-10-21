@@ -96,6 +96,13 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .instagram-main-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:14px 16px;border-radius:14px;text-decoration:none!important;font-weight:800;background:#fff0f5;color:#b5121b!important;border:1px solid #f2c9d5;box-sizing:border-box}
 .instagram-main-link:active{transform:scale(.985)}
 
+
+/* 前売り券協賛：ロゴはQRなどの券機能より下に固定表示 */
+.fuki-sponsor{margin:24px -4px 4px;padding:18px 10px 20px;background:#fff;border:1px solid #e8dddd;border-radius:18px;text-align:center;color:#292020}
+.fuki-sponsor-heading{font-size:13px;font-weight:900;letter-spacing:.1em;color:#8c282d}
+.fuki-sponsor-logo{display:block;width:100%;max-width:700px;height:auto;margin:10px auto 6px;object-fit:contain}
+.fuki-sponsor-note{font-size:13px;line-height:1.7;font-weight:650;margin:8px 4px 0}
+@media(min-width:620px){.fuki-sponsor{padding:22px}.fuki-sponsor-note{font-size:15px}}
 </style>
 
 <style id="responsiveOverflowFixV1">
@@ -362,6 +369,7 @@ async function renderTicket(t){
         ${ticketKind==="前売り券"?`<br><br><strong style="color:#9a1620;">有効期限を過ぎた場合、または対象商品が売り切れとなった場合でも返金はできません。</strong>`:""}
       </p>
 
+      ${ticketKind==="前売り券"?`<section class="fuki-sponsor" aria-label="チャーシュー提供協賛"><div class="fuki-sponsor-heading">チャーシュー提供協賛</div><img class="fuki-sponsor-logo" src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><p class="fuki-sponsor-note">チャーハンに使用するチャーシューは、富貴製麺研究所様よりご提供いただいています。</p></section>`:""}
       ${used?`
         <p class="small" style="text-align:center">
           ※ Match Pointの商品交換が済んでいても、未使用のクーポンは利用できます。
