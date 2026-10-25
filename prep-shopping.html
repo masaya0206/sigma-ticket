@@ -43,7 +43,7 @@
 <div class="card"><h2>スタッフの受取・保存状況</h2><div class="admin-summary" id="adminSummary"></div>
 <div class="admin-filters"><div><label>スタッフ</label><select id="adminStaffFilter" onchange="renderAdminTable()"><option value="">全スタッフ</option></select></div><div><label>商品</label><select id="adminItemFilter" onchange="renderAdminTable()"><option value="">全商品</option></select></div><div><label>日付</label><select id="adminDateFilter" onchange="renderAdminTable()"><option value="">全日付</option></select></div><div><label>状況</label><select id="adminStatusFilter" onchange="renderAdminTable()"><option value="">すべて</option><option value="assigned">預け待ち</option><option value="completed">預け完了</option><option value="cancelled">取消</option></select></div></div>
 <div id="adminQuantityTotals" class="admin-qty-total" aria-live="polite"></div>
-<button class="secondary" type="button" onclick="exportAdminExcel()" style="margin:10px 0">Excelに出力（現在の絞り込み）</button><div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>受取スタッフ</th><th>申請内容</th><th>進捗</th></tr></thead><tbody id="adminTableBody"></tbody></table></div>
+<button type="button" onclick="exportCurrentStorageExcel()" style="margin:10px 8px 10px 0">保存担当者・数量をExcel出力</button><p class="small" style="margin:0 0 8px">預け完了の記録を集計します。実際の消費・移動後の残量とは異なる場合があります。</p><button class="secondary" type="button" onclick="exportAdminExcel()" style="margin:10px 0">Excelに出力（現在の絞り込み）</button><div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>受取スタッフ</th><th>申請内容</th><th>進捗</th></tr></thead><tbody id="adminTableBody"></tbody></table></div>
 <div class="small">スタッフ名を押すと、そのすぐ下に詳細が開きます。</div></div>
 <div class="card"><h2>① 管理者：購入予定品の登録・編集</h2><p class="small">商品の登録と編集のみを行います。受け渡し先の登録は各スタッフが行います。</p>
 <input type="hidden" id="editId"><label>商品名</label><input id="itemName" placeholder="例：米"><label>大きさ・規格の詳細</label><textarea id="spec" placeholder="例：5kg袋、縦30cm×横20cm、1箱12本入り"></textarea><div class="grid"><div><label>必要数量</label><input type="number" min="0.01" step="any" id="qty" value="1"></div><div><label>単位</label><select id="unit"><option>袋</option><option>個</option><option>箱</option><option>kg</option><option>パック</option><option>本</option><option>セット</option></select></div></div><label>保存方法</label><select id="storage"><option>常温</option><option>冷蔵</option><option>冷凍</option><option>その他</option></select><label>保存ポイント</label><select id="pointMode" onchange="pointValue.disabled=this.value==='pending'"><option value="pending">未定（後から設定）</option><option value="set">数量1単位あたりのポイントを設定</option></select><input id="pointValue" type="number" min="0" step="any" placeholder="例：2（0ポイントも可）" disabled><label>備考</label><textarea id="itemNotes" placeholder="任意"></textarea><button class="full" id="saveItemButton" onclick="saveItem()">商品を登録</button><button class="full secondary hide" id="cancelEditButton" onclick="resetEditor()">編集をやめる</button></div>
@@ -307,6 +307,47 @@ function showAdminStaff(id){
  if(!admin)return;
  adminExpandedStaff=adminExpandedStaff===id?'':id;
  renderAdminTable();
+}
+function exportCurrentStorageExcel(){
+ if(!admin)return;
+ if(typeof XLSX==='undefined'){message('Excel出力用のライブラリを読み込めませんでした。通信状況を確認して再試行してください。');return;}
+ // 保存担当者は受取スタッフと同一。完了済みのみを対象とし、取消・未完了は含めない。
+ // 既存画面と同じく、同じスタッフ×商品の複数日申請は最大完了数量のみ集計する。
+ // 現物の消費・再移動を記録する仕組みはないため、物理的な残量ではない。
+ const done=handoffs.filter(h=>h.status==='completed');
+ const byPair=new Map();
+ const details=[['保存担当者','商品名','規格','保存方法','預け完了数量','単位','預け完了日時','担当ドライバー','予定数量','備考']];
+ const datetime=v=>v?new Date(v).toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+ for(const h of done){
+  const it=items.find(x=>x.id===h.item_id);
+  const q=Number(h.completed_quantity??h.quantity)||0;
+  const k=JSON.stringify([h.receiver_id,h.item_id]);
+  const prev=byPair.get(k);
+  if(!prev||q>prev.quantity)byPair.set(k,{receiverId:h.receiver_id,itemId:h.item_id,quantity:q});
+  details.push([label(h.receiver_id),it?.name||'商品',it?.specification||'',it?.storage_method||'',q,it?.unit||'',datetime(h.completed_at),label(h.driver_id),Number(h.quantity||0),h.note||'']);
+ }
+ const rows=[...byPair.values()].sort((a,b)=>label(a.receiverId).localeCompare(label(b.receiverId),'ja')||productName(a.itemId).localeCompare(productName(b.itemId),'ja'));
+ const summary=[['保存担当者','商品名','預け完了数量','単位','保存方法','規格']];
+ const itemTotals=new Map();
+ for(const r of rows){
+  const it=items.find(x=>x.id===r.itemId);
+  summary.push([label(r.receiverId),it?.name||'商品',r.quantity,it?.unit||'',it?.storage_method||'',it?.specification||'']);
+  const total=itemTotals.get(r.itemId)||{quantity:0,staff:new Set()};
+  total.quantity+=r.quantity;total.staff.add(r.receiverId);itemTotals.set(r.itemId,total);
+ }
+ const itemsSheet=[['商品名','合計預け完了数量','単位','保存担当者数','目標数量','目標との差']];
+ for(const it of items){const t=itemTotals.get(it.id)||{quantity:0,staff:new Set()};itemsSheet.push([it.name,adminFmt(t.quantity),it.unit,t.staff.size,Number(it.planned_quantity||0),adminFmt(t.quantity-Number(it.planned_quantity||0))]);}
+ const wb=XLSX.utils.book_new();
+ for(const [name,data,widths] of [
+  ['担当者別保存数量',summary,[24,24,20,10,16,32]],
+  ['商品別合計',itemsSheet,[25,22,12,18,17,18]],
+  ['預け完了明細',details,[24,25,28,14,20,12,25,24,16,30]]]){
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=widths.map(wch=>({wch}));
+  ws['!autofilter']={ref:`A1:${XLSX.utils.encode_col(data[0].length-1)}${Math.max(1,data.length)}`};
+  XLSX.utils.book_append_sheet(wb,ws,name);
+ }
+ XLSX.writeFile(wb,'食材保存_担当者別数量_'+new Date().toLocaleDateString('sv-SE')+'.xlsx');
 }
 function exportAdminExcel(){
  if(!admin)return;
