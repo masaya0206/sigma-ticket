@@ -43,7 +43,7 @@
 <div class="card"><h2>スタッフの受取・保存状況</h2><div class="admin-summary" id="adminSummary"></div>
 <div class="admin-filters"><div><label>スタッフ</label><select id="adminStaffFilter" onchange="renderAdminTable()"><option value="">全スタッフ</option></select></div><div><label>商品</label><select id="adminItemFilter" onchange="renderAdminTable()"><option value="">全商品</option></select></div><div><label>日付</label><select id="adminDateFilter" onchange="renderAdminTable()"><option value="">全日付</option></select></div><div><label>状況</label><select id="adminStatusFilter" onchange="renderAdminTable()"><option value="">すべて</option><option value="assigned">預け待ち</option><option value="completed">預け完了</option><option value="cancelled">取消</option></select></div></div>
 <div id="adminQuantityTotals" class="admin-qty-total" aria-live="polite"></div>
-<button type="button" onclick="exportCurrentStorageExcel()" style="margin:10px 8px 10px 0">保存担当者・数量をExcel出力</button><p class="small" style="margin:0 0 8px">預け完了の記録を集計します。実際の消費・移動後の残量とは異なる場合があります。</p><button class="secondary" type="button" onclick="exportAdminExcel()" style="margin:10px 0">Excelに出力（現在の絞り込み）</button><div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>受取スタッフ</th><th>申請内容</th><th>進捗</th></tr></thead><tbody id="adminTableBody"></tbody></table></div>
+<button type="button" onclick="exportCurrentStorageExcel()" style="margin:10px 8px 10px 0">預け量をExcel出力</button><p class="small" style="margin:0 0 8px">ドライバーが記録した実際の預け量を合計します。実際の消費・移動後の残量とは異なる場合があります。</p><button class="secondary" type="button" onclick="exportAdminExcel()" style="margin:10px 0">Excelに出力（現在の絞り込み）</button><div class="admin-table-scroll"><table class="admin-table"><thead><tr><th>受取スタッフ</th><th>申請内容</th><th>進捗</th></tr></thead><tbody id="adminTableBody"></tbody></table></div>
 <div class="small">スタッフ名を押すと、そのすぐ下に詳細が開きます。</div></div>
 <div class="card"><h2>① 管理者：購入予定品の登録・編集</h2><p class="small">商品の登録と編集のみを行います。受け渡し先の登録は各スタッフが行います。</p>
 <input type="hidden" id="editId"><label>商品名</label><input id="itemName" placeholder="例：米"><label>大きさ・規格の詳細</label><textarea id="spec" placeholder="例：5kg袋、縦30cm×横20cm、1箱12本入り"></textarea><div class="grid"><div><label>必要数量</label><input type="number" min="0.01" step="any" id="qty" value="1"></div><div><label>単位</label><select id="unit"><option>袋</option><option>個</option><option>箱</option><option>kg</option><option>パック</option><option>本</option><option>セット</option></select></div></div><label>保存方法</label><select id="storage"><option>常温</option><option>冷蔵</option><option>冷凍</option><option>その他</option></select><label>保存ポイント</label><select id="pointMode" onchange="pointValue.disabled=this.value==='pending'"><option value="pending">未定（後から設定）</option><option value="set">数量1単位あたりのポイントを設定</option></select><input id="pointValue" type="number" min="0" step="any" placeholder="例：2（0ポイントも可）" disabled><label>備考</label><textarea id="itemNotes" placeholder="任意"></textarea><button class="full" id="saveItemButton" onclick="saveItem()">商品を登録</button><button class="full secondary hide" id="cancelEditButton" onclick="resetEditor()">編集をやめる</button></div>
@@ -278,15 +278,29 @@ function renderAdminTable(){
  const oldDate=dateSel.value;const dates=[...new Set(handoffs.map(h=>dateKeyAdmin(h.scheduled_at)).filter(Boolean))].sort();dateSel.innerHTML='<option value="">全日付</option>'+dates.map(d=>`<option value="${d}">${d.replaceAll('-','/')}</option>`).join('');dateSel.value=dates.includes(oldDate)?oldDate:'';
  const all=filteredAdminRows();
  const pending=all.filter(h=>h.status==='assigned'),completed=all.filter(h=>h.status==='completed'),cancelled=all.filter(h=>h.status==='cancelled');
- // 同一スタッフ・同一商品が複数の時間帯に申し込んでも最大数量のみ計上。
- // フィルター後の対象を集計するため、日付指定はその日内で重複を除去する。
- const totals=new Map();
- for(const h of all){if(h.status==='cancelled')continue;
-  const id=h.item_id,k=`${h.receiver_id}:${id}`,q=Number(h.status==='completed'?(h.completed_quantity??h.quantity):h.quantity)||0;
-  if(!totals.has(id))totals.set(id,new Map());const byPerson=totals.get(id);byPerson.set(h.receiver_id,Math.max(byPerson.get(h.receiver_id)||0,q));
+ // 預け量は完了レコードの completed_quantity を1件ずつ合算する。
+ // 申請段階は従来どおり、同一スタッフ・同一商品の最大申請数で重複除外する。
+ const completedTotals=new Map(),pendingTotals=new Map();
+ for(const h of all){
+  if(h.status==='completed'){
+   if(!completedTotals.has(h.item_id))completedTotals.set(h.item_id,{quantity:0,staff:new Set()});
+   const entry=completedTotals.get(h.item_id);
+   entry.quantity+=Number(h.completed_quantity??0);
+   entry.staff.add(h.receiver_id);
+  }else if(h.status==='assigned'){
+   if(!pendingTotals.has(h.item_id))pendingTotals.set(h.item_id,new Map());
+   const perStaff=pendingTotals.get(h.item_id);
+   perStaff.set(h.receiver_id,Math.max(perStaff.get(h.receiver_id)||0,Number(h.quantity)||0));
+  }
  }
- const quantityHtml=[...totals].map(([id,byPerson])=>{const item=items.find(x=>x.id===id);const sum=[...byPerson.values()].reduce((a,b)=>a+b,0);return `<div class="admin-qty-row"><b>${esc(item?.name||'商品')}</b><strong>${adminFmt(sum)}${esc(item?.unit||'')}</strong><span class="small">${byPerson.size}人・重複除外</span></div>`}).join('');
- $('adminQuantityTotals').innerHTML=`<div class="top"><b>申請数量の合計</b><span class="small">${$('adminDateFilter').value||'全日付'}／現在の絞り込み</span></div>${quantityHtml||'<div class="small">対象の申請がありません</div>'}`;
+ const formatTotals=(totals,isComplete)=>[...totals].map(([id,value])=>{
+  const item=items.find(x=>x.id===id);
+  const amount=isComplete?value.quantity:[...value.values()].reduce((a,b)=>a+b,0);
+  const staffCount=isComplete?value.staff.size:value.size;
+  return `<div class="admin-qty-row"><b>${esc(item?.name||'商品')}</b><strong>${adminFmt(amount)}${esc(item?.unit||'')}</strong><span class="small">${staffCount}人・${isComplete?'受け渡し実績合計':'申請の重複除外'}</span></div>`;
+ }).join('');
+ const completedHtml=formatTotals(completedTotals,true),pendingHtml=formatTotals(pendingTotals,false);
+ $('adminQuantityTotals').innerHTML=`<div class="top"><b>預け量（実際の受け渡し数量）</b><span class="small">${$('adminDateFilter').value||'全日付'}／現在の絞り込み</span></div>${completedHtml||'<div class="small">預け量の記録はありません</div>'}${pendingHtml?`<div class="top" style="margin-top:14px"><b>預け待ちの申請数量</b></div>${pendingHtml}`:''}`;
 
  $('adminSummary').innerHTML=[['申請',all.length],['預け待ち',pending.length],['預け完了',completed.length],['取消',cancelled.length]].map(([k,v])=>`<div class="admin-metric"><span>${k}</span><strong>${v}</strong></div>`).join('');
  const groups=new Map();
@@ -312,22 +326,23 @@ function exportCurrentStorageExcel(){
  if(!admin)return;
  if(typeof XLSX==='undefined'){message('Excel出力用のライブラリを読み込めませんでした。通信状況を確認して再試行してください。');return;}
  // 保存担当者は受取スタッフと同一。完了済みのみを対象とし、取消・未完了は含めない。
- // 既存画面と同じく、同じスタッフ×商品の複数日申請は最大完了数量のみ集計する。
+ // 受け渡し完了レコードごとの実績数量を集計し、同じスタッフへの複数回の預けも合算する。
  // 現物の消費・再移動を記録する仕組みはないため、物理的な残量ではない。
  const done=handoffs.filter(h=>h.status==='completed');
  const byPair=new Map();
- const details=[['保存担当者','商品名','規格','保存方法','預け完了数量','単位','預け完了日時','担当ドライバー','予定数量','備考']];
+ const details=[['保存担当者','商品名','規格','保存方法','預け量','単位','預け完了日時','担当ドライバー','予定数量','備考']];
  const datetime=v=>v?new Date(v).toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
  for(const h of done){
   const it=items.find(x=>x.id===h.item_id);
   const q=Number(h.completed_quantity??h.quantity)||0;
   const k=JSON.stringify([h.receiver_id,h.item_id]);
   const prev=byPair.get(k);
-  if(!prev||q>prev.quantity)byPair.set(k,{receiverId:h.receiver_id,itemId:h.item_id,quantity:q});
+  if(prev)prev.quantity+=q;
+  else byPair.set(k,{receiverId:h.receiver_id,itemId:h.item_id,quantity:q});
   details.push([label(h.receiver_id),it?.name||'商品',it?.specification||'',it?.storage_method||'',q,it?.unit||'',datetime(h.completed_at),label(h.driver_id),Number(h.quantity||0),h.note||'']);
  }
  const rows=[...byPair.values()].sort((a,b)=>label(a.receiverId).localeCompare(label(b.receiverId),'ja')||productName(a.itemId).localeCompare(productName(b.itemId),'ja'));
- const summary=[['保存担当者','商品名','預け完了数量','単位','保存方法','規格']];
+ const summary=[['保存担当者','商品名','預け量','単位','保存方法','規格']];
  const itemTotals=new Map();
  for(const r of rows){
   const it=items.find(x=>x.id===r.itemId);
@@ -335,13 +350,13 @@ function exportCurrentStorageExcel(){
   const total=itemTotals.get(r.itemId)||{quantity:0,staff:new Set()};
   total.quantity+=r.quantity;total.staff.add(r.receiverId);itemTotals.set(r.itemId,total);
  }
- const itemsSheet=[['商品名','合計預け完了数量','単位','保存担当者数','目標数量','目標との差']];
+ const itemsSheet=[['商品名','合計預け量','単位','保存担当者数','目標数量','目標との差']];
  for(const it of items){const t=itemTotals.get(it.id)||{quantity:0,staff:new Set()};itemsSheet.push([it.name,adminFmt(t.quantity),it.unit,t.staff.size,Number(it.planned_quantity||0),adminFmt(t.quantity-Number(it.planned_quantity||0))]);}
  const wb=XLSX.utils.book_new();
  for(const [name,data,widths] of [
   ['担当者別保存数量',summary,[24,24,20,10,16,32]],
   ['商品別合計',itemsSheet,[25,22,12,18,17,18]],
-  ['預け完了明細',details,[24,25,28,14,20,12,25,24,16,30]]]){
+  ['預け量明細',details,[24,25,28,14,20,12,25,24,16,30]]]){
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=widths.map(wch=>({wch}));
   ws['!autofilter']={ref:`A1:${XLSX.utils.encode_col(data[0].length-1)}${Math.max(1,data.length)}`};
