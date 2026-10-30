@@ -112,6 +112,7 @@ table{
 </main>
 
 <script>
+// Festival-only point filtering is enforced by Supabase RPCs.
 const sb=supabase.createClient(
   "https://gsniytemgrbtgfywhqlu.supabase.co",
   "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
@@ -136,7 +137,7 @@ async function adminCheck(){
 }
 
 async function calc(finalFlag){
-  calcmsg.textContent="計算中...";
+  calcmsg.textContent="本祭の役割ポイントを計算中...";
 
   const {error}=await sb.rpc(
     "recalculate_event_points",
