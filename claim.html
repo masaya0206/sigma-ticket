@@ -137,6 +137,14 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .qr-image-save{display:block;width:100%;margin:12px 0 4px;padding:14px;border-radius:13px;background:#9e1a29!important;color:white!important;font-weight:850;font-size:15px;cursor:pointer}
 .qr-save-help{font-size:12px;line-height:1.65;text-align:left;background:#fff5f5;border:1px solid #f2d5d8;border-radius:12px;padding:11px 13px;color:#76202b;margin:9px 0 15px}
 .qr-save-fallback{display:block;text-align:center;margin:6px 0 12px;font-size:13px;color:#9e1a29;text-decoration:underline}
+
+/* グルメグランプリの投票導線：受け取り操作・券利用とは独立 */
+.gourmet-vote-box{background:#fff;border:1px solid #ecd7d8;border-radius:22px;padding:19px 20px;margin:14px 0;box-shadow:0 8px 24px rgba(58,25,20,.06)}
+.gourmet-vote-box[hidden]{display:none!important}
+.gourmet-vote-heading{font-size:18px;font-weight:950;line-height:1.4}
+.gourmet-vote-description{font-size:13px;line-height:1.65;color:var(--muted);margin:6px 0 0}
+.gourmet-vote-link{display:block;text-align:center;text-decoration:none;background:#b5121b;color:#fff;padding:15px 12px;border-radius:15px;font-weight:900;margin-top:14px}
+.gourmet-vote-footnote{font-size:11px;color:var(--muted);margin:9px 0 0;line-height:1.5}
 </style>
 
 <style id="responsiveOverflowFixV1">
@@ -197,6 +205,12 @@ table{
     <a class="fuuki-top-banner" id="fuukiTopBanner" href="https://fuuki-seimen.com" target="_blank" rel="noopener noreferrer" aria-label="協賛 富貴製麺研究所の公式ホームページを開く"><span class="top-sponsor-label">チャーシュー提供協賛</span><img src="fuki-seimen-logo.png" alt="富貴製麺研究所" loading="eager"><span class="top-sponsor-link">公式ホームページを見る ↗</span></a>
   </div>
 
+  <section class="gourmet-vote-box" id="gourmetVoteBox" aria-label="グルメグランプリ投票" hidden>
+    <div class="gourmet-vote-heading">🏆 グルメグランプリに投票</div>
+    <p class="gourmet-vote-description">Match Point：炒飯が選択された状態で投票フォームを開きます。</p>
+    <a class="gourmet-vote-link" href="https://docs.google.com/forms/d/e/1FAIpQLSdDDhy4Ti8LZta4Wo--o8eGyT76D0t12TZgGUPhOS4KPYL18Q/viewform?usp=pp_url&amp;entry.836451846=Match+Point%EF%BC%9A%E7%82%92%E9%A3%AF" target="_blank" rel="noopener noreferrer">投票フォームを開く ↗</a>
+    <p class="gourmet-vote-footnote">送信前に内容を確認してください。投票はお一人1回までです。</p>
+  </section>
   <div id="main">
     <div class="card status">読み込み中...</div>
   </div>
@@ -461,6 +475,7 @@ function foldTicketPage(rootId){
 }
 
 async function renderTicket(t){
+  document.getElementById("gourmetVoteBox").hidden=false;
   const ticketKind=t.sale_type==="same_day" ? "当日券" : "前売り券";
   document.getElementById('fuukiTopBanner')?.classList.toggle('is-visible',ticketKind==='前売り券');
   document.title=`シグマ祭 ${ticketKind}`;
@@ -545,6 +560,7 @@ async function init(){
   if(!t){showError("このURLのチケットが見つかりません。");return;}
 
   if(t.status==="pending"){
+    document.getElementById("gourmetVoteBox").hidden=false;
     const partner=await partnerHtml("前売り券");
     main.innerHTML=`
       <div class="card status">
