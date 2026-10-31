@@ -17,7 +17,8 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
 .action-primary{width:100%;margin-top:12px;background:#ecfdf3;color:#15803d}.action-danger{width:100%;margin-top:10px;background:#fff1f2;color:#b5121b;border:1px solid #f1c8cc}.refresh{background:#fff;color:var(--red)}button:disabled{opacity:.45}.empty{text-align:center;color:var(--muted);padding:24px}.ok{color:var(--ok);font-weight:800}.err{color:#b00020;font-weight:800}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.42);display:none;align-items:flex-end;justify-content:center;z-index:10000}.modal-backdrop.show{display:flex}.modal{width:min(100%,620px);background:#fff;border-radius:24px 24px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -10px 35px rgba(0,0,0,.2)}.modal h2{margin:0 0 5px}.modal label{display:block;font-weight:800;margin:14px 0 6px}.modal input,.modal select{width:100%;padding:12px;border:1px solid #d9d2cf;border-radius:12px;font:inherit}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.modal-actions button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:900}.cancel{background:#f2f2f7}.confirm{background:var(--red);color:#fff}
 .global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}.global-bottom-nav button{border:0;background:transparent;color:#6e6e73;font:inherit;font-size:11px;font-weight:700}.gicon{display:block;font-size:20px;margin-bottom:4px}
-@media(max-width:560px){.summary{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}}
+.timeline-card{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fffaf9}.timeline-title{font-weight:900;margin-bottom:8px}.timeline-axis{position:relative;height:18px;margin-bottom:6px;color:var(--muted);font-size:11px}.timeline-axis span{position:absolute;top:0;transform:translateX(-50%)}.timeline-axis span:last-child{transform:translateX(-100%)}.timeline-track{position:relative;height:44px;border-radius:14px;background:repeating-linear-gradient(to right,#f6f0ed 0,#f6f0ed calc(25% - 1px),#eadfdb calc(25% - 1px),#eadfdb 25%);border:1px solid #e4d8d4;overflow:hidden}.timeline-range{position:absolute;top:6px;bottom:6px;border-radius:10px;background:rgba(181,18,27,.16);border:1px solid rgba(181,18,27,.28)}.timeline-handle{position:absolute;top:3px;width:18px;height:38px;border-radius:999px;border:2px solid var(--red);background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12);transform:translateX(-50%);touch-action:none}.timeline-handle.end{background:#fff7f7}.timeline-readout{display:flex;justify-content:space-between;align-items:center;margin-top:8px;color:var(--muted);font-size:12px}.inline-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.inline-grid.three{grid-template-columns:1fr 1fr auto}.checkrow{display:flex;align-items:center;gap:10px;margin-top:12px}.checkrow input{width:auto}.note-box{margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff8dd;color:#755400;font-size:12px;line-height:1.55}.muted-btn{background:#f2f2f7;color:#555;border:0;border-radius:12px;padding:11px 12px;font:inherit;font-weight:800}.history-btn{margin-top:8px}.modal.wide{width:min(100%,700px)}
+@media(max-width:560px){.summary{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}.inline-grid,.inline-grid.three{grid-template-columns:1fr}}
 </style></head>
 <body>
 <header><h1>勤怠・役割管理</h1><p>店長・管理者用｜検索・出退勤・役割変更を1画面で管理</p></header>
@@ -34,7 +35,7 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
   <div class="summary" id="summary"></div>
   <div id="msg" class="small"></div>
 </section>
-<section class="card"><h2>全スタッフの勤怠修正</h2><div class="small">スタッフ名で検索し、該当する出退勤の記録を選んで修正します。実績と異なる時間への変更は避けてください。</div><input id="historyQuery" class="search" placeholder="スタッフ名で絞り込み" oninput="renderHistory()"><button class="refresh" onclick="loadHistory()">勤怠記録を取得</button><div id="historyList" class="small">「勤怠記録を取得」を押してください。</div></section>
+<section class="card"><h2>全スタッフの勤怠修正</h2><div class="small">スタッフ名で検索し、該当する出退勤の記録を選んで修正します。日時入力に加え、横軸時間の帯グラフで開始・終了を調整できます。</div><input id="historyQuery" class="search" placeholder="スタッフ名で絞り込み" oninput="renderHistory()"><button class="refresh" onclick="loadHistory()">勤怠記録を取得</button><div id="historyList" class="small">「勤怠記録を取得」を押してください。</div></section>
 <section id="staffList"><div class="card">読み込み中...</div></section>
 <section class="card"><div class="small">「出勤させる」「退勤させる」は本人のQR操作とは別に「管理出勤 / 管理退勤」として理由・操作者・時刻を保存します。買い出しミッション中も勤怠だけ退勤できます。勤務外の時間は買い出しポイントに含めないようSQLを適用してください。</div></section>
 </main>
@@ -47,9 +48,27 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
   <div class="modal-actions"><button class="cancel" onclick="closeModal()">キャンセル</button><button class="confirm" onclick="confirmAttendanceAction()">確定</button></div>
 </div></div>
 
+
+<div id="editModalBackdrop" class="modal-backdrop" onclick="closeEditAttendanceModal(event)"><div class="modal wide" onclick="event.stopPropagation()">
+  <h2>勤怠帯グラフの修正</h2>
+  <div id="editStaffMeta" class="small"></div>
+  <div class="inline-grid" style="margin-top:12px">
+    <div><label>出勤日</label><input id="editClockInDate" type="date" onchange="syncAttendanceFormFromInputs()"></div>
+    <div><label>退勤日</label><input id="editClockOutDate" type="date" onchange="syncAttendanceFormFromInputs()"></div>
+  </div>
+  <div class="inline-grid" style="margin-top:10px">
+    <div><label>出勤時刻</label><input id="editClockInTime" type="time" step="60" onchange="syncAttendanceFormFromInputs()"></div>
+    <div><label>退勤時刻</label><input id="editClockOutTime" type="time" step="60" onchange="syncAttendanceFormFromInputs()"></div>
+  </div>
+  <div class="checkrow"><input id="editStillWorking" type="checkbox" onchange="toggleStillWorking()"><label for="editStillWorking" style="margin:0;font-weight:800">まだ勤務中（退勤日時を空欄にする）</label></div>
+  <div id="timelineHost"></div>
+  <label>修正理由</label><input id="editReasonInput" placeholder="例：ドライバーの退勤時刻を実績に合わせて修正">
+  <div class="note-box">バーの左右端をドラッグすると開始・終了時刻を調整できます。同日勤務なら帯の中央を左右に動かして、時間幅を保ったまま移動できます。</div>
+  <div class="modal-actions"><button class="cancel" onclick="closeEditAttendanceModal()">キャンセル</button><button class="confirm" onclick="saveEditedAttendance()">保存する</button></div>
+</div></div>
 <script>
 const sb=window.supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
-let rows=[],teams=[],historyRows=[],tab='working',roleFilter='all',pending=null;
+let rows=[],teams=[],historyRows=[],tab='working',roleFilter='all',pending=null,editingAttendance=null,dragState=null;
 const roleLabel=r=>({seller:'売り子',manager:'店長',register:'レジ',cook:'調理',support:'サポート',shopping_driver:'買い出し運転手',shopping_helper:'買い出し手伝い'}[r]||r||'売り子');
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function clock(v){return v?new Date(v).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'-'}
@@ -99,21 +118,70 @@ async function loadHistory(){
 function renderHistory(){
  const q=(historyQuery.value||'').trim().toLowerCase();
  const v=historyRows.filter(x=>(x.staff_name||'').toLowerCase().includes(q));
- historyList.innerHTML=v.length?v.map(x=>`<div class="card" style="padding:12px"><b>${esc(x.staff_name)}</b>（${esc(roleLabel(x.role))}）<div class="small">出勤 ${esc(x.clock_in?new Date(x.clock_in).toLocaleString('ja-JP'):'-')} ／ 退勤 ${esc(x.clock_out?new Date(x.clock_out).toLocaleString('ja-JP'):'勤務中')}</div><button class="refresh" onclick="editAttendance(${Number(x.id)})">時刻を修正</button></div>`).join(''):'該当する勤怠記録はありません。';
+ historyList.innerHTML=v.length?v.map(x=>`<div class="card" style="padding:12px"><b>${esc(x.staff_name)}</b>（${esc(roleLabel(x.role))}）<div class="small">出勤 ${esc(x.clock_in?new Date(x.clock_in).toLocaleString('ja-JP'):'-')} ／ 退勤 ${esc(x.clock_out?new Date(x.clock_out).toLocaleString('ja-JP'):'勤務中')}</div><button class="refresh history-btn" onclick="openEditAttendanceModal(${Number(x.id)})">帯グラフで修正</button></div>`).join(''):'該当する勤怠記録はありません。';
 }
 function toLocalInput(iso){if(!iso)return '';const d=new Date(iso);const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,16)}
-async function editAttendance(id){
+function isoToParts(iso){if(!iso)return {date:'',time:''};const s=toLocalInput(iso);return {date:s.slice(0,10),time:s.slice(11,16)}}
+function timeToMinutes(v){if(!v)return 0;const [h,m]=v.split(':').map(Number);return Math.max(0,Math.min(24*60,(h||0)*60+(m||0)))}
+function minutesToTime(mins){const m=Math.max(0,Math.min(24*60,Math.round(mins)));const h=Math.floor(m/60)%24;const mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
+function localIsoFrom(date,time){return `${date}T${time}`}
+function openEditAttendanceModal(id){
  const a=historyRows.find(x=>Number(x.id)===Number(id));if(!a)return;
- const input=prompt(`${a.staff_name}さんの出勤日時を修正（YYYY-MM-DDTHH:mm）`,toLocalInput(a.clock_in));
- if(input===null)return;
- const output=prompt('退勤日時（勤務中の場合は空欄のまま）',toLocalInput(a.clock_out));if(output===null)return;
- const reason=prompt('修正理由を入力してください（必須）','出退勤記録の訂正');if(!reason?.trim())return alert('修正理由が必要です');
- const start=new Date(input),end=output?new Date(output):null;
- if(!Number.isFinite(start.getTime())||(end&&!Number.isFinite(end.getTime()))||(end&&end<=start))return alert('日時を確認してください');
- if(!confirm(`${a.staff_name}さんの勤怠記録を変更します。よろしいですか？`))return;
- const {error}=await sb.rpc('manager_correct_attendance',{p_attendance_id:id,p_clock_in:start.toISOString(),p_clock_out:end?end.toISOString():null,p_note:reason.trim()});
+ const start=isoToParts(a.clock_in);const end=isoToParts(a.clock_out);
+ editingAttendance={id:Number(id),staff_name:a.staff_name,role:a.role,startDate:start.date,startTime:start.time||'09:00',endDate:end.date||start.date,endTime:end.time||'17:00',stillWorking:!a.clock_out};
+ editStaffMeta.textContent=`${a.staff_name}さん（${roleLabel(a.role)}）の勤怠を、帯グラフまたは入力欄で修正します。`;
+ editClockInDate.value=editingAttendance.startDate;editClockInTime.value=editingAttendance.startTime;
+ editClockOutDate.value=editingAttendance.endDate;editClockOutTime.value=editingAttendance.endTime;
+ editStillWorking.checked=editingAttendance.stillWorking;editReasonInput.value='出退勤記録の訂正';
+ editModalBackdrop.classList.add('show');toggleStillWorking();renderAttendanceTimeline();
+}
+function closeEditAttendanceModal(e){if(e&&e.target&&e.target!==editModalBackdrop)return;editModalBackdrop.classList.remove('show');editingAttendance=null;dragState=null}
+function toggleStillWorking(){if(!editingAttendance)return;editingAttendance.stillWorking=editStillWorking.checked;editClockOutDate.disabled=editClockOutTime.disabled=editingAttendance.stillWorking;syncAttendanceFormFromInputs()}
+function syncAttendanceFormFromInputs(){if(!editingAttendance)return;editingAttendance.startDate=editClockInDate.value;editingAttendance.startTime=editClockInTime.value||'00:00';editingAttendance.stillWorking=editStillWorking.checked;editingAttendance.endDate=editClockOutDate.value||editingAttendance.startDate;editingAttendance.endTime=editClockOutTime.value||'00:00';renderAttendanceTimeline()}
+function timelineAxis(){return `<div class="timeline-axis"><span style="left:0%">0:00</span><span style="left:25%">6:00</span><span style="left:50%">12:00</span><span style="left:75%">18:00</span><span style="left:100%">24:00</span></div>`}
+function trackHtml(kind,start,end,dragRange){const left=(start/1440)*100,right=(end/1440)*100;return `<div class="timeline-track" data-kind="${kind}"><div class="timeline-range" data-drag="${dragRange?'range':''}" style="left:${left}%;width:${Math.max(0.8,right-left)}%"></div><button type="button" class="timeline-handle start" data-drag="start" style="left:${left}%" aria-label="開始調整"></button><button type="button" class="timeline-handle end" data-drag="end" style="left:${right}%" aria-label="終了調整"></button></div>`}
+function renderAttendanceTimeline(){
+ if(!editingAttendance)return;const sameDay=!editingAttendance.stillWorking&&editingAttendance.startDate===editingAttendance.endDate;
+ const startMin=timeToMinutes(editingAttendance.startTime);const endMin=timeToMinutes(editingAttendance.endTime);
+ let html='';
+ if(sameDay){
+   html+=`<div class="timeline-card"><div class="timeline-title">同日の勤務帯</div>${timelineAxis()}${trackHtml('same',startMin,endMin,true)}<div class="timeline-readout"><span>開始 ${editingAttendance.startTime}</span><span>終了 ${editingAttendance.endTime}</span></div></div>`;
+ }else{
+   html+=`<div class="timeline-card"><div class="timeline-title">出勤日の開始時刻</div>${timelineAxis()}${trackHtml('startday',startMin,1440,false)}<div class="timeline-readout"><span>${editingAttendance.startDate}</span><span>開始 ${editingAttendance.startTime}</span></div></div>`;
+   if(!editingAttendance.stillWorking){
+     html+=`<div class="timeline-card"><div class="timeline-title">退勤日の終了時刻</div>${timelineAxis()}${trackHtml('endday',0,endMin,false)}<div class="timeline-readout"><span>${editingAttendance.endDate}</span><span>終了 ${editingAttendance.endTime}</span></div></div>`;
+   }else{
+     html+=`<div class="timeline-card"><div class="timeline-title">勤務中</div><div class="small">退勤日時を空欄にするため、開始時刻のみ調整できます。</div></div>`;
+   }
+ }
+ timelineHost.innerHTML=html;bindTimelineDrag();
+}
+function bindTimelineDrag(){timelineHost.querySelectorAll('.timeline-track').forEach(track=>{track.querySelectorAll('.timeline-handle,.timeline-range').forEach(el=>el.addEventListener('pointerdown',startTimelineDrag))})}
+function startTimelineDrag(ev){if(!editingAttendance)return;const track=ev.currentTarget.closest('.timeline-track');if(!track)return;const kind=track.dataset.kind;const drag=ev.currentTarget.dataset.drag||'';const same=(kind==='same');const rect=track.getBoundingClientRect();const state={kind,drag,rect,startMin:timeToMinutes(editingAttendance.startTime),endMin:timeToMinutes(editingAttendance.endTime),duration:Math.max(1,timeToMinutes(editingAttendance.endTime)-timeToMinutes(editingAttendance.startTime))};dragState=state;ev.preventDefault();window.addEventListener('pointermove',onTimelineDrag);window.addEventListener('pointerup',stopTimelineDrag,{once:true})}
+function onTimelineDrag(ev){if(!dragState||!editingAttendance)return;const x=Math.max(0,Math.min(dragState.rect.width,ev.clientX-dragState.rect.left));let m=(x/dragState.rect.width)*1440;m=Math.round(m/5)*5;const minGap=5;
+ if(dragState.kind==='same'){
+   if(dragState.drag==='start'){const end=timeToMinutes(editingAttendance.endTime);m=Math.min(m,end-minGap);editingAttendance.startTime=minutesToTime(m)}
+   else if(dragState.drag==='end'){const start=timeToMinutes(editingAttendance.startTime);m=Math.max(m,start+minGap);editingAttendance.endTime=minutesToTime(m)}
+   else if(dragState.drag==='range'){let start=m-dragState.duration/2;start=Math.max(0,Math.min(1440-dragState.duration,start));editingAttendance.startTime=minutesToTime(start);editingAttendance.endTime=minutesToTime(start+dragState.duration)}
+ }else if(dragState.kind==='startday'){
+   editingAttendance.startTime=minutesToTime(Math.min(m,1435));
+ }else if(dragState.kind==='endday'){
+   editingAttendance.endTime=minutesToTime(Math.max(m,5));
+ }
+ editClockInTime.value=editingAttendance.startTime;editClockOutTime.value=editingAttendance.endTime;renderAttendanceTimeline();
+}
+function stopTimelineDrag(){window.removeEventListener('pointermove',onTimelineDrag);dragState=null}
+async function saveEditedAttendance(){
+ if(!editingAttendance)return;const reason=(editReasonInput.value||'').trim();if(!reason)return alert('修正理由が必要です');
+ const startIso=localIsoFrom(editClockInDate.value,editClockInTime.value||'00:00');
+ const endIso=editStillWorking.checked?null:localIsoFrom(editClockOutDate.value,editClockOutTime.value||'00:00');
+ const start=new Date(startIso),end=endIso?new Date(endIso):null;
+ if(!Number.isFinite(start.getTime())||(end&&!Number.isFinite(end.getTime())))return alert('日時を確認してください');
+ if(end&&end<=start)return alert('退勤日時は出勤日時より後にしてください');
+ if(!confirm(`${editingAttendance.staff_name}さんの勤怠記録を修正します。よろしいですか？`))return;
+ const {error}=await sb.rpc('manager_correct_attendance',{p_attendance_id:editingAttendance.id,p_clock_in:start.toISOString(),p_clock_out:end?end.toISOString():null,p_note:reason});
  if(error)return alert('修正エラー：'+error.message);
- alert('修正を保存しました');await loadHistory();await loadAll(false);
+ alert('修正を保存しました');closeEditAttendanceModal();await loadHistory();await loadAll(false);
 }
 
 searchInput.addEventListener('input',render);
