@@ -34,8 +34,9 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
   <div class="summary" id="summary"></div>
   <div id="msg" class="small"></div>
 </section>
+<section class="card"><h2>全スタッフの勤怠修正</h2><div class="small">スタッフ名で検索し、該当する出退勤の記録を選んで修正します。実績と異なる時間への変更は避けてください。</div><input id="historyQuery" class="search" placeholder="スタッフ名で絞り込み" oninput="renderHistory()"><button class="refresh" onclick="loadHistory()">勤怠記録を取得</button><div id="historyList" class="small">「勤怠記録を取得」を押してください。</div></section>
 <section id="staffList"><div class="card">読み込み中...</div></section>
-<section class="card"><div class="small">「出勤させる」「退勤させる」は本人のQR操作とは別に「管理出勤 / 管理退勤」として理由・操作者・時刻を保存します。買い出し中のスタッフは、先に買い出しミッションを終了してください。</div></section>
+<section class="card"><div class="small">「出勤させる」「退勤させる」は本人のQR操作とは別に「管理出勤 / 管理退勤」として理由・操作者・時刻を保存します。買い出しミッション中も勤怠だけ退勤できます。勤務外の時間は買い出しポイントに含めないようSQLを適用してください。</div></section>
 </main>
 <nav class="global-bottom-nav"><button onclick="location.href='home.html'"><span class="gicon">⌂</span>ホーム</button><button onclick="location.href='work.html'"><span class="gicon">時</span>勤怠・シフト</button><button onclick="location.href='tickets.html'"><span class="gicon">券</span>チケット</button></nav>
 
@@ -48,7 +49,7 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
 
 <script>
 const sb=window.supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
-let rows=[],teams=[],tab='working',roleFilter='all',pending=null;
+let rows=[],teams=[],historyRows=[],tab='working',roleFilter='all',pending=null;
 const roleLabel=r=>({seller:'売り子',manager:'店長',register:'レジ',cook:'調理',support:'サポート',shopping_driver:'買い出し運転手',shopping_helper:'買い出し手伝い'}[r]||r||'売り子');
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function clock(v){return v?new Date(v).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'-'}
@@ -86,9 +87,35 @@ function cardHtml(x){
 }
 async function changeRole(uid,role,name){if(!confirm(`${name}さんを「${roleLabel(role)}」に変更しますか？`))return;msg.textContent='変更中...';const {error}=await sb.rpc('set_work_role',{p_user:uid,p_role:role});if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${roleLabel(role)}」に変更しました</span>`;await loadAll(false)}
 async function changeRegister(uid,name){const team=Number(document.getElementById(`reg-${uid}`)?.value||0);if(!team){alert('レジチームを選択してください');return}const tn=teams.find(x=>Number(x.id)===team)?.team_name||'レジ';if(!confirm(`${name}さんを「${tn}」へ変更しますか？`))return;const {error}=await sb.rpc('assign_register_member',{p_user:uid,p_team:team});if(error){msg.innerHTML=`<span class="err">エラー：${esc(error.message)}</span>`;return}msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを「${esc(tn)}」へ変更しました</span>`;await loadAll(false)}
-function openAttendanceModal(action,uid,name,role=null){if(action==='out'&&isShopping(role)){alert('買い出し中です。先に買い出しミッションを終了してください。');return}pending={action,uid,name};modalTitle.textContent=action==='in'?'出勤させる':'退勤させる';modalStaff.textContent=`${name}さんを現在時刻で${action==='in'?'管理出勤':'管理退勤'}します。`;reasonSelect.value='QR操作忘れ';otherReason.value='';toggleOtherReason();modalBackdrop.classList.add('show')}
+function openAttendanceModal(action,uid,name,role=null){pending={action,uid,name};modalTitle.textContent=action==='in'?'出勤させる':'退勤させる';modalStaff.textContent=`${name}さんを現在時刻で${action==='in'?'管理出勤':'管理退勤'}します。`;reasonSelect.value='QR操作忘れ';otherReason.value='';toggleOtherReason();modalBackdrop.classList.add('show')}
 function closeModal(){modalBackdrop.classList.remove('show');pending=null}function backdropClose(e){if(e.target===modalBackdrop)closeModal()}function toggleOtherReason(){otherReasonWrap.style.display=reasonSelect.value==='その他'?'block':'none'}
 async function confirmAttendanceAction(){if(!pending)return;let reason=reasonSelect.value;if(reason==='その他')reason=otherReason.value.trim();if(!reason){alert('理由を入力してください');return}const fn=pending.action==='in'?'manager_clock_in_staff':'manager_clock_out_staff';const name=pending.name;const {error}=await sb.rpc(fn,{p_user:pending.uid,p_note:reason});if(error){alert('エラー：'+error.message);return}closeModal();msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを${fn.includes('in_')?'出勤':'退勤'}させました</span>`;await loadAll(false)}
+
+async function loadHistory(){
+ const {data,error}=await sb.rpc('manager_attendance_history');
+ if(error){historyList.textContent='エラー：'+error.message;return;}
+ historyRows=data||[];renderHistory();
+}
+function renderHistory(){
+ const q=(historyQuery.value||'').trim().toLowerCase();
+ const v=historyRows.filter(x=>(x.staff_name||'').toLowerCase().includes(q));
+ historyList.innerHTML=v.length?v.map(x=>`<div class="card" style="padding:12px"><b>${esc(x.staff_name)}</b>（${esc(roleLabel(x.role))}）<div class="small">出勤 ${esc(x.clock_in?new Date(x.clock_in).toLocaleString('ja-JP'):'-')} ／ 退勤 ${esc(x.clock_out?new Date(x.clock_out).toLocaleString('ja-JP'):'勤務中')}</div><button class="refresh" onclick="editAttendance(${Number(x.id)})">時刻を修正</button></div>`).join(''):'該当する勤怠記録はありません。';
+}
+function toLocalInput(iso){if(!iso)return '';const d=new Date(iso);const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,16)}
+async function editAttendance(id){
+ const a=historyRows.find(x=>Number(x.id)===Number(id));if(!a)return;
+ const input=prompt(`${a.staff_name}さんの出勤日時を修正（YYYY-MM-DDTHH:mm）`,toLocalInput(a.clock_in));
+ if(input===null)return;
+ const output=prompt('退勤日時（勤務中の場合は空欄のまま）',toLocalInput(a.clock_out));if(output===null)return;
+ const reason=prompt('修正理由を入力してください（必須）','出退勤記録の訂正');if(!reason?.trim())return alert('修正理由が必要です');
+ const start=new Date(input),end=output?new Date(output):null;
+ if(!Number.isFinite(start.getTime())||(end&&!Number.isFinite(end.getTime()))||(end&&end<=start))return alert('日時を確認してください');
+ if(!confirm(`${a.staff_name}さんの勤怠記録を変更します。よろしいですか？`))return;
+ const {error}=await sb.rpc('manager_correct_attendance',{p_attendance_id:id,p_clock_in:start.toISOString(),p_clock_out:end?end.toISOString():null,p_note:reason.trim()});
+ if(error)return alert('修正エラー：'+error.message);
+ alert('修正を保存しました');await loadHistory();await loadAll(false);
+}
+
 searchInput.addEventListener('input',render);
 (async()=>{if(!await guard())return;await loadAll();setInterval(()=>document.querySelectorAll('[data-clock]').forEach(x=>x.textContent=duration(x.dataset.clock)),30000);setInterval(()=>loadAll(false),60000)})();
 </script></body></html>
