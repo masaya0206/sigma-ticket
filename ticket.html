@@ -137,6 +137,14 @@ button,.btn{display:block;width:100%;padding:15px;border:0;border-radius:15px;ba
 .qr-image-save{display:block;width:100%;margin:12px 0 4px;padding:14px;border-radius:13px;background:#9e1a29!important;color:white!important;font-weight:850;font-size:15px;cursor:pointer}
 .qr-save-help{font-size:12px;line-height:1.65;text-align:left;background:#fff5f5;border:1px solid #f2d5d8;border-radius:12px;padding:11px 13px;color:#76202b;margin:9px 0 15px}
 .qr-save-fallback{display:block;text-align:center;margin:6px 0 12px;font-size:13px;color:#9e1a29;text-decoration:underline}
+
+/* グルメグランプリ：チケットの使用状態にかかわらず常時表示 */
+.gourmet-vote{margin:14px 0;padding:18px 16px;background:#fff;border:1px solid #edd6be;border-radius:20px;box-shadow:0 4px 16px #0000000a;text-align:center}
+.gourmet-vote-title{font-size:20px;font-weight:950;color:#7f2629;margin:0 0 8px}
+.gourmet-vote-note{font-size:13px;color:#63545a;line-height:1.7;margin:0 0 12px}
+.gourmet-vote-link{display:block;width:100%;padding:15px 12px;border-radius:14px;background:#ad1627;color:#fff!important;font-size:16px;font-weight:900;text-decoration:none!important;box-sizing:border-box}
+.gourmet-vote-link:focus-visible{outline:3px solid #f5b84d;outline-offset:3px}
+.gourmet-vote-foot{margin:10px 0 0;font-size:12px;line-height:1.65;color:#76686c}
 </style>
 
 <style id="responsiveOverflowFixV1">
@@ -511,6 +519,12 @@ async function renderTicket(t){
           ※ Match Pointの商品交換が済んでいても、未使用のクーポンは利用できます。
         </p>`:""}
     </div>
+    <section class="gourmet-vote" aria-label="グルメグランプリ投票">
+      <h2 class="gourmet-vote-title">🏆 グルメグランプリに投票</h2>
+      <p class="gourmet-vote-note">「Match Point：炒飯」が選択された状態で投票フォームを開きます。</p>
+      <a class="gourmet-vote-link" href="https://docs.google.com/forms/d/e/1FAIpQLSdDDhy4Ti8LZta4Wo--o8eGyT76D0t12TZgGUPhOS4KPYL18Q/viewform?usp=pp_url&amp;entry.836451846=Match+Point%EF%BC%9A%E7%82%92%E9%A3%AF" target="_blank" rel="noopener noreferrer">グルメグランプリに投票する ↗</a>
+      <p class="gourmet-vote-foot">1人1回・1票限り。選択内容を確認し、ご自身で送信してください。チケットを使用した後も投票できます。通信が必要です。</p>
+    </section>
     ${partner}
   `;
 
