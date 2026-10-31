@@ -439,7 +439,7 @@ function foldTicketPage(rootId){
  if(!ticket && !sponsor && !map && !coupons) return;
  const controls=document.createElement('div');controls.className='ticket-section-controls';
  controls.innerHTML='<button type="button" class="secondary" data-fold="open">すべて開く</button><button type="button" class="secondary" data-fold="close">すべて閉じる</button>';
- root.insertBefore(controls,root.firstChild);
+ root.insertBefore(controls,root.querySelector('.gourmet-vote')?.nextSibling || root.firstChild);
  const fold=(node,title,open,subtitle,miniLogo)=>{
    if(!node)return;
    const panel=document.createElement('details');panel.className='ticket-fold';panel.open=open;
@@ -533,6 +533,9 @@ async function renderTicket(t){
   new QRCode(document.getElementById("qrcode"),{
     text:ticketUrl,width:230,height:230
   });
+  // グルメ投票を最上部に配置（折りたたみ部分の外側）。
+  const gourmetCard=main.querySelector('.gourmet-vote');
+  if(gourmetCard) main.prepend(gourmetCard);
   foldTicketPage("main");
 }
 

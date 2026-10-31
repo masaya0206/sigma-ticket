@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-staff-attendance-fix-v92";
+const CACHE_NAME = "sigma-gourmet-vote-20261031-v93";
 
 const CORE_ASSETS = [
   "./connection-status.js",
