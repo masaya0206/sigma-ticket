@@ -63,7 +63,7 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
   <div class="checkrow"><input id="editStillWorking" type="checkbox" onchange="toggleStillWorking()"><label for="editStillWorking" style="margin:0;font-weight:800">まだ勤務中（退勤日時を空欄にする）</label></div>
   <div id="timelineHost"></div>
   <label>修正理由</label><input id="editReasonInput" placeholder="例：ドライバーの退勤時刻を実績に合わせて修正">
-  <div class="note-box">バーの左右端をドラッグすると開始・終了時刻を調整できます。同日勤務なら帯の中央を左右に動かして、時間幅を保ったまま移動できます。</div>
+  <div class="note-box">一本の帯の左端で出勤時刻、右端で退勤時刻を調整できます。日をまたぐ勤務も一本で表示されます。帯の中央を動かすと勤務時間を保って移動します。</div>
   <div class="modal-actions"><button class="cancel" onclick="closeEditAttendanceModal()">キャンセル</button><button class="confirm" onclick="saveEditedAttendance()">保存する</button></div>
 </div></div>
 <script>
@@ -138,37 +138,68 @@ function openEditAttendanceModal(id){
 function closeEditAttendanceModal(e){if(e&&e.target&&e.target!==editModalBackdrop)return;editModalBackdrop.classList.remove('show');editingAttendance=null;dragState=null}
 function toggleStillWorking(){if(!editingAttendance)return;editingAttendance.stillWorking=editStillWorking.checked;editClockOutDate.disabled=editClockOutTime.disabled=editingAttendance.stillWorking;syncAttendanceFormFromInputs()}
 function syncAttendanceFormFromInputs(){if(!editingAttendance)return;editingAttendance.startDate=editClockInDate.value;editingAttendance.startTime=editClockInTime.value||'00:00';editingAttendance.stillWorking=editStillWorking.checked;editingAttendance.endDate=editClockOutDate.value||editingAttendance.startDate;editingAttendance.endTime=editClockOutTime.value||'00:00';renderAttendanceTimeline()}
-function timelineAxis(){return `<div class="timeline-axis"><span style="left:0%">0:00</span><span style="left:25%">6:00</span><span style="left:50%">12:00</span><span style="left:75%">18:00</span><span style="left:100%">24:00</span></div>`}
-function trackHtml(kind,start,end,dragRange){const left=(start/1440)*100,right=(end/1440)*100;return `<div class="timeline-track" data-kind="${kind}"><div class="timeline-range" data-drag="${dragRange?'range':''}" style="left:${left}%;width:${Math.max(0.8,right-left)}%"></div><button type="button" class="timeline-handle start" data-drag="start" style="left:${left}%" aria-label="開始調整"></button><button type="button" class="timeline-handle end" data-drag="end" style="left:${right}%" aria-label="終了調整"></button></div>`}
-function renderAttendanceTimeline(){
- if(!editingAttendance)return;const sameDay=!editingAttendance.stillWorking&&editingAttendance.startDate===editingAttendance.endDate;
- const startMin=timeToMinutes(editingAttendance.startTime);const endMin=timeToMinutes(editingAttendance.endTime);
- let html='';
- if(sameDay){
-   html+=`<div class="timeline-card"><div class="timeline-title">同日の勤務帯</div>${timelineAxis()}${trackHtml('same',startMin,endMin,true)}<div class="timeline-readout"><span>開始 ${editingAttendance.startTime}</span><span>終了 ${editingAttendance.endTime}</span></div></div>`;
- }else{
-   html+=`<div class="timeline-card"><div class="timeline-title">出勤日の開始時刻</div>${timelineAxis()}${trackHtml('startday',startMin,1440,false)}<div class="timeline-readout"><span>${editingAttendance.startDate}</span><span>開始 ${editingAttendance.startTime}</span></div></div>`;
-   if(!editingAttendance.stillWorking){
-     html+=`<div class="timeline-card"><div class="timeline-title">退勤日の終了時刻</div>${timelineAxis()}${trackHtml('endday',0,endMin,false)}<div class="timeline-readout"><span>${editingAttendance.endDate}</span><span>終了 ${editingAttendance.endTime}</span></div></div>`;
-   }else{
-     html+=`<div class="timeline-card"><div class="timeline-title">勤務中</div><div class="small">退勤日時を空欄にするため、開始時刻のみ調整できます。</div></div>`;
-   }
- }
- timelineHost.innerHTML=html;bindTimelineDrag();
+function dateAtMidnight(date){return new Date(`${date}T00:00:00`).getTime()}
+function timelineBounds(){
+ const start=dateAtMidnight(editingAttendance.startDate);
+ let end=dateAtMidnight(editingAttendance.endDate||editingAttendance.startDate)+86400000;
+ if(editingAttendance.stillWorking){end=Math.max(start+86400000,Date.now()+3600000)}
+ if(end<=start)end=start+86400000;
+ return {start,end};
 }
-function bindTimelineDrag(){timelineHost.querySelectorAll('.timeline-track').forEach(track=>{track.querySelectorAll('.timeline-handle,.timeline-range').forEach(el=>el.addEventListener('pointerdown',startTimelineDrag))})}
-function startTimelineDrag(ev){if(!editingAttendance)return;const track=ev.currentTarget.closest('.timeline-track');if(!track)return;const kind=track.dataset.kind;const drag=ev.currentTarget.dataset.drag||'';const same=(kind==='same');const rect=track.getBoundingClientRect();const state={kind,drag,rect,startMin:timeToMinutes(editingAttendance.startTime),endMin:timeToMinutes(editingAttendance.endTime),duration:Math.max(1,timeToMinutes(editingAttendance.endTime)-timeToMinutes(editingAttendance.startTime))};dragState=state;ev.preventDefault();window.addEventListener('pointermove',onTimelineDrag);window.addEventListener('pointerup',stopTimelineDrag,{once:true})}
-function onTimelineDrag(ev){if(!dragState||!editingAttendance)return;const x=Math.max(0,Math.min(dragState.rect.width,ev.clientX-dragState.rect.left));let m=(x/dragState.rect.width)*1440;m=Math.round(m/5)*5;const minGap=5;
- if(dragState.kind==='same'){
-   if(dragState.drag==='start'){const end=timeToMinutes(editingAttendance.endTime);m=Math.min(m,end-minGap);editingAttendance.startTime=minutesToTime(m)}
-   else if(dragState.drag==='end'){const start=timeToMinutes(editingAttendance.startTime);m=Math.max(m,start+minGap);editingAttendance.endTime=minutesToTime(m)}
-   else if(dragState.drag==='range'){let start=m-dragState.duration/2;start=Math.max(0,Math.min(1440-dragState.duration,start));editingAttendance.startTime=minutesToTime(start);editingAttendance.endTime=minutesToTime(start+dragState.duration)}
- }else if(dragState.kind==='startday'){
-   editingAttendance.startTime=minutesToTime(Math.min(m,1435));
- }else if(dragState.kind==='endday'){
-   editingAttendance.endTime=minutesToTime(Math.max(m,5));
+function editorTime(side){const x=editingAttendance;return new Date(`${side==='start'?x.startDate:x.endDate}T${side==='start'?x.startTime:x.endTime}`).getTime()}
+function timelineFmt(ms){return new Date(ms).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+function renderAttendanceTimeline(){
+ if(!editingAttendance)return;
+ const bounds=timelineBounds(), span=bounds.end-bounds.start;
+ const first=editorTime('start'),last=editingAttendance.stillWorking?Math.min(Date.now(),bounds.end):editorTime('end');
+ const left=Math.max(0,Math.min(100,100*(first-bounds.start)/span));
+ const right=Math.max(0,Math.min(100,100*(last-bounds.start)/span));
+ const days=Math.round(span/86400000);
+ let ticks='';
+ const n=Math.max(1,Math.ceil(span/86400000));
+ for(let d=0;d<=n;d++){
+   const timestamp=bounds.start+d*86400000;if(timestamp>bounds.end)break;
+   const pct=100*(timestamp-bounds.start)/span;
+   const label=new Date(timestamp).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'});
+   ticks+=`<span style="left:${pct}%;${d===0?'transform:none':d===n?'transform:translateX(-100%)':''}">${esc(label)}</span>`;
  }
- editClockInTime.value=editingAttendance.startTime;editClockOutTime.value=editingAttendance.endTime;renderAttendanceTimeline();
+ timelineHost.innerHTML=`<div class="timeline-card"><div class="timeline-title">勤務時間（一本の帯で調整）</div>
+ <div class="timeline-axis">${ticks}</div>
+ <div class="timeline-track single-track" data-kind="all" style="background:repeating-linear-gradient(to right,#f6f0ed 0,#f6f0ed calc(${100/n}% - 1px),#eadfdb calc(${100/n}% - 1px),#eadfdb ${100/n}%);overflow:visible">
+ <div class="timeline-range" data-drag="range" style="left:${left}%;width:${Math.max(.25,right-left)}%;touch-action:none"></div>
+ <button type="button" class="timeline-handle start" data-drag="start" style="left:${left}%" aria-label="出勤時刻を調整"></button>
+ ${editingAttendance.stillWorking?'':`<button type="button" class="timeline-handle end" data-drag="end" style="left:${right}%" aria-label="退勤時刻を調整"></button>`}
+ </div><div class="timeline-readout"><span>出勤 ${esc(timelineFmt(first))}</span><span>${editingAttendance.stillWorking?'勤務中':`退勤 ${esc(timelineFmt(last))}`}</span></div>
+ <div class="small">左右端を動かすと日付をまたいで時刻を変更できます。中央の帯は勤務時間を保ったまま移動できます。5分単位で調整します。</div></div>`;
+ timelineHost.querySelectorAll('[data-drag]').forEach(el=>el.addEventListener('pointerdown',startTimelineDrag));
+}
+function startTimelineDrag(ev){
+ if(!editingAttendance)return;
+ const track=ev.currentTarget.closest('.timeline-track');if(!track)return;
+ const bounds=timelineBounds();const start=editorTime('start'),end=editingAttendance.stillWorking?Date.now():editorTime('end');
+ dragState={drag:ev.currentTarget.dataset.drag,rect:track.getBoundingClientRect(),bounds,start,end,pointerX:ev.clientX};
+ ev.preventDefault();window.addEventListener('pointermove',onTimelineDrag);window.addEventListener('pointerup',stopTimelineDrag,{once:true});window.addEventListener('pointercancel',stopTimelineDrag,{once:true});
+}
+function setEditorTimestamp(side,ms){
+ const d=new Date(ms);const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+ const date=`${y}-${m}-${day}`,time=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+ editingAttendance[side==='start'?'startDate':'endDate']=date;editingAttendance[side==='start'?'startTime':'endTime']=time;
+}
+function onTimelineDrag(ev){
+ if(!dragState||!editingAttendance)return;
+ const q=dragState,range=q.bounds.end-q.bounds.start;
+ const delta=(ev.clientX-q.pointerX)/q.rect.width*range;
+ const snap=ms=>Math.round(ms/300000)*300000;
+ let start=q.start,end=q.end;
+ if(q.drag==='start')start=Math.max(q.bounds.start,Math.min(end-300000,snap(q.start+delta)));
+ else if(q.drag==='end')end=Math.min(q.bounds.end-300000,Math.max(start+300000,snap(q.end+delta)));
+ else if(q.drag==='range'&&!editingAttendance.stillWorking){
+    const shift=snap(delta);const adjusted=Math.max(q.bounds.start-q.start,Math.min(q.bounds.end-q.end-300000,shift));start=q.start+adjusted;end=q.end+adjusted;
+ }
+ setEditorTimestamp('start',start);if(!editingAttendance.stillWorking)setEditorTimestamp('end',end);
+ editClockInDate.value=editingAttendance.startDate;editClockInTime.value=editingAttendance.startTime;
+ editClockOutDate.value=editingAttendance.endDate;editClockOutTime.value=editingAttendance.endTime;
+ renderAttendanceTimeline();
 }
 function stopTimelineDrag(){window.removeEventListener('pointermove',onTimelineDrag);dragState=null}
 async function saveEditedAttendance(){

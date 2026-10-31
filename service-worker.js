@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-attendance-timeline-20261101-v94";
+const CACHE_NAME = "sigma-attendance-singlebar-20261101-v95";
 
 const CORE_ASSETS = [
   "./connection-status.js",
