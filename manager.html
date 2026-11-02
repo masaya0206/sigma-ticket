@@ -67,7 +67,7 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
   <section class="card"><h2>食材受取管理</h2><button onclick="location.href='food-return.html'">出勤予定・食材受取を開く</button></section>
 <section>
     <h2>注文一覧</h2>
-    <p class="small">古い注文から表示します。操作は「提供済みにする」のみです。</p>
+    <p class="small">古い注文から表示。番号修正・取消はオンライン時のみ店長／管理者が行えます。取消は返金確認とは別です。</p>
     <div id="orders"><div class="card">読み込み中...</div></div>
   </section>
 
@@ -95,7 +95,7 @@ function colorName(c){
   return c==="red"?"赤レジ":c==="blue"?"青レジ":c==="green"?"緑レジ":"レジ不明";
 }
 function statusName(s){
-  return s==="new"?"新規":s==="cooking"?"調理中":s==="ready"?"受け渡し待ち":s==="served"?"提供済み":s;
+  return s==="new"?"新規":s==="cooking"?"調理中":s==="ready"?"受け渡し待ち":s==="served"?"提供済み":s==="void"?"取消済み":s;
 }
 function time(v){
   return new Date(v).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
@@ -164,14 +164,14 @@ async function loadOrders(){
   const rows=data||[];
   offlineManagerBanner.style.display='none';
   await saveManagerBackup(rows);
-  const active=rows.filter(x=>x.order_status!=="served");
+  const active=rows.filter(x=>x.order_status!=="served"&&x.order_status!=="void");
   pendingRice.textContent=active.reduce((a,x)=>a+Number(x.fried_rice_qty||0),0);
   pendingSesame.textContent=active.reduce((a,x)=>a+Number(x.sesame_qty||0),0);
   newCount.textContent=rows.filter(x=>x.order_status==="new").length;
   readyCount.textContent=rows.filter(x=>x.order_status==="ready").length;
 
   const visible=rows
-    .filter(x=>x.order_status!=="served")
+    .filter(x=>x.order_status!=="served"&&x.order_status!=="void")
     .sort((a,b)=>new Date(a.ordered_at)-new Date(b.ordered_at))
     .slice(0,80);
   if(!visible.length){
@@ -201,12 +201,37 @@ async function loadOrders(){
       </div>
       <div class="actions">
         <button onclick="setStatus(${x.id},'served')">提供済みにする</button>
+        <button onclick="editPickupNumber(${x.id},${JSON.stringify(String(x.pickup_number??''))})">番号修正</button>
+        <button onclick="voidServiceOrder(${x.id})">注文取消</button>
       </div>
     </div>`;
   }).join("");
 }
 
 
+async function editPickupNumber(id,current){
+  if(!navigator.onLine)return alert('番号修正はオンライン時のみ可能です');
+  const next=prompt('新しい受取番号を入力してください',current);
+  if(next===null)return;
+  const pickup=next.trim();if(!/^\d{1,6}$/.test(pickup))return alert('番号は1〜6桁の数字で入力してください');
+  const reason=prompt('変更理由を入力してください（必須）','レジ入力ミスの訂正');
+  if(!reason?.trim())return;
+  if(!confirm(`注文ID ${id} の受取番号を ${current} → ${pickup} に変更します。よろしいですか？`))return;
+  const {error}=await sb.rpc('manager_change_order_pickup',{p_order_id:id,p_new_pickup_number:pickup,p_reason:reason.trim()});
+  if(error)return alert('変更できませんでした：'+error.message);
+  alert('受取番号を更新しました');await loadOrders();if(historyOpen)await loadHistory();
+}
+async function voidServiceOrder(id){
+  if(!navigator.onLine)return alert('注文取消はオンライン時のみ可能です');
+  const reason=prompt('取消理由を入力してください（必須）','レジ入力ミス');
+  if(!reason?.trim())return;
+  if(!confirm(`注文ID ${id} を取り消します。調理状況を確認してください。
+システム上の返金処理と現金の実返金は区別して記録します。`))return;
+  const {error}=await sb.rpc('manager_void_service_order',{p_order_id:id,p_reason:reason.trim()});
+  if(error)return alert('取消できませんでした：'+error.message);
+  alert('注文を取り消しました。現金を実際に返した場合は別途返金確認を記録してください。');
+  await loadOrders();if(historyOpen)await loadHistory();
+}
 let historyOpen=false;
 
 async function restoreOrder(id){
@@ -252,6 +277,8 @@ async function loadHistory(){
       <div class="meta">${colorName(x.register_color)} ／ 提供済み ${x.served_at?time(x.served_at):""}</div>
       <div class="actions">
         <button onclick="restoreOrder(${x.id})">受け渡し待ちへ戻す</button>
+        <button onclick="editPickupNumber(${x.id},${JSON.stringify(String(x.pickup_number??''))})">番号修正</button>
+        <button onclick="voidServiceOrder(${x.id})">注文取消</button>
       </div>
     </div>`;
   }).join("");
