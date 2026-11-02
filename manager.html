@@ -201,6 +201,7 @@ async function loadOrders(){
       </div>
       <div class="actions">
         <button onclick="setStatus(${x.id},'served')">提供済みにする</button>
+        <button onclick="editProducts(${x.id},${Number(x.fried_rice_qty||0)},${Number(x.sesame_qty||0)})">商品修正</button>
         <button onclick="editPickupNumber(${x.id},decodeURIComponent('${encodeURIComponent(String(x.pickup_number??''))}'))">番号修正</button>
         <button onclick="voidServiceOrder(${x.id})">注文取消</button>
       </div>
@@ -209,6 +210,27 @@ async function loadOrders(){
 }
 
 
+async function editProducts(id,currentRice,currentSesame){
+  if(!navigator.onLine)return alert('商品修正はオンライン時のみ可能です');
+  const riceRaw=prompt('修正後のチャーハン数量（0以上の整数）',String(currentRice));
+  if(riceRaw===null)return;
+  const sesameRaw=prompt('修正後のごま団子セット数（0以上の整数）',String(currentSesame));
+  if(sesameRaw===null)return;
+  if(!/^\\d{1,3}$/.test(riceRaw.trim())||!/^\\d{1,3}$/.test(sesameRaw.trim()))
+    return alert('数量は0〜999の整数で入力してください');
+  const rice=Number(riceRaw.trim()),sesame=Number(sesameRaw.trim());
+  if(rice+sesame===0)return alert('商品をすべて0にする場合は注文取消を使用してください');
+  if(rice===currentRice&&sesame===currentSesame)return alert('変更がありません');
+  const reason=prompt('商品修正の理由（必須）','レジ入力ミスの訂正');
+  if(!reason?.trim())return;
+  if(!confirm(`注文ID ${id}の商品数量を修正します。\\nチャーハン：${currentRice} → ${rice}\\nごま団子：${currentSesame} → ${sesame}\\n※現金金額・返金状態は変更されません。`))return;
+  const {error}=await sb.rpc('manager_change_order_products',{
+    p_order_id:id,p_fried_rice_qty:rice,p_sesame_qty:sesame,p_reason:reason.trim()
+  });
+  if(error)return alert('商品修正に失敗しました：'+error.message);
+  alert('商品数量を修正しました。現金金額は変更していません。');
+  await loadOrders();if(historyOpen)await loadHistory();
+}
 async function editPickupNumber(id,current){
   if(!navigator.onLine)return alert('番号修正はオンライン時のみ可能です');
   const next=prompt('新しい受取番号を入力してください',current);
@@ -277,6 +299,7 @@ async function loadHistory(){
       <div class="meta">${colorName(x.register_color)} ／ 提供済み ${x.served_at?time(x.served_at):""}</div>
       <div class="actions">
         <button onclick="restoreOrder(${x.id})">受け渡し待ちへ戻す</button>
+        <button onclick="editProducts(${x.id},${Number(x.fried_rice_qty||0)},${Number(x.sesame_qty||0)})">商品修正</button>
         <button onclick="editPickupNumber(${x.id},decodeURIComponent('${encodeURIComponent(String(x.pickup_number??''))}'))">番号修正</button>
         <button onclick="voidServiceOrder(${x.id})">注文取消</button>
       </div>
