@@ -201,7 +201,7 @@ async function loadOrders(){
       </div>
       <div class="actions">
         <button onclick="setStatus(${x.id},'served')">提供済みにする</button>
-        <button onclick="editPickupNumber(${x.id},${JSON.stringify(String(x.pickup_number??''))})">番号修正</button>
+        <button onclick="editPickupNumber(${x.id},decodeURIComponent('${encodeURIComponent(String(x.pickup_number??''))}'))">番号修正</button>
         <button onclick="voidServiceOrder(${x.id})">注文取消</button>
       </div>
     </div>`;
@@ -277,7 +277,7 @@ async function loadHistory(){
       <div class="meta">${colorName(x.register_color)} ／ 提供済み ${x.served_at?time(x.served_at):""}</div>
       <div class="actions">
         <button onclick="restoreOrder(${x.id})">受け渡し待ちへ戻す</button>
-        <button onclick="editPickupNumber(${x.id},${JSON.stringify(String(x.pickup_number??''))})">番号修正</button>
+        <button onclick="editPickupNumber(${x.id},decodeURIComponent('${encodeURIComponent(String(x.pickup_number??''))}'))">番号修正</button>
         <button onclick="voidServiceOrder(${x.id})">注文取消</button>
       </div>
     </div>`;
