@@ -1014,6 +1014,7 @@ input[type="time"]::-webkit-datetime-edit{
 
 
     async function issueTicket() {
+      if(!(await sigmaCheckSalesWindow())) return;
 
       if (!currentSeller) {
         return;
@@ -1569,6 +1570,13 @@ input[type="time"]::-webkit-datetime-edit{
 
 
   <script>
+async function sigmaCheckSalesWindow(){
+  const {data,error}=await (typeof supabaseClient!=='undefined'?supabaseClient:sb).rpc('festival_sales_window_status');
+  if(error||!data){alert('営業期間を確認できません。オンラインで再試行してください。');return false;}
+  if(!data.is_open){alert(data.not_started?'当日券販売は11月1日0:00からです。':'11月3日17:30で営業終了しました。新規の販売・レジ受付はできません。受付済み注文の提供は可能です。');return false;}
+  return true;
+}
+
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker

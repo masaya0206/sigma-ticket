@@ -1,4 +1,4 @@
-const CACHE_NAME = "sigma-attendance-singlebar-20261101-v95";
+const CACHE_NAME = "sigma-register-close-serve-20261103-v95";
 
 const CORE_ASSETS = [
   "./connection-status.js",
@@ -17,7 +17,6 @@ const CORE_ASSETS = [
   "./admin-menu.html",
   "./offline-test-reset-admin.html",
   "./manager.html",
-  "./active-staff.html",
   "./offline-store.js",
   "./benefits.html",
   "./claim.html",
