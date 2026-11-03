@@ -55,6 +55,8 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
     </div>
   </section>
 
+  <section class="card" id="uberPeakPanel"><h2>ウーバー受付管理</h2><p id="uberPeakText">ピーク状態を確認中…</p><button id="uberPeakButton" onclick="toggleUberPeak()" disabled>読み込み中…</button></section>
+  <section id="uberOrdersSection"><h2>🚲 ウーバー優先注文</h2><p class="small">新規ウーバー注文を調理待ちの最上部へ。現在の調理は中断しません。</p><div id="uberOrders"></div></section>
   <section class="card">
     <h2 style="margin-top:0">店長ツール</h2>
     <div class="tools">
@@ -67,7 +69,7 @@ button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:800;bac
   <section class="card"><h2>食材受取管理</h2><button onclick="location.href='food-return.html'">出勤予定・食材受取を開く</button></section>
 <section>
     <h2>注文一覧</h2>
-    <p class="small">古い注文から表示。番号修正・取消はオンライン時のみ店長／管理者が行えます。取消は返金確認とは別です。</p>
+    <p class="small">ウーバーは上部に最優先表示。通常注文は受付順。番号修正・取消はオンライン時のみ店長／管理者が行えます。取消は返金確認とは別です。</p>
     <div id="orders"><div class="card">読み込み中...</div></div>
   </section>
 
@@ -163,6 +165,7 @@ async function loadOrders(){
   }
 
   const rows=data||[];
+  const uberIds=await loadUberOrders();
   offlineManagerBanner.style.display='none';
   await saveManagerBackup(rows);
   const active=rows.filter(x=>x.order_status!=="served"&&x.order_status!=="void");
@@ -172,7 +175,7 @@ async function loadOrders(){
   readyCount.textContent=rows.filter(x=>x.order_status==="ready").length;
 
   const visible=rows
-    .filter(x=>x.order_status!=="served"&&x.order_status!=="void")
+    .filter(x=>x.order_status!=="served"&&x.order_status!=="void"&&!uberIds.has(Number(x.id)))
     .sort((a,b)=>new Date(a.ordered_at)-new Date(b.ordered_at))
     .slice(0,80);
   if(!visible.length){
@@ -211,6 +214,46 @@ async function loadOrders(){
 }
 
 
+const uberNames={accepted:'受付済み',cooking:'調理中',ready:'調理完了',handed_off:'売り子受取済み',delivered:'配達済み'};
+function uberEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function refreshUberPeak(){
+ const {data,error}=await sb.from('uber_peak_state').select('is_peak,changed_at').eq('id',1).single();
+ const btn=document.getElementById('uberPeakButton'),label=document.getElementById('uberPeakText');
+ if(error){btn.disabled=true;label.textContent='ピーク状態を取得できません';return;}
+ btn.disabled=false;btn.dataset.peak=data.is_peak?'1':'0';
+ btn.textContent=data.is_peak?'ピーク終了・受付再開':'今ピーク！';
+ label.textContent=data.is_peak?'🔴 ピーク中：遠隔レジ受付停止（券発行と店頭レジは継続）':'🟢 通常営業：遠隔レジ受付中';
+}
+async function toggleUberPeak(){
+ const btn=document.getElementById('uberPeakButton');const next=btn.dataset.peak!=='1';
+ if(!confirm(next?'ウーバーの新規注文受付を停止しますか？':'ウーバー注文受付を再開しますか？'))return;
+ btn.disabled=true;const {error}=await sb.rpc('manager_set_uber_peak',{p_is_peak:next});
+ if(error)alert('切り替え失敗：'+error.message);await refreshUberPeak();
+}
+async function setUberKitchenStatus(id,status){
+ const names={cooking:'調理開始',ready:'調理完了',handed_off:'売り子への商品引渡し'};
+ if(!confirm(names[status]+'にしますか？'))return;
+ const {error}=await sb.rpc('uber_set_kitchen_status',{p_order_id:id,p_status:status});
+ if(error)alert(error.message);await loadOrders();
+}
+async function loadUberOrders(){
+ const {data,error}=await sb.rpc('uber_manager_board');
+ if(error){document.getElementById('uberOrders').textContent='ウーバー注文の取得に失敗：'+error.message;return new Set();}
+ const all=data||[];const inKitchen=all.filter(o=>!['handed_off','delivered','void'].includes(o.status));
+ // 厨房にまだ提供していないUberだけ優先表示。受取済みは配達状況として別表示。
+ const delivered=all.filter(o=>o.status==='handed_off');
+ document.getElementById('uberOrders').innerHTML=inKitchen.map(o=>{
+   const next={accepted:'cooking',cooking:'ready',ready:'handed_off'}[o.status];
+   const text={cooking:'調理開始',ready:'調理完了',handed_off:'売り子へ引渡し'}[next];
+   return `<div class="card order new" style="border-left:6px solid #d98b00;background:#fffcf3">
+    <strong>🚲 最優先｜${uberEsc(uberNames[o.status])}</strong><div class="order-items">${uberEsc(o.customer_name)} さん</div>
+    <div class="meta">売り子：${uberEsc(o.seller_name)} ／ ${uberEsc(o.pickup_number)} ／ ${time(o.ordered_at)}</div>
+    <div class="order-items">炒飯 ${Number(o.rice)} ・ 胡麻団子 ${Number(o.sesame)}</div>
+    ${next?`<div class="actions"><button data-uber-id="${Number(o.order_id)}" data-uber-next="${next}">${text}</button></div>`:''}</div>`;
+ }).join('')+(delivered.length?`<div class="card"><b>配達待ち ${delivered.length}件</b><div class="small">${delivered.map(o=>uberEsc(o.customer_name)+' さん（'+uberEsc(o.seller_name)+'）').join('、')}</div></div>`:'')||'<div class="card">ウーバー注文はありません。</div>';
+ document.querySelectorAll('[data-uber-id]').forEach(b=>b.onclick=()=>setUberKitchenStatus(Number(b.dataset.uberId),b.dataset.uberNext));
+ return new Set(all.map(x=>Number(x.order_id)));
+}
 async function editProducts(id,currentRice,currentSesame){
   if(!navigator.onLine)return alert('商品修正はオンライン時のみ可能です');
   const riceRaw=prompt('修正後のチャーハン数量（0以上の整数）',String(currentRice));
@@ -332,12 +375,14 @@ async function guard(){
   if(!navigator.onLine){await showOfflineOrders();return;}
   if(!await guard()) return;
   await loadOrders();
+  await refreshUberPeak();
+  sb.channel('manager-uber-peak').on('postgres_changes',{event:'*',schema:'public',table:'uber_peak_state'},refreshUberPeak).subscribe();
 
   sb.channel("v8-service-orders")
     .on("postgres_changes",{event:"*",schema:"public",table:"service_orders"},async()=>{await loadOrders();if(historyOpen)await loadHistory();})
     .subscribe();
 
-  setInterval(async()=>{if(navigator.onLine)await loadOrders();else await showOfflineOrders();},5000);
+  setInterval(async()=>{if(navigator.onLine){await loadOrders();await refreshUberPeak();}else await showOfflineOrders();},5000);
 })();
 window.addEventListener('offline',()=>showOfflineOrders());
 window.addEventListener('online',()=>setTimeout(async()=>{if(await guard())await loadOrders();},1000));

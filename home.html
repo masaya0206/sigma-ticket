@@ -2483,6 +2483,16 @@ const planned =
       adminEntry.style.display=isAdmin?"block":"none";
 
       const cards=[];
+      // Remote register rights: grantable separately from manager/admin permissions.
+      try {
+        const {data:remoteAllowed,error:remoteError}=await supabaseClient.rpc('can_use_remote_register');
+        const {data:sellerRights}=await supabaseClient.from('staff_members').select('can_sell').eq('user_id',userId).maybeSingle();
+        if((!remoteError && remoteAllowed) || sellerRights?.can_sell===true){
+          cards.push(roleMenuCard('売り子メニュー','券発行・ウーバーレジ','seller-menu.html'));
+        }
+      } catch (_) {}
+
+      if(isAdmin){cards.push(roleMenuCard('遠隔レジ権限管理','売り子への利用権限付与・解除','remote-register-admin.html'));}
 
       if(currentRole==="manager"){
         cards.push(roleMenuCard("店長","注文・人員・レジ・買い出しを管理","manager.html"));

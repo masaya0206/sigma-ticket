@@ -88,7 +88,7 @@ table{
     <div class="stat"><span>その他進行中</span><strong id="otherCount">0</strong></div>
   </div>
 
-  <h2>注文状況</h2>
+  <h2>🚲 ウーバー優先</h2><div id="uberSupport"></div><h2>注文状況</h2>
   <p style="margin-top:-8px;color:#6e6e73;font-size:12px">古い注文から表示します。操作は「提供済みにする」のみです。</p>
   <div id="orders"><div class="card">読み込み中...</div></div>
 </main>
@@ -100,7 +100,6 @@ table{
 </nav>
 
 <script>
-
 const sb=supabase.createClient(
   "https://gsniytemgrbtgfywhqlu.supabase.co",
   "sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn"
@@ -123,6 +122,20 @@ async function markServed(id){
   await loadOrders();
 }
 
+function supportEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function supportHandOff(id){
+ if(!confirm('売り子に商品を渡しましたか？'))return;
+ const {error}=await sb.rpc('uber_support_handoff',{p_order_id:id});
+ if(error)alert(error.message);await loadOrders();
+}
+async function loadUberSupport(){
+ const {data,error}=await sb.rpc('uber_support_board');
+ if(error){document.getElementById('uberSupport').textContent='ウーバー注文の取得不可：'+error.message;return new Set();}
+ const list=(data||[]).filter(x=>x.status!=='handed_off');
+ document.getElementById('uberSupport').innerHTML=list.map(x=>`<div class="card new"><b>🚲 ウーバー優先 / ${supportEsc(x.status)}</b><div class="items">${supportEsc(x.customer_name)} さん</div><div>売り子：${supportEsc(x.seller_name)}</div><div class="items">炒飯 ${Number(x.rice)} / 胡麻団子 ${Number(x.sesame)}</div>${x.status==='ready'?`<button data-handoff="${Number(x.order_id)}">売り子へ引渡し</button>`:''}</div>`).join('')||'<p class="meta">ウーバー待機注文なし</p>';
+ document.querySelectorAll('[data-handoff]').forEach(b=>b.onclick=()=>supportHandOff(Number(b.dataset.handoff)));
+ return new Set((data||[]).map(x=>Number(x.order_id)));
+}
 async function loadOrders(){
   const {data,error}=await sb.rpc("support_order_board");
   if(error){
@@ -130,7 +143,8 @@ async function loadOrders(){
     return;
   }
 
-  const rows=(data||[]).sort(
+  const uberIds=await loadUberSupport();
+  const rows=(data||[]).filter(x=>!uberIds.has(Number(x.id))).sort(
     (a,b)=>new Date(a.ordered_at)-new Date(b.ordered_at)
   );
   readyCount.textContent=rows.filter(x=>x.order_status==="ready").length;
