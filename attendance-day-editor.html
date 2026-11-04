@@ -2,13 +2,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
 :root{--red:#aa1520;--ink:#252b35;--line:#dfe3e9;--bg:#f7f7f9}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif;background:var(--bg);color:var(--ink);margin:0}header{background:var(--red);color:white;padding:26px 18px}main{max-width:1000px;margin:auto;padding:18px}.card{border:1px solid var(--line);border-radius:16px;background:white;padding:18px;margin:14px 0}.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.row>*{flex:0 1 auto}label{display:block;font-size:13px;font-weight:700;margin:9px 0 5px}input,select,textarea,button{font:inherit;border-radius:9px;border:1px solid #bdc2cb;padding:11px;max-width:100%}input[type=time]{min-width:110px}button{background:white;cursor:pointer;font-weight:700}button.primary{background:var(--red);color:white;border-color:var(--red)}button.warn{color:#a41922;border-color:#db9aa0}button:disabled{opacity:.4}button:focus-visible{outline:2px solid #2563eb}small,.muted{color:#68717c}#sessions{display:grid;gap:10px}.session{display:grid;grid-template-columns:auto minmax(100px,1fr) minmax(100px,1fr) minmax(105px,1fr) auto;gap:8px;align-items:end;background:#f8fafc;border:1px solid var(--line);padding:12px;border-radius:12px}.pill{background:#e9f5ed;color:#236b41;border-radius:99px;padding:6px 10px;font-weight:700}#original{overflow:auto;max-height:260px}.o{border-bottom:1px solid var(--line);padding:8px 0}textarea{width:100%;min-height:78px}#status{font-weight:700}#summary{font-size:18px;font-weight:800}@media(max-width:650px){.session{grid-template-columns:1fr 1fr}.session .rlabel{grid-column:1/-1}.session button{grid-column:2}.card{padding:13px}header{padding:21px 16px}}
 </style></head><body><header><h1>日別勤怠 一括編集</h1><div>スタッフ1名・1日分をまとめて編集｜原本は変更しない</div></header><main>
-<div class="card"><div class="row"><button onclick="location.href='work-timeline-admin.html'">← 勤務実績タイムライン</button><button id="reload" onclick="load()">データを取得</button></div><div class="row"><div><label for="day">対象日</label><select id="day"><option value="2026-10-31">10/31 準備</option><option value="2026-11-01">11/1 本祭1日目</option><option value="2026-11-02">11/2 本祭2日目</option><option value="2026-11-03">11/3 本祭3日目</option><option value="2026-11-04">11/4 片付け</option></select></div><div><label for="staff">スタッフ</label><select id="staff"></select></div></div><p id="status" class="muted">読み込み前</p><p id="saveVerify" role="status" aria-live="polite" style="font-size:14px;font-weight:700;color:#146a42"></p></div>
+<div class="card"><div class="row"><button onclick="location.href='work-timeline-admin.html'">← 勤務実績タイムライン</button><button id="reload" onclick="load()">データを取得</button></div><div class="row"><div><label for="day">対象日</label><select id="day"><option value="2026-10-31">10/31 準備</option><option value="2026-11-01">11/1 本祭1日目</option><option value="2026-11-02">11/2 本祭2日目</option><option value="2026-11-03">11/3 本祭3日目</option><option value="2026-11-04">11/4 片付け</option></select></div><div><label for="staff">スタッフ</label><select id="staff"></select></div></div><p id="status" class="muted">読み込み前</p>
+<div class="card" id="executiveBox"><h2>幹部の認定勤務時間（自動調整）</h2><p class="muted">幹部に設定したスタッフの認定勤務時間は、各日の非幹部スタッフの最長実働時間と同じになります。非幹部の勤怠を編集すると自動で再計算します。出退勤時刻・役割・QR原本は変更しません。</p><div class="row"><label style="display:flex;align-items:center;gap:8px;font-size:16px"><input id="execCheck" type="checkbox" onchange="toggleExecutive(this.checked)" style="width:20px;height:20px"> 選択中のスタッフを幹部に設定</label></div><p id="execInfo" class="muted">幹部設定を読み込み中…</p><p class="muted">※認定時間は勤務時間の評価用です。客数÷勤務人数×役割係数で計算する店内ポイントは、実際に勤務した時間帯の役割記録を使います。認定時間を店内ポイントに換算する機能は含まれません。</p></div><p id="saveVerify" role="status" aria-live="polite" style="font-size:14px;font-weight:700;color:#146a42"></p></div>
 <div class="card"><h2>この日の勤務区間を作り直す</h2><p class="muted">最初は0件の状態です。必要な勤務区間を何件でも追加してください。区間を追加せず保存すると、その日の有効勤怠は0時間になります。元データは別に残ります。</p><div id="summary">—</div><div id="sessions"></div><div class="row" style="margin-top:14px"><button onclick="addRow()">＋ 勤務区間を追加</button><button onclick="clearAllRows()" class="warn">すべて空にする</button><button onclick="loadSavedRows()">現在の記録を入力欄にコピー</button></div><label for="note">編集理由（必須）</label><textarea id="note" placeholder="本人確認により、11:00〜13:00と15:00〜17:00に訂正"></textarea><div class="row" style="margin-top:12px"><button class="primary" id="save" onclick="save()">この日をまとめて保存</button><button class="warn" id="restore" onclick="restore()">元に戻す（編集を取消）</button></div><p class="muted">原本と既存のQR勤怠は上書きしません。保存した編集は新しい勤務実績タイムラインと同画面のExcel出力に表示されます。ポイント計算など、既存のデータベース側の集計にはまだ反映されません。</p></div>
 <div class="card"><h2>原本の参照（読み取り専用）</h2><p class="muted">添付Excelの「勤務詳細（正確な時刻）」に記載されていた勤怠と役割履歴です。導入前に修正済みのデータが含まれる可能性があります。</p><div id="original"></div></div></main><script>
 'use strict';
 const sb=window.supabase.createClient('https://gsniytemgrbtgfywhqlu.supabase.co','sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn');
 const ROLES={seller:'売り子',support:'サポート',cook:'調理',manager:'店長',register:'レジ',shopping_driver:'運転手',shopping_helper:'買い出し補助'};
-let payload=null,workRows=[],dirty=false;
+let payload=null,workRows=[],dirty=false,execPayload=null;
 const entryParams=new URLSearchParams(location.search);
 let blankOnEntry=entryParams.get('empty')==='1';
 const requestedUser=entryParams.get('staff')||'';
@@ -25,8 +26,35 @@ function dayRows(){const p=getStaff();if(!p)return [];
  return (payload.current_attendance||[]).filter(x=>x.user_id===p.user_id).map(x=>({start:hhmm(x.clock_in),end:hhmm(x.clock_out),role:x.role in ROLES?x.role:'seller'}));
 }
 function currentEdit(){return (payload?.edits||[]).find(x=>x.user_id===el('staff').value)}
-function changeSelection(){if(dirty&&!confirm('未保存の編集内容を破棄してスタッフを切り替えますか？'))return;resetForm()}
-async function load(){el('reload').disabled=true;el('status').textContent='取得中…';try{const {data,error}=await sb.rpc('admin_sigma_day_editor_data',{p_date:el('day').value});if(error)throw error;payload=data;const before=el('staff').value;el('staff').innerHTML=payload.staff.map(x=>`<option value="${esc(x.user_id)}">${esc(x.staff_name)}</option>`).join('');if(payload.staff.some(x=>x.user_id===before))el('staff').value=before;else if(payload.staff.some(x=>x.user_id===requestedUser))el('staff').value=requestedUser;resetForm();el('status').textContent='取得完了（編集データは原本と別保存）';}catch(e){payload=null;el('status').textContent='取得エラー：'+e.message;}finally{el('reload').disabled=false}}
+function changeSelection(){if(dirty&&!confirm('未保存の編集内容を破棄してスタッフを切り替えますか？'))return;resetForm();renderExecutive()}
+async function getExecStatus(){
+ const date=el('day').value;
+ const {data,error}=await sb.rpc('admin_sigma_executive_day_status',{p_date:date});
+ if(error){execPayload=null;el('execInfo').textContent='幹部設定取得エラー：'+error.message;return;}
+ execPayload=data;renderExecutive();
+}
+function renderExecutive(){
+ const p=getStaff(),u=p?.user_id,record=(execPayload?.daily||[]).find(x=>x.user_id===u),members=execPayload?.members||[];
+ el('execCheck').disabled=!u||!execPayload;
+ el('execCheck').checked=!!u&&members.includes(u);
+ if(!execPayload){el('execInfo').textContent='幹部設定を読み込み中…';return;}
+ if(!record){el('execInfo').textContent='このスタッフの日別時間がありません';return;}
+ const format=n=>Number(n||0).toFixed(2);
+ const caption=record.is_executive?'幹部：非幹部の当日最長時間を自動適用':'非幹部：本人の実働時間を使用';
+ el('execInfo').textContent=`${caption}／実働 ${format(record.actual_hours)}時間 → 認定 ${format(record.credited_hours)}時間（非幹部最長：${format((execPayload.daily||[]).find(x=>x.is_executive)?.credited_hours ?? Math.max(0,...(execPayload.daily||[]).filter(x=>!x.is_executive).map(x=>Number(x.actual_hours))))}時間、該当者：${record.longest_staff||'なし'}）`;
+}
+async function toggleExecutive(enabled){
+ const p=getStaff();if(!p)return;
+ if(dirty&&!confirm('未保存の勤務区間があります。幹部設定だけ先に保存しますか？')){renderExecutive();return;}
+ if(!confirm(`${p.staff_name}を${enabled?'幹部に登録':'幹部から解除'}しますか？\nこの設定は10/31〜11/4の全日付に適用されます。`)){renderExecutive();return;}
+ el('execCheck').disabled=true;
+ try{
+  const {error}=await sb.rpc('admin_sigma_set_executive',{p_user_id:p.user_id,p_enabled:enabled});
+  if(error)throw error;
+  await getExecStatus();
+ }catch(e){alert('幹部設定エラー：'+e.message);renderExecutive();}
+}
+async function load(){el('reload').disabled=true;el('status').textContent='取得中…';try{const {data,error}=await sb.rpc('admin_sigma_day_editor_data',{p_date:el('day').value});if(error)throw error;payload=data;const before=el('staff').value;el('staff').innerHTML=payload.staff.map(x=>`<option value="${esc(x.user_id)}">${esc(x.staff_name)}</option>`).join('');if(payload.staff.some(x=>x.user_id===before))el('staff').value=before;else if(payload.staff.some(x=>x.user_id===requestedUser))el('staff').value=requestedUser;resetForm();el('status').textContent='取得完了（編集データは原本と別保存）';await getExecStatus();}catch(e){payload=null;el('status').textContent='取得エラー：'+e.message;}finally{el('reload').disabled=false}}
 function resetForm(){
  const edit=currentEdit();
  workRows=blankOnEntry?[]:(edit?edit.intervals.map(x=>({start:hhmm(x.start_at),end:hhmm(x.end_at),role:x.role})):dayRows());
