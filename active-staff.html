@@ -17,8 +17,7 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
 .action-primary{width:100%;margin-top:12px;background:#ecfdf3;color:#15803d}.action-danger{width:100%;margin-top:10px;background:#fff1f2;color:#b5121b;border:1px solid #f1c8cc}.refresh{background:#fff;color:var(--red)}button:disabled{opacity:.45}.empty{text-align:center;color:var(--muted);padding:24px}.ok{color:var(--ok);font-weight:800}.err{color:#b00020;font-weight:800}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.42);display:none;align-items:flex-end;justify-content:center;z-index:10000}.modal-backdrop.show{display:flex}.modal{width:min(100%,620px);background:#fff;border-radius:24px 24px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -10px 35px rgba(0,0,0,.2)}.modal h2{margin:0 0 5px}.modal label{display:block;font-weight:800;margin:14px 0 6px}.modal input,.modal select{width:100%;padding:12px;border:1px solid #d9d2cf;border-radius:12px;font:inherit}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.modal-actions button{border:0;border-radius:13px;padding:13px;font:inherit;font-weight:900}.cancel{background:#f2f2f7}.confirm{background:var(--red);color:#fff}
 .global-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,620px);min-height:70px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:6px;z-index:9998;background:rgba(255,255,255,.96);border-top:1px solid #eadfdb;box-shadow:0 -5px 22px rgba(55,20,20,.08)}.global-bottom-nav button{border:0;background:transparent;color:#6e6e73;font:inherit;font-size:11px;font-weight:700}.gicon{display:block;font-size:20px;margin-bottom:4px}
-.timeline-card{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fffaf9}.timeline-title{font-weight:900;margin-bottom:8px}.timeline-axis{position:relative;height:18px;margin-bottom:6px;color:var(--muted);font-size:11px}.timeline-axis span{position:absolute;top:0;transform:translateX(-50%)}.timeline-axis span:last-child{transform:translateX(-100%)}.timeline-track{position:relative;height:44px;border-radius:14px;background:repeating-linear-gradient(to right,#f6f0ed 0,#f6f0ed calc(25% - 1px),#eadfdb calc(25% - 1px),#eadfdb 25%);border:1px solid #e4d8d4;overflow:hidden}.timeline-range{position:absolute;top:6px;bottom:6px;border-radius:10px;background:rgba(181,18,27,.16);border:1px solid rgba(181,18,27,.28)}.timeline-handle{position:absolute;top:3px;width:18px;height:38px;border-radius:999px;border:2px solid var(--red);background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12);transform:translateX(-50%);touch-action:none}.timeline-handle.end{background:#fff7f7}.timeline-readout{display:flex;justify-content:space-between;align-items:center;margin-top:8px;color:var(--muted);font-size:12px}.inline-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.inline-grid.three{grid-template-columns:1fr 1fr auto}.checkrow{display:flex;align-items:center;gap:10px;margin-top:12px}.checkrow input{width:auto}.note-box{margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff8dd;color:#755400;font-size:12px;line-height:1.55}.muted-btn{background:#f2f2f7;color:#555;border:0;border-radius:12px;padding:11px 12px;font:inherit;font-weight:800}.history-btn{margin-top:8px}.modal.wide{width:min(100%,700px)}
-@media(max-width:560px){.summary{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}.inline-grid,.inline-grid.three{grid-template-columns:1fr}}
+@media(max-width:560px){.summary{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}}
 </style></head>
 <body>
 <header><h1>勤怠・役割管理</h1><p>店長・管理者用｜検索・出退勤・役割変更を1画面で管理</p></header>
@@ -35,7 +34,30 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
   <div class="summary" id="summary"></div>
   <div id="msg" class="small"></div>
 </section>
-<section class="card"><h2>全スタッフの勤怠修正</h2><div class="small">スタッフ名で検索し、該当する出退勤の記録を選んで修正します。日時入力に加え、横軸時間の帯グラフで開始・終了を調整できます。</div><input id="historyQuery" class="search" placeholder="スタッフ名で絞り込み" oninput="renderHistory()"><button class="refresh" onclick="loadHistory()">勤怠記録を取得</button><div id="historyList" class="small">「勤怠記録を取得」を押してください。</div></section>
+<section class="card"><h2>全スタッフの勤怠修正</h2>
+  <div class="small">既存の勤務記録は下の一覧から修正できます。当日の記録がないスタッフも「勤怠を新規登録」から追加できます。新規登録は出勤・退勤済みの実績のみ対応します。</div>
+  <div style="border:1px solid #e5d8d8;border-radius:14px;padding:14px;margin-top:12px;background:#fffafa">
+    <h3 style="margin:0 0 8px">勤怠を新規登録（記録のない日）</h3>
+    <label for="newAttendanceStaff">スタッフ</label>
+    <select id="newAttendanceStaff" class="search" style="margin-top:6px"><option value="">スタッフを選択</option></select>
+    <label for="newAttendanceDate" style="display:block;margin-top:10px">対象日</label>
+    <input id="newAttendanceDate" type="date" class="search" min="2026-10-31" max="2026-11-04" style="margin-top:6px">
+    <label for="newAttendanceRole" style="display:block;margin-top:10px">役割</label>
+    <select id="newAttendanceRole" class="search" style="margin-top:6px">
+      <option value="">役割を選択</option><option value="seller">売り子</option><option value="manager">店長</option><option value="register">レジ</option><option value="cook">調理</option><option value="support">サポート</option><option value="shopping_driver">買い出し運転手</option><option value="shopping_helper">買い出し手伝い</option>
+    </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <div><label for="newAttendanceIn">出勤時刻</label><input type="time" id="newAttendanceIn" class="search" style="margin-top:6px" value="10:00"></div>
+      <div><label for="newAttendanceOut">退勤時刻</label><input type="time" id="newAttendanceOut" class="search" style="margin-top:6px" value="17:30"></div>
+    </div>
+    <label for="newAttendanceNote" style="display:block;margin-top:10px">追加理由（必須）</label>
+    <input id="newAttendanceNote" class="search" maxlength="300" placeholder="例：QR操作忘れ。実際の勤務を確認済み" style="margin-top:6px">
+    <div class="small">退勤が日付をまたぐ場合、終了時刻が開始時刻以前なら翌日の退勤として扱います（最大24時間）。同じ日に既存の勤怠がある場合は登録できません。</div>
+    <button id="newAttendanceButton" class="action-primary" onclick="createMissingAttendance()">勤怠を新規登録</button>
+    <div class="small" id="newAttendanceFeedback" role="status"></div>
+  </div>
+  <input id="historyQuery" class="search" placeholder="スタッフ名で絞り込み" oninput="renderHistory()"><button class="refresh" onclick="loadHistory()">勤怠記録を取得</button><div id="historyList" class="small">「勤怠記録を取得」を押してください。</div>
+</section>
 <section id="staffList"><div class="card">読み込み中...</div></section>
 <section class="card"><div class="small">「出勤させる」「退勤させる」は本人のQR操作とは別に「管理出勤 / 管理退勤」として理由・操作者・時刻を保存します。買い出しミッション中も勤怠だけ退勤できます。勤務外の時間は買い出しポイントに含めないようSQLを適用してください。</div></section>
 </main>
@@ -48,34 +70,16 @@ main{max-width:760px;margin:auto;padding:16px}.card{background:#fff;border:1px s
   <div class="modal-actions"><button class="cancel" onclick="closeModal()">キャンセル</button><button class="confirm" onclick="confirmAttendanceAction()">確定</button></div>
 </div></div>
 
-
-<div id="editModalBackdrop" class="modal-backdrop" onclick="closeEditAttendanceModal(event)"><div class="modal wide" onclick="event.stopPropagation()">
-  <h2>勤怠帯グラフの修正</h2>
-  <div id="editStaffMeta" class="small"></div>
-  <div class="inline-grid" style="margin-top:12px">
-    <div><label>出勤日</label><input id="editClockInDate" type="date" onchange="syncAttendanceFormFromInputs()"></div>
-    <div><label>退勤日</label><input id="editClockOutDate" type="date" onchange="syncAttendanceFormFromInputs()"></div>
-  </div>
-  <div class="inline-grid" style="margin-top:10px">
-    <div><label>出勤時刻</label><input id="editClockInTime" type="time" step="60" onchange="syncAttendanceFormFromInputs()"></div>
-    <div><label>退勤時刻</label><input id="editClockOutTime" type="time" step="60" onchange="syncAttendanceFormFromInputs()"></div>
-  </div>
-  <div class="checkrow"><input id="editStillWorking" type="checkbox" onchange="toggleStillWorking()"><label for="editStillWorking" style="margin:0;font-weight:800">まだ勤務中（退勤日時を空欄にする）</label></div>
-  <div id="timelineHost"></div>
-  <label>修正理由</label><input id="editReasonInput" placeholder="例：ドライバーの退勤時刻を実績に合わせて修正">
-  <div class="note-box">一本の帯の左端で出勤時刻、右端で退勤時刻を調整できます。日をまたぐ勤務も一本で表示されます。帯の中央を動かすと勤務時間を保って移動します。</div>
-  <div class="modal-actions"><button class="cancel" onclick="closeEditAttendanceModal()">キャンセル</button><button class="confirm" onclick="saveEditedAttendance()">保存する</button></div>
-</div></div>
 <script>
 const sb=window.supabase.createClient("https://gsniytemgrbtgfywhqlu.supabase.co","sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn");
-let rows=[],teams=[],historyRows=[],tab='working',roleFilter='all',pending=null,editingAttendance=null,dragState=null;
+let rows=[],teams=[],historyRows=[],tab='working',roleFilter='all',pending=null;
 const roleLabel=r=>({seller:'売り子',manager:'店長',register:'レジ',cook:'調理',support:'サポート',shopping_driver:'買い出し運転手',shopping_helper:'買い出し手伝い'}[r]||r||'売り子');
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function clock(v){return v?new Date(v).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'-'}
 function duration(v){if(!v)return '-';const mins=Math.floor(Math.max(0,Date.now()-new Date(v).getTime())/60000);const h=Math.floor(mins/60),m=mins%60;return h?`${h}時間${m}分`:`${m}分`}
 function isShopping(r){return r==='shopping_driver'||r==='shopping_helper'}
 async function guard(){const {data,error}=await sb.rpc('is_store_manager');if(error||!data){document.querySelector('main').innerHTML='<div class="card">店長勤務中または管理者のみ利用できます。</div>';return false}return true}
-async function loadAll(show=true){if(show)staffList.innerHTML='<div class="card">読み込み中...</div>';const {data,error}=await sb.rpc('manager_staff_attendance_context');if(error){staffList.innerHTML=`<div class="card err">エラー：${esc(error.message)}</div>`;return}rows=data?.staff||[];teams=data?.register_teams||[];render()}
+async function loadAll(show=true){if(show)staffList.innerHTML='<div class="card">読み込み中...</div>';const {data,error}=await sb.rpc('manager_staff_attendance_context');if(error){staffList.innerHTML=`<div class="card err">エラー：${esc(error.message)}</div>`;return}rows=data?.staff||[];updateNewAttendanceStaffOptions();teams=data?.register_teams||[];render()}
 function setTab(v){tab=v;roleFilter='all';['working','off','all'].forEach(x=>document.getElementById('tab'+(x==='working'?'Working':x==='off'?'Off':'All')).classList.toggle('active',x===v));render()}
 function roleKey(r){return isShopping(r)?'shopping':(r||'seller')}
 function renderFilters(){
@@ -110,6 +114,43 @@ function openAttendanceModal(action,uid,name,role=null){pending={action,uid,name
 function closeModal(){modalBackdrop.classList.remove('show');pending=null}function backdropClose(e){if(e.target===modalBackdrop)closeModal()}function toggleOtherReason(){otherReasonWrap.style.display=reasonSelect.value==='その他'?'block':'none'}
 async function confirmAttendanceAction(){if(!pending)return;let reason=reasonSelect.value;if(reason==='その他')reason=otherReason.value.trim();if(!reason){alert('理由を入力してください');return}const fn=pending.action==='in'?'manager_clock_in_staff':'manager_clock_out_staff';const name=pending.name;const {error}=await sb.rpc(fn,{p_user:pending.uid,p_note:reason});if(error){alert('エラー：'+error.message);return}closeModal();msg.innerHTML=`<span class="ok">✅ ${esc(name)}さんを${fn.includes('in_')?'出勤':'退勤'}させました</span>`;await loadAll(false)}
 
+function updateNewAttendanceStaffOptions(){
+ const select=document.getElementById('newAttendanceStaff');if(!select)return;
+ const old=select.value;
+ select.innerHTML='<option value="">スタッフを選択</option>'+rows.slice().sort((a,b)=>String(a.staff_name||'').localeCompare(String(b.staff_name||''),'ja')).map(x=>`<option value="${esc(x.user_id)}">${esc(x.staff_name)}</option>`).join('');
+ if(rows.some(x=>x.user_id===old))select.value=old;
+}
+function jstDate(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10)}
+function parseJstLocal(date,time){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d{2}:\d{2}$/.test(time))return null;
+ const ms=Date.parse(`${date}T${time}:00+09:00`);return Number.isFinite(ms)?new Date(ms):null;
+}
+async function createMissingAttendance(){
+ const btn=document.getElementById('newAttendanceButton');const feedback=document.getElementById('newAttendanceFeedback');
+ const uid=document.getElementById('newAttendanceStaff').value;
+ const date=document.getElementById('newAttendanceDate').value;
+ const role=document.getElementById('newAttendanceRole').value;
+ const atIn=document.getElementById('newAttendanceIn').value;
+ const atOut=document.getElementById('newAttendanceOut').value;
+ const note=document.getElementById('newAttendanceNote').value.trim();
+ const staff=rows.find(x=>x.user_id===uid);
+ if(!staff||!role||!date||!atIn||!atOut||!note){alert('スタッフ・対象日・役割・出退勤時刻・追加理由をすべて入力してください');return;}
+ const start=parseJstLocal(date,atIn),end=parseJstLocal(date,atOut);
+ if(!start||!end){alert('日時の形式を確認してください');return;}
+ if(end<=start)end.setTime(end.getTime()+86400000);
+ if(end-start>86400000){alert('24時間を超える勤務は登録できません');return;}
+ if(!confirm(`${staff.staff_name}さんの ${date} ${atIn}〜${atOut}${end.getTime()-start.getTime()>0&&end.toISOString().slice(0,10)!==start.toISOString().slice(0,10)?'（翌日退勤の可能性あり）':''}（${roleLabel(role)}）の勤怠を新規登録します。内容は実績と一致していますか？`))return;
+ btn.disabled=true;feedback.textContent='登録中...';
+ try{
+   const {data,error}=await sb.rpc('manager_create_missing_attendance',{
+     p_user_id:uid,p_clock_in:start.toISOString(),p_clock_out:end.toISOString(),p_role:role,p_note:note
+   });
+   if(error)throw error;
+   feedback.textContent=`登録しました（勤怠ID：${data}）。既存履歴を再読み込みします。`;
+   await Promise.all([loadHistory(),loadAll(false)]);
+ }catch(err){feedback.textContent='登録エラー：'+(err.message||String(err));alert(feedback.textContent)}
+ finally{btn.disabled=false}
+}
 async function loadHistory(){
  const {data,error}=await sb.rpc('manager_attendance_history');
  if(error){historyList.textContent='エラー：'+error.message;return;}
@@ -118,101 +159,21 @@ async function loadHistory(){
 function renderHistory(){
  const q=(historyQuery.value||'').trim().toLowerCase();
  const v=historyRows.filter(x=>(x.staff_name||'').toLowerCase().includes(q));
- historyList.innerHTML=v.length?v.map(x=>`<div class="card" style="padding:12px"><b>${esc(x.staff_name)}</b>（${esc(roleLabel(x.role))}）<div class="small">出勤 ${esc(x.clock_in?new Date(x.clock_in).toLocaleString('ja-JP'):'-')} ／ 退勤 ${esc(x.clock_out?new Date(x.clock_out).toLocaleString('ja-JP'):'勤務中')}</div><button class="refresh history-btn" onclick="openEditAttendanceModal(${Number(x.id)})">帯グラフで修正</button></div>`).join(''):'該当する勤怠記録はありません。';
+ historyList.innerHTML=v.length?v.map(x=>`<div class="card" style="padding:12px"><b>${esc(x.staff_name)}</b>（${esc(roleLabel(x.role))}）<div class="small">出勤 ${esc(x.clock_in?new Date(x.clock_in).toLocaleString('ja-JP'):'-')} ／ 退勤 ${esc(x.clock_out?new Date(x.clock_out).toLocaleString('ja-JP'):'勤務中')}</div><button class="refresh" onclick="editAttendance(${Number(x.id)})">時刻を修正</button></div>`).join(''):'該当する勤怠記録はありません。';
 }
 function toLocalInput(iso){if(!iso)return '';const d=new Date(iso);const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,16)}
-function isoToParts(iso){if(!iso)return {date:'',time:''};const s=toLocalInput(iso);return {date:s.slice(0,10),time:s.slice(11,16)}}
-function timeToMinutes(v){if(!v)return 0;const [h,m]=v.split(':').map(Number);return Math.max(0,Math.min(24*60,(h||0)*60+(m||0)))}
-function minutesToTime(mins){const m=Math.max(0,Math.min(24*60,Math.round(mins)));const h=Math.floor(m/60)%24;const mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
-function localIsoFrom(date,time){return `${date}T${time}`}
-function openEditAttendanceModal(id){
+async function editAttendance(id){
  const a=historyRows.find(x=>Number(x.id)===Number(id));if(!a)return;
- const start=isoToParts(a.clock_in);const end=isoToParts(a.clock_out);
- editingAttendance={id:Number(id),staff_name:a.staff_name,role:a.role,startDate:start.date,startTime:start.time||'09:00',endDate:end.date||start.date,endTime:end.time||'17:00',stillWorking:!a.clock_out};
- editStaffMeta.textContent=`${a.staff_name}さん（${roleLabel(a.role)}）の勤怠を、帯グラフまたは入力欄で修正します。`;
- editClockInDate.value=editingAttendance.startDate;editClockInTime.value=editingAttendance.startTime;
- editClockOutDate.value=editingAttendance.endDate;editClockOutTime.value=editingAttendance.endTime;
- editStillWorking.checked=editingAttendance.stillWorking;editReasonInput.value='出退勤記録の訂正';
- editModalBackdrop.classList.add('show');toggleStillWorking();renderAttendanceTimeline();
-}
-function closeEditAttendanceModal(e){if(e&&e.target&&e.target!==editModalBackdrop)return;editModalBackdrop.classList.remove('show');editingAttendance=null;dragState=null}
-function toggleStillWorking(){if(!editingAttendance)return;editingAttendance.stillWorking=editStillWorking.checked;editClockOutDate.disabled=editClockOutTime.disabled=editingAttendance.stillWorking;syncAttendanceFormFromInputs()}
-function syncAttendanceFormFromInputs(){if(!editingAttendance)return;editingAttendance.startDate=editClockInDate.value;editingAttendance.startTime=editClockInTime.value||'00:00';editingAttendance.stillWorking=editStillWorking.checked;editingAttendance.endDate=editClockOutDate.value||editingAttendance.startDate;editingAttendance.endTime=editClockOutTime.value||'00:00';renderAttendanceTimeline()}
-function dateAtMidnight(date){return new Date(`${date}T00:00:00`).getTime()}
-function timelineBounds(){
- const start=dateAtMidnight(editingAttendance.startDate);
- let end=dateAtMidnight(editingAttendance.endDate||editingAttendance.startDate)+86400000;
- if(editingAttendance.stillWorking){end=Math.max(start+86400000,Date.now()+3600000)}
- if(end<=start)end=start+86400000;
- return {start,end};
-}
-function editorTime(side){const x=editingAttendance;return new Date(`${side==='start'?x.startDate:x.endDate}T${side==='start'?x.startTime:x.endTime}`).getTime()}
-function timelineFmt(ms){return new Date(ms).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}
-function renderAttendanceTimeline(){
- if(!editingAttendance)return;
- const bounds=timelineBounds(), span=bounds.end-bounds.start;
- const first=editorTime('start'),last=editingAttendance.stillWorking?Math.min(Date.now(),bounds.end):editorTime('end');
- const left=Math.max(0,Math.min(100,100*(first-bounds.start)/span));
- const right=Math.max(0,Math.min(100,100*(last-bounds.start)/span));
- const days=Math.round(span/86400000);
- let ticks='';
- const n=Math.max(1,Math.ceil(span/86400000));
- for(let d=0;d<=n;d++){
-   const timestamp=bounds.start+d*86400000;if(timestamp>bounds.end)break;
-   const pct=100*(timestamp-bounds.start)/span;
-   const label=new Date(timestamp).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'});
-   ticks+=`<span style="left:${pct}%;${d===0?'transform:none':d===n?'transform:translateX(-100%)':''}">${esc(label)}</span>`;
- }
- timelineHost.innerHTML=`<div class="timeline-card"><div class="timeline-title">勤務時間（一本の帯で調整）</div>
- <div class="timeline-axis">${ticks}</div>
- <div class="timeline-track single-track" data-kind="all" style="background:repeating-linear-gradient(to right,#f6f0ed 0,#f6f0ed calc(${100/n}% - 1px),#eadfdb calc(${100/n}% - 1px),#eadfdb ${100/n}%);overflow:visible">
- <div class="timeline-range" data-drag="range" style="left:${left}%;width:${Math.max(.25,right-left)}%;touch-action:none"></div>
- <button type="button" class="timeline-handle start" data-drag="start" style="left:${left}%" aria-label="出勤時刻を調整"></button>
- ${editingAttendance.stillWorking?'':`<button type="button" class="timeline-handle end" data-drag="end" style="left:${right}%" aria-label="退勤時刻を調整"></button>`}
- </div><div class="timeline-readout"><span>出勤 ${esc(timelineFmt(first))}</span><span>${editingAttendance.stillWorking?'勤務中':`退勤 ${esc(timelineFmt(last))}`}</span></div>
- <div class="small">左右端を動かすと日付をまたいで時刻を変更できます。中央の帯は勤務時間を保ったまま移動できます。5分単位で調整します。</div></div>`;
- timelineHost.querySelectorAll('[data-drag]').forEach(el=>el.addEventListener('pointerdown',startTimelineDrag));
-}
-function startTimelineDrag(ev){
- if(!editingAttendance)return;
- const track=ev.currentTarget.closest('.timeline-track');if(!track)return;
- const bounds=timelineBounds();const start=editorTime('start'),end=editingAttendance.stillWorking?Date.now():editorTime('end');
- dragState={drag:ev.currentTarget.dataset.drag,rect:track.getBoundingClientRect(),bounds,start,end,pointerX:ev.clientX};
- ev.preventDefault();window.addEventListener('pointermove',onTimelineDrag);window.addEventListener('pointerup',stopTimelineDrag,{once:true});window.addEventListener('pointercancel',stopTimelineDrag,{once:true});
-}
-function setEditorTimestamp(side,ms){
- const d=new Date(ms);const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
- const date=`${y}-${m}-${day}`,time=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
- editingAttendance[side==='start'?'startDate':'endDate']=date;editingAttendance[side==='start'?'startTime':'endTime']=time;
-}
-function onTimelineDrag(ev){
- if(!dragState||!editingAttendance)return;
- const q=dragState,range=q.bounds.end-q.bounds.start;
- const delta=(ev.clientX-q.pointerX)/q.rect.width*range;
- const snap=ms=>Math.round(ms/300000)*300000;
- let start=q.start,end=q.end;
- if(q.drag==='start')start=Math.max(q.bounds.start,Math.min(end-300000,snap(q.start+delta)));
- else if(q.drag==='end')end=Math.min(q.bounds.end-300000,Math.max(start+300000,snap(q.end+delta)));
- else if(q.drag==='range'&&!editingAttendance.stillWorking){
-    const shift=snap(delta);const adjusted=Math.max(q.bounds.start-q.start,Math.min(q.bounds.end-q.end-300000,shift));start=q.start+adjusted;end=q.end+adjusted;
- }
- setEditorTimestamp('start',start);if(!editingAttendance.stillWorking)setEditorTimestamp('end',end);
- editClockInDate.value=editingAttendance.startDate;editClockInTime.value=editingAttendance.startTime;
- editClockOutDate.value=editingAttendance.endDate;editClockOutTime.value=editingAttendance.endTime;
- renderAttendanceTimeline();
-}
-function stopTimelineDrag(){window.removeEventListener('pointermove',onTimelineDrag);dragState=null}
-async function saveEditedAttendance(){
- if(!editingAttendance)return;const reason=(editReasonInput.value||'').trim();if(!reason)return alert('修正理由が必要です');
- const startIso=localIsoFrom(editClockInDate.value,editClockInTime.value||'00:00');
- const endIso=editStillWorking.checked?null:localIsoFrom(editClockOutDate.value,editClockOutTime.value||'00:00');
- const start=new Date(startIso),end=endIso?new Date(endIso):null;
- if(!Number.isFinite(start.getTime())||(end&&!Number.isFinite(end.getTime())))return alert('日時を確認してください');
- if(end&&end<=start)return alert('退勤日時は出勤日時より後にしてください');
- if(!confirm(`${editingAttendance.staff_name}さんの勤怠記録を修正します。よろしいですか？`))return;
- const {error}=await sb.rpc('manager_correct_attendance',{p_attendance_id:editingAttendance.id,p_clock_in:start.toISOString(),p_clock_out:end?end.toISOString():null,p_note:reason});
+ const input=prompt(`${a.staff_name}さんの出勤日時を修正（YYYY-MM-DDTHH:mm）`,toLocalInput(a.clock_in));
+ if(input===null)return;
+ const output=prompt('退勤日時（勤務中の場合は空欄のまま）',toLocalInput(a.clock_out));if(output===null)return;
+ const reason=prompt('修正理由を入力してください（必須）','出退勤記録の訂正');if(!reason?.trim())return alert('修正理由が必要です');
+ const start=new Date(input),end=output?new Date(output):null;
+ if(!Number.isFinite(start.getTime())||(end&&!Number.isFinite(end.getTime()))||(end&&end<=start))return alert('日時を確認してください');
+ if(!confirm(`${a.staff_name}さんの勤怠記録を変更します。よろしいですか？`))return;
+ const {error}=await sb.rpc('manager_correct_attendance',{p_attendance_id:id,p_clock_in:start.toISOString(),p_clock_out:end?end.toISOString():null,p_note:reason.trim()});
  if(error)return alert('修正エラー：'+error.message);
- alert('修正を保存しました');closeEditAttendanceModal();await loadHistory();await loadAll(false);
+ alert('修正を保存しました');await loadHistory();await loadAll(false);
 }
 
 searchInput.addEventListener('input',render);
