@@ -27,10 +27,24 @@ async function loadData(){el('status').textContent='データを取得中…';el
  const overlay=await sb.rpc('admin_sigma_timeline_edits');
  if(overlay.error)throw Error('日別勤怠編集の読込に失敗しました。02_日別編集の反映_RPC_SQL.txtを適用してください：'+overlay.error.message);
  dayEditRows=overlay.data||[];
+ // Restore the selected date and staff when returning from the editor.
+ if(days.includes(requestedTimelineDay))el('day').value=requestedTimelineDay;
+ const focused=people().find(p=>p.user_id===requestedTimelineStaff);
+ if(focused)el('search').value=focused.name;
  effectiveAttendanceCache=null;effectiveSegmentsCache=null;
+ const match=dayEditRows.find(x=>x.user_id===requestedTimelineStaff&&x.work_date===requestedTimelineDay);
+ if(requestedTimelineRevision && (!match || Number(match.revision)!==Number(requestedTimelineRevision))){
+   throw Error('編集データの版が一致しません。編集ページで保存状態を確認してください。');
+ }
  const backup=await sb.rpc('admin_qr_backup_ids');qrBackupIds=backup.error?new Set():new Set(backup.data||[]);render()}catch(e){el('status').textContent='エラー：'+e.message;el('timeline').textContent='管理者でログイン済みか、追加SQLを適用済みか確認してください。'}finally{el('reload').disabled=false}}
 let qrBackupIds=new Set();
 let dayEditRows=[],effectiveAttendanceCache=null,effectiveSegmentsCache=null;
+const timelineParams=new URLSearchParams(location.search);
+const requestedTimelineDay=timelineParams.get('date');
+const requestedTimelineStaff=timelineParams.get('staff');
+const requestedTimelineRevision=timelineParams.get('verified_revision');
+if(days.includes(requestedTimelineDay))el('day').value=requestedTimelineDay;
+
 const editFor=(uid,day)=>dayEditRows.find(x=>x.user_id===uid&&x.work_date===day);
 function openDayEditor(uid){const dt=el('day').value;location.href='attendance-day-editor.html?staff='+encodeURIComponent(uid)+'&date='+encodeURIComponent(dt)+'&empty=1'}
 function toEditedParts(rows,mode){
@@ -81,9 +95,9 @@ function hoursFor(uid,dt){return attendance().filter(a=>a.user_id===uid).reduce(
 function review(uid){return (data.reviews||[]).find(x=>x.user_id===uid)}
 function render(){if(!data)return;const dt=el('day').value,q=el('search').value.trim().toLocaleLowerCase(),sort=el('sort').value;let list=people().filter(p=>p.name.toLocaleLowerCase().includes(q));list.sort((a,b)=>sort==='hours'?hoursFor(b.user_id,dt)-hoursFor(a.user_id,dt):sort==='unconfirmed'?(Number(!!review(a.user_id)?.confirmed)-Number(!!review(b.user_id)?.confirmed))||a.name.localeCompare(b.name,'ja'):a.name.localeCompare(b.name,'ja'));
  el('legend').innerHTML=Object.entries(roles).map(([k,v])=>`<span><i class="key" style="background:${v[1]}"></i>${esc(v[0])}</span>`).join('')+'<span>▨ 役割推定</span>';
- const total=list.reduce((v,p)=>v+hoursFor(p.user_id,dt),0);el('status').textContent=`${dt}｜${list.length}人｜合計 ${duration(total)}｜未確認 ${list.filter(p=>!review(p.user_id)?.confirmed).length}人`;
+ const total=list.reduce((v,p)=>v+hoursFor(p.user_id,dt),0);const editedCount=list.filter(p=>!!editFor(p.user_id,dt)).length;el('status').textContent=`${dt}｜${list.length}人｜合計 ${duration(total)}｜日別編集適用 ${editedCount}人｜未確認 ${list.filter(p=>!review(p.user_id)?.confirmed).length}人`;
  const ticks=['00','03','06','09','12','15','18','21','24'];
- el('timeline').innerHTML=`<div class="tlrow head"><div class="person">スタッフ</div><div class="track ticks">${ticks.map(t=>`<span>${t}:00</span>`).join('')}</div></div>`+list.map(p=>`<div class="tlrow"><div class="person" title="${esc(p.name)}">${esc(p.name)} ${review(p.user_id)?.confirmed?'✓':''}<button type="button" class="new-person" onclick="openDayEditor('${p.user_id}')">編集</button></div><div class="track">${visibleIntervals(p.user_id,dt).map(x=>{let color=(roles[x.role]||roles.unknown)[1];return `<div class="bar ${x.inferred?'inferred':''}" style="left:${(x.start-jd(dt))/DAY*100}%;width:${Math.max(.05,(x.end-x.start)/DAY*100)}%;background-color:${color}" title="${esc(roleText(x.role))} ${local(x.start)}〜${local(x.end)}${x.inferred?'（推定）':''}" onclick="openDayEditor('${p.user_id}')"></div>`}).join('')}</div></div>`).join('');
+ el('timeline').innerHTML=`<div class="tlrow head"><div class="person">スタッフ</div><div class="track ticks">${ticks.map(t=>`<span>${t}:00</span>`).join('')}</div></div>`+list.map(p=>`<div class="tlrow"><div class="person" title="${esc(p.name)}">${esc(p.name)} ${review(p.user_id)?.confirmed?'✓':''}${editFor(p.user_id,dt)?'<span class="pill">日別編集適用</span>':''}<button type="button" class="new-person" onclick="openDayEditor('${p.user_id}')">編集</button></div><div class="track">${visibleIntervals(p.user_id,dt).map(x=>{let color=(roles[x.role]||roles.unknown)[1];return `<div class="bar ${x.inferred?'inferred':''}" style="left:${(x.start-jd(dt))/DAY*100}%;width:${Math.max(.05,(x.end-x.start)/DAY*100)}%;background-color:${color}" title="${esc(roleText(x.role))} ${local(x.start)}〜${local(x.end)}${x.inferred?'（推定）':''}" onclick="openDayEditor('${p.user_id}')"></div>`}).join('')}</div></div>`).join('');
  const entries=[];for(const p of list){for(const a of attendance().filter(a=>a.user_id===p.user_id)){const [s,e]=clip(ms(a.clock_in),ms(a.clock_out),jd(dt),jd(dt)+DAY);if(e<=s)continue;entries.push([p,'勤怠',roleText(a.role),local(ms(a.clock_in)),a.clock_out?local(ms(a.clock_out)):'勤務中',duration(Math.max(0,Math.min(ms(a.clock_out),jd(dt)+DAY,Date.now())-Math.max(ms(a.clock_in),jd(dt)))) ,`<button onclick="openDayEditor('${p.user_id}')">編集</button>`])}
   for(const s of segmentsForUser(p.user_id)){const [a,b]=clip(ms(s.started_at),ms(s.ended_at),jd(dt),jd(dt)+DAY);if(b<=a)continue;entries.push([p,'役割履歴',roleText(s.role),local(ms(s.started_at)),s.ended_at?local(ms(s.ended_at)):'継続中',duration(b-a),`<button onclick="openDayEditor('${p.user_id}')">編集</button>`])}}
  for(const a of attendance()){const p=list.find(x=>x.user_id===a.user_id);if(!p)continue;for(const x of allocations().filter(x=>Number(x.attendance_id)===Number(a.id))){const [l,r]=clip(ms(x.started_at),ms(x.ended_at),jd(dt),jd(dt)+DAY);if(r>l)entries.push([p,'比率補正',roleText(x.role),local(ms(x.started_at)),local(ms(x.ended_at)),duration(r-l),`<button onclick="openDayEditor('${p.user_id}')">編集</button>`])}}

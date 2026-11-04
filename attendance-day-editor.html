@@ -2,7 +2,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
 :root{--red:#aa1520;--ink:#252b35;--line:#dfe3e9;--bg:#f7f7f9}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif;background:var(--bg);color:var(--ink);margin:0}header{background:var(--red);color:white;padding:26px 18px}main{max-width:1000px;margin:auto;padding:18px}.card{border:1px solid var(--line);border-radius:16px;background:white;padding:18px;margin:14px 0}.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.row>*{flex:0 1 auto}label{display:block;font-size:13px;font-weight:700;margin:9px 0 5px}input,select,textarea,button{font:inherit;border-radius:9px;border:1px solid #bdc2cb;padding:11px;max-width:100%}input[type=time]{min-width:110px}button{background:white;cursor:pointer;font-weight:700}button.primary{background:var(--red);color:white;border-color:var(--red)}button.warn{color:#a41922;border-color:#db9aa0}button:disabled{opacity:.4}button:focus-visible{outline:2px solid #2563eb}small,.muted{color:#68717c}#sessions{display:grid;gap:10px}.session{display:grid;grid-template-columns:auto minmax(100px,1fr) minmax(100px,1fr) minmax(105px,1fr) auto;gap:8px;align-items:end;background:#f8fafc;border:1px solid var(--line);padding:12px;border-radius:12px}.pill{background:#e9f5ed;color:#236b41;border-radius:99px;padding:6px 10px;font-weight:700}#original{overflow:auto;max-height:260px}.o{border-bottom:1px solid var(--line);padding:8px 0}textarea{width:100%;min-height:78px}#status{font-weight:700}#summary{font-size:18px;font-weight:800}@media(max-width:650px){.session{grid-template-columns:1fr 1fr}.session .rlabel{grid-column:1/-1}.session button{grid-column:2}.card{padding:13px}header{padding:21px 16px}}
 </style></head><body><header><h1>日別勤怠 一括編集</h1><div>スタッフ1名・1日分をまとめて編集｜原本は変更しない</div></header><main>
-<div class="card"><div class="row"><button onclick="location.href='work-timeline-admin.html'">← 勤務実績タイムライン</button><button id="reload" onclick="load()">データを取得</button></div><div class="row"><div><label for="day">対象日</label><select id="day"><option value="2026-10-31">10/31 準備</option><option value="2026-11-01">11/1 本祭1日目</option><option value="2026-11-02">11/2 本祭2日目</option><option value="2026-11-03">11/3 本祭3日目</option><option value="2026-11-04">11/4 片付け</option></select></div><div><label for="staff">スタッフ</label><select id="staff"></select></div></div><p id="status" class="muted">読み込み前</p></div>
+<div class="card"><div class="row"><button onclick="location.href='work-timeline-admin.html'">← 勤務実績タイムライン</button><button id="reload" onclick="load()">データを取得</button></div><div class="row"><div><label for="day">対象日</label><select id="day"><option value="2026-10-31">10/31 準備</option><option value="2026-11-01">11/1 本祭1日目</option><option value="2026-11-02">11/2 本祭2日目</option><option value="2026-11-03">11/3 本祭3日目</option><option value="2026-11-04">11/4 片付け</option></select></div><div><label for="staff">スタッフ</label><select id="staff"></select></div></div><p id="status" class="muted">読み込み前</p><p id="saveVerify" role="status" aria-live="polite" style="font-size:14px;font-weight:700;color:#146a42"></p></div>
 <div class="card"><h2>この日の勤務区間を作り直す</h2><p class="muted">最初は0件の状態です。必要な勤務区間を何件でも追加してください。区間を追加せず保存すると、その日の有効勤怠は0時間になります。元データは別に残ります。</p><div id="summary">—</div><div id="sessions"></div><div class="row" style="margin-top:14px"><button onclick="addRow()">＋ 勤務区間を追加</button><button onclick="clearAllRows()" class="warn">すべて空にする</button><button onclick="loadSavedRows()">現在の記録を入力欄にコピー</button></div><label for="note">編集理由（必須）</label><textarea id="note" placeholder="本人確認により、11:00〜13:00と15:00〜17:00に訂正"></textarea><div class="row" style="margin-top:12px"><button class="primary" id="save" onclick="save()">この日をまとめて保存</button><button class="warn" id="restore" onclick="restore()">元に戻す（編集を取消）</button></div><p class="muted">原本と既存のQR勤怠は上書きしません。保存した編集は新しい勤務実績タイムラインと同画面のExcel出力に表示されます。ポイント計算など、既存のデータベース側の集計にはまだ反映されません。</p></div>
 <div class="card"><h2>原本の参照（読み取り専用）</h2><p class="muted">添付Excelの「勤務詳細（正確な時刻）」に記載されていた勤怠と役割履歴です。導入前に修正済みのデータが含まれる可能性があります。</p><div id="original"></div></div></main><script>
 'use strict';
@@ -43,7 +43,49 @@ function render(){const p=getStaff(),edit=currentEdit();el('restore').disabled=!
  el('status').textContent=(edit?'編集データあり（版'+edit.revision+'）':'編集データなし')+(blankOnEntry?'・空から編集中（保存前は既存データ維持）':'')+(dirty?'・未保存の変更あり':'');summary()}
 function summary(){let t=0;for(const x of workRows){if(/^\d{2}:\d{2}$/.test(x.start)&&/^\d{2}:\d{2}$/.test(x.end)){const a=x.start.split(':').map(Number),b=x.end.split(':').map(Number);t+=Math.max(0,(b[0]*60+b[1])-(a[0]*60+a[1]));}}el('summary').textContent=`勤務 ${workRows.length}区間 / 合計 ${(t/60).toFixed(2)}時間`}
 function validated(){const res=[];for(const r of workRows){if(!/^\d{2}:\d{2}$/.test(r.start)||!/^\d{2}:\d{2}$/.test(r.end)||r.start>=r.end||!(r.role in ROLES))throw Error('勤務区間の時刻・役割を確認してください（同日内のみ）。');res.push({start_at:toIso(r.start),end_at:toIso(r.end),role:r.role});}res.sort((a,b)=>a.start_at.localeCompare(b.start_at));for(let i=1;i<res.length;i++)if(res[i].start_at<res[i-1].end_at)throw Error('勤務区間が重複しています');return res}
-async function save(){if(!payload)return;const note=el('note').value.trim();if(!note)return alert('修正理由を入力してください');let intervals;try{intervals=validated()}catch(e){return alert(e.message)}const p=getStaff(),edit=currentEdit();if(!confirm(`${p.staff_name}・${el('day').value}の勤務${intervals.length}区間を、編集データとしてまとめて保存します。\nQR原本・Excelは変更しません。よろしいですか？`))return;el('save').disabled=true;try{const {error}=await sb.rpc('admin_sigma_save_day_edit',{p_user_id:p.user_id,p_date:el('day').value,p_intervals:intervals,p_note:note,p_expected_revision:edit?.revision||0});if(error)throw error;blankOnEntry=false;dirty=false;await load();alert('この日の編集データを保存しました。勤務実績タイムラインを更新すると表示に反映されます。ポイント計算は別途対応が必要です。')}catch(e){alert('保存できません：'+e.message)}finally{el('save').disabled=false}}
+async function save(){
+ if(!payload)return alert('画面データを取得できていません。データを再取得してください');
+ const note=el('note').value.trim();
+ if(!note)return alert('修正理由を入力してください');
+ let intervals;
+ try{intervals=validated()}catch(e){return alert(e.message)}
+ const p=getStaff(),date=el('day').value,edit=currentEdit();
+ if(!p)return alert('対象スタッフを選んでください');
+ if(!confirm(`${p.staff_name}・${date}の勤務${intervals.length}区間を編集データとして保存します。\n元のQR勤怠・Excel原本は変更しません。`))return;
+ el('save').disabled=true;
+ el('saveVerify').textContent='保存処理中…';
+ try{
+   const {data:result,error}=await sb.rpc('admin_sigma_save_day_edit',{
+     p_user_id:p.user_id,p_date:date,p_intervals:intervals,p_note:note,p_expected_revision:edit?.revision||0
+   });
+   if(error)throw error;
+   if(!result?.ok||!Number.isInteger(result.revision))throw Error('保存APIから確定結果が返りませんでした');
+   el('saveVerify').textContent='保存完了。データベースから再読込して照合中…';
+   // Success is claimed only when the database read confirms exactly the new revision and intervals.
+   const {data:check,error:readError}=await sb.rpc('admin_sigma_day_editor_data',{p_date:date});
+   if(readError)throw Error('保存APIは完了しましたが照合に失敗しました：'+readError.message);
+   const saved=(check?.edits||[]).find(x=>x.user_id===p.user_id);
+   if(!saved||Number(saved.revision)!==Number(result.revision)||
+      JSON.stringify(saved.intervals)!==JSON.stringify(intervals)){
+      // PostgreSQL jsonb key ordering differs from client object ordering: compare canonical fields.
+      const canonical=a=>(a||[]).map(x=>[x.start_at,x.end_at,x.role].join('|')).sort().join(';');
+      if(!saved||Number(saved.revision)!==Number(result.revision)||canonical(saved.intervals)!==canonical(intervals)){
+        throw Error('保存結果が再読込した内容と一致しません。重複保存せず、画面を再読込して状態を確認してください');
+      }
+   }
+   dirty=false;
+   blankOnEntry=false;
+   el('saveVerify').textContent=`保存・照合完了：${p.staff_name}／${date}／${intervals.length}区間／第${result.revision}版`;
+   const url='work-timeline-admin.html?date='+encodeURIComponent(date)+
+     '&staff='+encodeURIComponent(p.user_id)+'&verified_revision='+encodeURIComponent(result.revision);
+   // Immediately show effective attendance in the timeline after verified persistence.
+   location.href=url;
+ }catch(e){
+   el('saveVerify').textContent='保存または保存後照合に失敗：'+e.message;
+   el('saveVerify').style.color='#aa1520';
+   alert('保存結果を確認できません：'+e.message+'\n二重操作を避け、データを再取得して状況を確認してください。');
+ }finally{el('save').disabled=false}
+}
 async function restore(){const p=getStaff(),e=currentEdit();if(!p||!e)return;const note=prompt('編集データを取り消し、原本の勤務区間を再表示します。理由を入力してください。','誤編集のため');if(note===null)return;if(!note.trim())return alert('理由は必須です');if(!confirm(`${p.staff_name}・${el('day').value}の編集データを取り消しますか？\n履歴は残し、Excel原本は変更しません。`))return;el('restore').disabled=true;try{const {error}=await sb.rpc('admin_sigma_restore_day_edit',{p_user_id:p.user_id,p_date:el('day').value,p_note:note.trim(),p_expected_revision:e.revision});if(error)throw error;blankOnEntry=false;dirty=false;await load();alert('原本表示へ戻しました')}catch(e){alert('元に戻せません：'+e.message)}finally{el('restore').disabled=false}}
 el('day').addEventListener('change',()=>{if(dirty&&!confirm('未保存の内容は破棄されます。日付を変更しますか？')){}load()});el('staff').addEventListener('change',changeSelection);window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});load();
 </script></body></html>
