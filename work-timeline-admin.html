@@ -6,7 +6,7 @@
 </style></head><body>
 <header><h1>勤務実績タイムライン</h1><p>管理者専用｜役割変化・日別実働・Excel確認・勤務比率修正</p></header>
 <main><div class="card"><div class="row"><button onclick="location.href='admin-menu.html'">← 管理者メニュー</button><button class="primary" id="reload" onclick="loadData()">データを更新</button><button onclick="exportExcel(this)">Excel出力</button><select id="day" onchange="render()"><option value="2026-10-31">10/31 準備日</option><option value="2026-11-01">11/1 本祭1日目</option><option value="2026-11-02">11/2 本祭2日目</option><option value="2026-11-03" selected>11/3 本祭3日目</option><option value="2026-11-04">11/4 片付け</option></select><input id="search" type="search" placeholder="名前で検索" oninput="render()"><select id="sort" onchange="render()"><option value="name">名前順</option><option value="hours">勤務時間順</option><option value="unconfirmed">未確認を上へ</option></select></div><div id="status" class="summary">読み込み前</div><div class="muted">実績は記録時刻ベースです。斜線帯は役割履歴がない区間（勤怠に書かれた役割による推定）です。現在勤務中は現在時刻まで暫定表示。休憩が独立記録されていない場合は差し引きません。</div></div>
-<div class="card"><h2>役割別タイムライン</h2><div class="legend" id="legend"></div><div class="scroll"><div id="timeline" class="tl"></div></div><p class="muted">スタッフ名の下の「編集」から、その日1人分の勤務をまとめて編集します。最初は空欄なので、0件保存で勤務なし、追加すれば複数の勤務時間を設定できます。QR・Excel原本は保管したまま、編集データを別に保存します。表示とExcel出力は保存した編集を優先しますが、確定ポイント計算にはまだ反映されません。</p></div>
+<div class="card"><h2>役割別タイムライン</h2><div class="legend" id="legend"></div><div class="scroll"><div id="timeline" class="tl"></div></div><p class="muted">スタッフ名の下の「編集」から、その日1人分の勤務をまとめて編集します。最初は空欄なので、0件保存で勤務なし、追加すれば複数の勤務時間を設定できます。QR・Excel原本は保管したまま、編集データを別に保存します。幹部は非幹部の最長者の出退勤時刻と中抜けを自動適用し、幹部自身の役割を使います。表示とExcel出力・新インセンティブ仮計算に反映します。</p></div>
 <div class="card"><h2>記録の詳細と修正</h2><div class="tablewrap"><table class="detail"><thead><tr><th>名前</th><th>記録</th><th>役割</th><th>開始（日本時間）</th><th>終了</th><th>時間</th><th>操作</th></tr></thead><tbody id="details"></tbody></table></div></div>
 <div class="card"><h2>スタッフ確認状況</h2><p class="muted">Excelを配布して本人から確認を受けたあと、管理者が「確認済み」にします。修正するとそのスタッフの確認状態は解除されます。</p><div id="reviews" class="row"></div></div>
 <div class="card"><h2>役割修正履歴</h2><div id="logs" class="muted">まだありません。</div></div>
@@ -73,7 +73,16 @@ function attendance(){
  for(const e of dayEditRows){for(const x of e.intervals||[]){rows.push({id:serial--,user_id:e.user_id,clock_in:x.start_at,clock_out:x.end_at,role:x.role,attendance_state:'finished',is_day_edit:true});}}
  effectiveAttendanceCache=rows;return rows;
 }
-function segments(){if(!data)return[];if(!effectiveSegmentsCache)effectiveSegmentsCache=toEditedParts(data.segments||[],'segment');return effectiveSegmentsCache;}
+function segments(){
+ if(!data)return[];
+ if(effectiveSegmentsCache)return effectiveSegmentsCache;
+ const rows=toEditedParts(data.segments||[],'segment').filter(x=>!dayEditRows.some(e=>e.executive_auto&&e.user_id===x.user_id&&ms(x.started_at)<jd(e.work_date)+DAY&&ms(x.ended_at)>jd(e.work_date)));
+ let serial=-100000;
+ for(const e of dayEditRows.filter(x=>x.executive_auto))for(const r of e.role_intervals||[]){
+   rows.push({id:serial--,user_id:e.user_id,role:r.role,started_at:r.start_at,ended_at:r.end_at,is_executive_projection:true});
+ }
+ effectiveSegmentsCache=rows;return rows;
+}
 function allocations(){return(data?.allocations||[]).filter(x=>!dayEditRows.some(e=>e.user_id===x.user_id&&ms(x.started_at)<jd(e.work_date)+DAY&&ms(x.ended_at)>jd(e.work_date)))}
 function people(){return data?.staff||[]}
 
@@ -81,7 +90,16 @@ function segmentsForUser(uid){return segments().filter(x=>x.user_id===uid)}
 // 勤怠区間で必ずクリップ。明示の役割区間を優先し、記録のない箇所のみ推定表示。
 function visibleIntervals(uid,dt){const begin=jd(dt),end=begin+DAY,all=[];const aa=attendance().filter(a=>a.user_id===uid);const xx=segmentsForUser(uid);
  for(const a of aa){const [start,finish]=clip(ms(a.clock_in),ms(a.clock_out),begin,Math.min(end,Date.now()));if(finish<=start)continue;
-  if(a.is_day_edit){all.push({start,end:finish,role:a.role,kind:'edited',inferred:false,record:a});continue;}
+  if(a.is_day_edit){
+   const exec=dayEditRows.find(e=>e.user_id===uid&&e.work_date===dt&&e.executive_auto);
+   if(exec){
+     let cursor=start;
+     const mapped=segmentsForUser(uid).filter(r=>r.is_executive_projection).map(r=>({start:Math.max(start,ms(r.started_at)),end:Math.min(finish,ms(r.ended_at)),role:r.role})).filter(r=>r.end>r.start).sort((a,b)=>a.start-b.start);
+     for(const r of mapped){if(r.start>cursor)all.push({start:cursor,end:r.start,role:a.role||'unknown',kind:'inferred',inferred:true,record:a});all.push({...r,kind:'executive',inferred:false,record:a});cursor=Math.max(cursor,r.end)}
+     if(cursor<finish)all.push({start:cursor,end:finish,role:a.role||'unknown',kind:'inferred',inferred:true,record:a});
+   }else all.push({start,end:finish,role:a.role,kind:'edited',inferred:false,record:a});
+   continue;
+  }
   const overridden=allocations().filter(x=>Number(x.attendance_id)===Number(a.id));
   if(overridden.length){for(const x of overridden){const [l,r]=clip(ms(x.started_at),ms(x.ended_at),start,finish);if(r>l)all.push({start:l,end:r,role:x.role,kind:'allocation',inferred:false,record:a,ratio:x.ratio_pct})}continue;}
   const explicit=[];for(const x of xx){const [l,r]=clip(ms(x.started_at),ms(x.ended_at),start,finish);if(r>l)explicit.push({start:l,end:r,role:x.role,id:x.id,kind:'role',inferred:false,record:x})}
@@ -97,7 +115,7 @@ function render(){if(!data)return;const dt=el('day').value,q=el('search').value.
  el('legend').innerHTML=Object.entries(roles).map(([k,v])=>`<span><i class="key" style="background:${v[1]}"></i>${esc(v[0])}</span>`).join('')+'<span>▨ 役割推定</span>';
  const total=list.reduce((v,p)=>v+hoursFor(p.user_id,dt),0);const editedCount=list.filter(p=>!!editFor(p.user_id,dt)).length;el('status').textContent=`${dt}｜${list.length}人｜合計 ${duration(total)}｜日別編集適用 ${editedCount}人｜未確認 ${list.filter(p=>!review(p.user_id)?.confirmed).length}人`;
  const ticks=['00','03','06','09','12','15','18','21','24'];
- el('timeline').innerHTML=`<div class="tlrow head"><div class="person">スタッフ</div><div class="track ticks">${ticks.map(t=>`<span>${t}:00</span>`).join('')}</div></div>`+list.map(p=>`<div class="tlrow"><div class="person" title="${esc(p.name)}">${esc(p.name)} ${review(p.user_id)?.confirmed?'✓':''}${editFor(p.user_id,dt)?'<span class="pill">日別編集適用</span>':''}<button type="button" class="new-person" onclick="openDayEditor('${p.user_id}')">編集</button></div><div class="track">${visibleIntervals(p.user_id,dt).map(x=>{let color=(roles[x.role]||roles.unknown)[1];return `<div class="bar ${x.inferred?'inferred':''}" style="left:${(x.start-jd(dt))/DAY*100}%;width:${Math.max(.05,(x.end-x.start)/DAY*100)}%;background-color:${color}" title="${esc(roleText(x.role))} ${local(x.start)}〜${local(x.end)}${x.inferred?'（推定）':''}" onclick="openDayEditor('${p.user_id}')"></div>`}).join('')}</div></div>`).join('');
+ el('timeline').innerHTML=`<div class="tlrow head"><div class="person">スタッフ</div><div class="track ticks">${ticks.map(t=>`<span>${t}:00</span>`).join('')}</div></div>`+list.map(p=>`<div class="tlrow"><div class="person" title="${esc(p.name)}">${esc(p.name)} ${review(p.user_id)?.confirmed?'✓':''}${editFor(p.user_id,dt)?'<span class="pill">'+(editFor(p.user_id,dt).executive_auto?'幹部・最長者時刻':'日別編集適用')+'</span>':''}<button type="button" class="new-person" onclick="openDayEditor('${p.user_id}')">編集</button></div><div class="track">${visibleIntervals(p.user_id,dt).map(x=>{let color=(roles[x.role]||roles.unknown)[1];return `<div class="bar ${x.inferred?'inferred':''}" style="left:${(x.start-jd(dt))/DAY*100}%;width:${Math.max(.05,(x.end-x.start)/DAY*100)}%;background-color:${color}" title="${esc(roleText(x.role))} ${local(x.start)}〜${local(x.end)}${x.inferred?'（推定）':''}" onclick="openDayEditor('${p.user_id}')"></div>`}).join('')}</div></div>`).join('');
  const entries=[];for(const p of list){for(const a of attendance().filter(a=>a.user_id===p.user_id)){const [s,e]=clip(ms(a.clock_in),ms(a.clock_out),jd(dt),jd(dt)+DAY);if(e<=s)continue;entries.push([p,'勤怠',roleText(a.role),local(ms(a.clock_in)),a.clock_out?local(ms(a.clock_out)):'勤務中',duration(Math.max(0,Math.min(ms(a.clock_out),jd(dt)+DAY,Date.now())-Math.max(ms(a.clock_in),jd(dt)))) ,`<button onclick="openDayEditor('${p.user_id}')">編集</button>`])}
   for(const s of segmentsForUser(p.user_id)){const [a,b]=clip(ms(s.started_at),ms(s.ended_at),jd(dt),jd(dt)+DAY);if(b<=a)continue;entries.push([p,'役割履歴',roleText(s.role),local(ms(s.started_at)),s.ended_at?local(ms(s.ended_at)):'継続中',duration(b-a),`<button onclick="openDayEditor('${p.user_id}')">編集</button>`])}}
  for(const a of attendance()){const p=list.find(x=>x.user_id===a.user_id);if(!p)continue;for(const x of allocations().filter(x=>Number(x.attendance_id)===Number(a.id))){const [l,r]=clip(ms(x.started_at),ms(x.ended_at),jd(dt),jd(dt)+DAY);if(r>l)entries.push([p,'比率補正',roleText(x.role),local(ms(x.started_at)),local(ms(x.ended_at)),duration(r-l),`<button onclick="openDayEditor('${p.user_id}')">編集</button>`])}}
