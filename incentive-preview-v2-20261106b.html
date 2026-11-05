@@ -1,0 +1,137 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>新インセンティブ仮計算</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>*{box-sizing:border-box}body{margin:0;background:#f6f5f4;color:#222;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sans-serif}header{padding:27px 18px;background:#a90f1a;color:white}main{max-width:950px;margin:auto;padding:14px}h1{margin:0;font-size:23px}h2{margin:0 0 12px;font-size:19px}.card{background:white;border-radius:16px;padding:17px;margin-bottom:14px;box-shadow:0 4px 20px #00000008}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}label{font-size:13px;display:block;margin-bottom:4px;color:#555}input{width:100%;border:1px solid #cfc6c4;padding:11px;border-radius:10px;font-size:16px}button{border:0;border-radius:12px;background:#a90f1a;color:white;padding:13px;font-size:15px;font-weight:750;cursor:pointer}button:disabled{opacity:.5}button.alt{background:#eee;color:#333}.inline-multiplier{font-size:12px;padding:6px 9px;border:1px solid #ba8a8a;background:#fff7f7;color:#a90f1a;border-radius:8px;white-space:nowrap}.staff-name-cell{display:flex;align-items:center;gap:7px;min-width:max-content}.staff-name-cell strong{font-weight:650}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}.actions button{flex:1;min-width:125px}.note{font-size:13px;color:#555;line-height:1.6}.warn{color:#a10a18;font-weight:650}.ok{color:#096e39}table{width:100%;border-collapse:collapse;white-space:nowrap;font-variant-numeric:tabular-nums}th,td{padding:11px 9px;border-bottom:1px solid #eee;text-align:right;font-size:13px}th:first-child,td:first-child{text-align:left}.scroll{overflow-x:auto}small{color:#666}.stat{background:#f8f7f5;border-radius:10px;padding:12px}.stat b{display:block;margin-top:5px;font-size:19px}.hide{display:none}@media(max-width:600px){.grid{grid-template-columns:1fr}th,td{padding:9px 8px}}
+/* ⑥スタッフ列を固定：横スクロール中も名前＋倍率操作を表示 */
+#results .staff-scroll{position:relative;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+#results .staff-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+#results .staff-table th,#results .staff-table td{background:#fff}
+#results .staff-table thead th{background:#f8f7f5}
+#results .staff-table th:first-child,#results .staff-table td:first-child{position:sticky;left:0;z-index:2;min-width:260px;max-width:285px;box-shadow:2px 0 5px #00000018;border-right:1px solid #ddd;text-align:left}
+#results .staff-table thead th:first-child{z-index:3}
+#results .staff-table .staff-name-cell{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-width:0}
+#results .staff-table .staff-name-cell strong{flex:0 1 auto;white-space:normal;line-height:1.35;max-width:120px;min-width:62px}
+#results .staff-table .multiplier-inline-input{width:58px;min-width:58px;font-size:14px;padding:7px 5px;border-radius:7px}
+#results .staff-table .multiplier-inline-save{font-size:12px;padding:8px 5px;white-space:nowrap;border-radius:7px}
+#results .staff-table .multiplier-current{font-size:11px;color:#666;white-space:nowrap}
+#roundingSummary{margin:12px 0;border:1px solid #e7d4b3;border-radius:10px;padding:11px;background:#fffaf0;line-height:1.65;font-size:13px}
+</style></head><body>
+<header><h1>新インセンティブ・仮計算</h1><div style="margin-top:7px;font-size:13px">2026年シグマ祭｜4配分グループ・全員相対評価 <b style="background:#fff;color:#a90f1a;border-radius:6px;padding:3px 6px;margin-left:4px">表示更新版 11/06-B</b></div></header><main>
+<section class="card"><p class="warn">仮計算専用です。既存のポイント台帳・確定インセンティブは変更しません。</p><p class="note">総売上は前売・当日券の売上を二重計上しない確定値を入力してください。前売券・当日券の枚数はExcelの確定値を優先し、役割別勤務・注文数はデータベースから読み込みます。前売りは本祭開始前、当日券は11/1 00:00〜11/3 17:30より前の発行だけを判定します。売り子は販売日に勤務実績があれば、勤務時間外の販売も1ptです。食材保存は「預け完了」の確定預け量1個＝1ptで算出します（申請・受取・旧ポイントは含みません）。前売り券は個人ノルマ・有効枚数から加速計算し、譲渡後の枚数は導入後のSQL検算で確認してください。</p><div id="msg" role="status"></div><div id="failurePanel" style="display:none;margin:12px 0;border:2px solid #a90f1a;border-radius:12px;padding:14px;background:#fff4f4"><b>仮計算のエラー詳細</b><pre id="failureText" style="white-space:pre-wrap;word-break:break-all;font-size:13px"></pre><button id="copyFailure" type="button" class="alt">エラー内容をコピー</button><p class="note">この内容をChatGPTに送ってください。DBの券や確定ポイントは変更されません。</p></div><div id="reconcileBanner" style="margin-top:12px;background:#fff5e6;border:1px solid #eed5a9;border-radius:12px;padding:12px" role="status">券の照合状態を確認中です。</div><div class="actions"><button id="quickReconcile" class="alt" type="button">ExcelとDBの差異を確認</button><button id="quickPreview" type="button">安全な範囲で仮計算</button></div></section>
+<section class="card"><h2>① 原資・配分率</h2><div class="grid">
+<div><label for="incentive_yen">インセンティブ総原資（円）</label><input id="incentive_yen" type="number" min="0" step="1"></div>
+<div><label for="total_sales_yen">総売上（円）</label><input id="total_sales_yen" type="number" min="0" step="1"></div>
+<div><label for="presale_sales_yen">前売り券売上（円）</label><input id="presale_sales_yen" type="number" min="0" step="1"></div>
+<div><label for="day_sales_yen">当日券売上（円）</label><input id="day_sales_yen" type="number" min="0" step="1"></div>
+<div><label for="food_ratio_pct">前売り券原資から食材保存に回す割合（%）</label><input id="food_ratio_pct" type="number" min="0" max="100" step="0.1"></div>
+</div></section>
+<section class="card"><h2>② 店内部門・役割係数</h2><p class="note">1注文（1客組）につき、勤務者1人あたり <b>役割係数 ÷ 同時勤務人数</b> pt。注文時点の修正済み勤怠を優先します。</p><div class="grid">
+<div><label for="manager_coeff">店長</label><input id="manager_coeff" type="number" min="0" max="100" step="0.05"></div>
+<div><label for="cook_coeff">調理</label><input id="cook_coeff" type="number" min="0" max="100" step="0.05"></div>
+<div><label for="register_coeff">レジ</label><input id="register_coeff" type="number" min="0" max="100" step="0.05"></div>
+<div><label for="support_coeff">サポート</label><input id="support_coeff" type="number" min="0" max="100" step="0.05"></div>
+</div><div class="actions"><button id="save">設定を保存</button><button id="calc" class="alt">仮計算を更新</button><button id="export" class="alt" disabled>結果をCSV保存</button></div></section>
+<section class="card"><h2>③ Excel基準・券別照合</h2>
+<p class="note">正しい基準：59人、前売524枚、当日422枚。Excelは購入者名テスト券4枚を除外済みです。期間外・券種と販売日の不一致も要確認に表示します。DB上のテスト券は自動特定できないため、各券番号を確認し、必要な券だけ手動除外してください。前売りと当日券の枚数はExcelの有効枚数を採用します。不一致の当日券ポイントはDBの販売履歴の平均売り子倍率による推定値です。</p>
+<div class="actions"><button id="reconcile" class="alt">ExcelとDBを照合</button></div>
+<div id="reconcileStatus" class="note"></div><div class="scroll"><table><thead><tr><th>氏名</th><th>Excel前売</th><th>DB前売</th><th>Excel当日</th><th>DB当日</th><th>判定</th></tr></thead><tbody id="compareRows"></tbody></table></div>
+<details style="margin-top:14px"><summary>当日券・期間外券の確認と個別除外</summary><p class="note">除外操作は仮計算への参照だけを変更し、チケット原本・売上・既存確定ポイントを変更しません。誤操作は復元できます。</p><div class="scroll"><table><thead><tr><th>発行日時</th><th>券番号</th><th>購入者名（記録がある場合）</th><th>販売者</th><th>状態</th><th>操作</th></tr></thead><tbody id="ticketRows"></tbody></table></div></details>
+</section>
+<section class="card hide" id="results"><h2>⑤ 原資配分（Excel優先・仮計算）</h2><div id="pools" class="grid"></div><p id="warnings" class="warn"></p><h2 style="margin-top:23px">⑥ スタッフ別仮配分（受取予定額が多い順）</h2><p class="note">スタッフ名の横で倍率を入力して「保存」を押すと、その人の倍率が更新され仮計算も再実行します。横スクロール中もスタッフ名と倍率操作を固定表示します。<b>表示更新版 11/06-B</b> と表示されない場合は古いページを開いています。支給予定額は500円単位に四捨五入します。</p><div id="roundingSummary" role="status">500円単位の丸め結果を確認中です。</div><div class="scroll staff-scroll"><table class="staff-table"><thead><tr><th>スタッフ・個人倍率</th><th>前売ノルマ</th><th>前売枚数</th><th>Excel当日枚数</th><th>DB当日枚数</th><th>前売pt</th><th>食材pt</th><th>当日券・売り子pt</th><th>店内pt</th><th>総pt（補正前）</th><th>個人倍率</th><th>総pt（補正後）</th><th>前売円</th><th>食材円</th><th>当日円</th><th>店内円</th><th>合計円</th></tr></thead><tbody id="staffRows"></tbody></table></div><p class="warn">Excelの59人全員の紐付けに成功した場合は、当日券もExcel枚数で仮配分します。枚数不一致のスタッフの当日ポイントは平均倍率による推定値であり、確定額ではありません。氏名の紐付けに問題がある場合は原資を留保します。</p><p class="note">※部門別の円額は丸め前の参考値、合計円は500円単位に丸めた支給予定額です。丸めによる原資との差は上に表示します。正式支給には確定前の検算が必要です。</p></section>
+<div class="actions"><button class="alt" onclick="location.href='points-admin.html'">ポイント管理に戻る</button><button class="alt" onclick="location.href='admin-menu.html'">管理者メニュー</button></div>
+</main><script>
+'use strict';
+const sb=supabase.createClient('https://gsniytemgrbtgfywhqlu.supabase.co','sb_publishable_r6nHm52sLazEmtKKDK5FVA_5ZQiXucn');
+const keys=['incentive_yen','total_sales_yen','presale_sales_yen','day_sales_yen','manager_coeff','cook_coeff','register_coeff','support_coeff'];
+const $=id=>document.getElementById(id);let latest=null;let recData=null;let lastFailure="";const yen=x=>Number(x||0).toLocaleString('ja-JP',{maximumFractionDigits:2})+'円';
+const num=x=>Number(x||0).toLocaleString('ja-JP',{maximumFractionDigits:3});
+function say(v,error=false){$('msg').textContent=v;$('msg').className=error?'warn':'ok';if(error){$('reconcileBanner').textContent=v;}}
+$('copyFailure').onclick=async()=>{if(!lastFailure)return;try{await navigator.clipboard.writeText(lastFailure);say('エラー内容をコピーしました')}catch(e){prompt('以下をコピーしてください',lastFailure)}};
+function showFailure(e,where){lastFailure=[where,'message: '+String(e?.message||e),'code: '+String(e?.code||'なし'),'details: '+String(e?.details||'なし'),'hint: '+String(e?.hint||'なし')].join('\n');$('failureText').textContent=lastFailure;$('failurePanel').style.display='block';$('failurePanel').scrollIntoView({block:'start'});}
+async function rpc(name,args={}){const {data,error}=await sb.rpc(name,args);if(error){const e=new Error(error.message);e.code=error.code;e.details=error.details;e.hint=error.hint;throw e;}return data}
+function loadFields(s){keys.forEach(k=>$(k).value=s[k]??0);$('food_ratio_pct').value=Number(s.food_ratio??0)*100}
+async function load(){try{const s=await rpc('admin_sigma_incentive_v2_settings');loadFields(s);say('管理者設定を読み込みました')}catch(e){say('読み込み失敗: '+e.message,true);showFailure(e,'admin_sigma_incentive_v2_settings')}}
+function dataFields(){let args={};for(let k of keys){let n=Number($(k).value);if(!Number.isFinite(n)||$(k).value==='')throw Error(k+' の入力値を確認してください');args['p_'+k]=n}let pct=Number($('food_ratio_pct').value);if(!Number.isFinite(pct)||$('food_ratio_pct').value===''||pct<0||pct>100)throw Error('食材保存割合は0〜100%');args.p_food_ratio=pct/100;if(args.p_presale_sales_yen+args.p_day_sales_yen>args.p_total_sales_yen)throw Error('前売り＋当日券の売上が総売上を超えています');return args}
+$('save').onclick=async()=>{try{$('save').disabled=true;await rpc('admin_sigma_incentive_v2_save_settings',dataFields());say('設定を保存しました。仮計算を更新します');await preview()}catch(e){say('保存失敗: '+e.message,true);showFailure(e,'admin_sigma_incentive_v2_save_settings')}finally{$('save').disabled=false}};
+$('calc').onclick=preview;
+$('reconcile').onclick=reconcile;
+$('quickReconcile').onclick=async()=>{document.getElementById('reconcile').scrollIntoView({behavior:'smooth',block:'center'});await reconcile()};
+$('quickPreview').onclick=preview;
+async function reconcile(){try{
+ $('reconcile').disabled=true;
+ const d=await rpc('admin_sigma_ticket_reconcile');recData=d;
+ $('reconcileStatus').textContent=d.ready?'照合完了：全員の当日券枚数がExcelと一致しています。':'DBとの差異 '+d.mismatch_count+' 人／販売者不明等 '+d.orphan_day_tickets+' 件。'+(d.excel_priority_ready?'Excel枚数優先で暫定仮配分が可能です（差異は未解決）':'Excelとスタッフの紐付け確認が必要なため当日原資は保留します');
+ $('reconcileBanner').textContent=d.ready?'当日券の照合が完了しました。全グループを仮計算できます。':'当日券の差異は '+d.mismatch_count+' 人です。'+(d.excel_priority_ready?'Excelの枚数を優先して仮配分します。差異のある人のポイント倍率は推定です。確定額には使用できません。':'氏名が一致しないため当日原資を保留します。')+' 下の照合表で確認できます。';
+ $('reconcileStatus').className=d.ready?'ok':'warn';
+ const people=new Map((d.staff||[]).filter(s=>s.user_id).map(s=>[s.user_id,s.name]));
+ $('compareRows').replaceChildren(...(d.staff||[]).map(s=>{
+  const tr=document.createElement('tr');if(s.status!=='ok')tr.style.background='#fff1f2';
+  [s.name,s.excel_presale,s.db_presale,s.excel_day,s.db_day,s.status==='ok'?'一致':(s.status==='name_mismatch'?'氏名の紐付け要確認':'当日券不一致')].forEach(v=>{const td=document.createElement('td');td.textContent=v??'';tr.appendChild(td)});return tr;
+ }));
+ $('ticketRows').replaceChildren(...(d.tickets||[]).map(t=>{
+  const tr=document.createElement('tr');
+  [new Date(t.created_at).toLocaleString('ja-JP'),t.ticket_code,t.buyer_name||'—',people.get(t.seller_id)||t.seller_id||'販売者不明',t.excluded?'除外済':(t.group==='day'?t.status:('期間要確認：'+t.group))].forEach(v=>{const td=document.createElement('td');td.textContent=v??'';tr.appendChild(td)});
+  const td=document.createElement('td'),button=document.createElement('button');button.style.padding='6px 9px';button.textContent=t.excluded?'復元':'除外';button.className=t.excluded?'alt':'';
+  button.onclick=async()=>{const reason=prompt((t.excluded?'除外解除':'テスト等として除外')+'：券番号 '+t.ticket_code+'\n理由を入力してください（3文字以上）');if(reason===null)return;if(reason.trim().length<3){alert('理由は3文字以上必要です');return};if(!confirm('この券の仮計算上の扱いを変更しますか？\n券番号: '+t.ticket_code))return;try{await rpc('admin_sigma_ticket_set_exclusion',{p_ticket_id:t.ticket_id,p_exclude:!t.excluded,p_reason:reason.trim()});await reconcile();say('券の設定を更新しました。照合結果を確認してください')}catch(e){say('更新失敗: '+e.message,true)}};
+  td.append(button);tr.appendChild(td);return tr;
+ }));
+}catch(e){$('reconcileBanner').textContent='照合データを取得できません: '+e.message;say('照合失敗: '+e.message,true)}finally{$('reconcile').disabled=false}}
+
+let multiplierCache={};
+// 500円単位への四捨五入。250・750ちょうどは切り上げ。DB計算結果は不変。
+const rounded500=x=>Math.round((Number(x)||0)/500)*500;
+const roundedYen=x=>rounded500(x).toLocaleString('ja-JP')+'円';
+async function loadMultipliers(){
+ try{multiplierCache=await rpc('admin_sigma_person_multipliers')||{};}
+ catch(e){say('個人倍率の取得失敗：'+e.message,true);showFailure(e,'admin_sigma_person_multipliers')}
+}
+async function preview(){try{$('failurePanel').style.display='none';$('calc').disabled=true;$('quickPreview').disabled=true;const d=await rpc('admin_sigma_incentive_v2_preview_adjusted');latest=d;show(d);say(d.reconciliation?.day_ready&&d.reconciliation?.presale_ready&&d.reconciliation?.food_ready!==false?'Excel基準で仮計算しました（DB枚数との差異がある人は推定ポイント）':'紐付け未完了の原資を保留して仮計算しました')}catch(e){$('results').classList.add('hide');latest=null;$('export').disabled=true;say('仮計算失敗: '+e.message,true);showFailure(e,'admin_sigma_incentive_v2_preview_adjusted')}finally{$('calc').disabled=false;$('quickPreview').disabled=false}}
+// 表示とCSVで共通利用：受取予定額の降順（同額は氏名順）。元データは変更しない。
+function sortedStaffByPayment(staff){return [...(staff||[])].sort((a,b)=>{
+ const av=Number(a?.yen?.total),bv=Number(b?.yen?.total);
+ const an=Number.isFinite(av)?av:-Infinity,bn=Number.isFinite(bv)?bv:-Infinity;
+ return bn-an||String(a?.name||'').localeCompare(String(b?.name||''),'ja');
+});}
+// ⑥の固定された氏名セル内で倍率を保存し、仮計算を更新。
+async function saveInlineMultiplier(s,input,button){
+ const uid=s.user_id;
+ if(!uid){alert('スタッフIDが取得できません。');return}
+ const raw=input.value.trim(),value=Number(raw);
+ if(raw===''||!Number.isFinite(value)||value<0||value>1000){alert('倍率は0～1000の範囲で入力してください。');return}
+ button.disabled=true;
+ try{
+  await rpc('admin_sigma_set_person_multiplier',{p_user_id:uid,p_multiplier:value});
+  multiplierCache[uid]=value;
+  await preview();
+  say(s.name+'さんの倍率を'+value+'倍に保存し、仮計算を更新しました。');
+ }catch(e){say('倍率保存失敗：'+e.message,true);showFailure(e,'admin_sigma_set_person_multiplier');button.disabled=false}
+}
+function show(d){$('results').classList.remove('hide');const p=d.pool||{};let blocks=[['前売り券',p.presale],['食材保存',p.food],['当日券・売り子',p.day_seller],['店長・調理・レジ・サポート',p.inside],['未配分原資',p.unallocated]];
+$('pools').replaceChildren(...blocks.map(([n,v])=>{let div=document.createElement('div');div.className='stat';let label=document.createElement('small');label.textContent=n;let strong=document.createElement('b');strong.textContent=yen(v);div.append(label,strong);return div}));
+let diag=d.diagnostics||{},warn=[],r=d.reconciliation||{};if(!r.day_ready)warn.push('Excel名簿とスタッフIDの対応未完了：当日券原資は配分保留');if(r.day_points_estimated)warn.push('当日券のDB枚数がExcelと違うスタッフ '+Number(r.day_mismatch_staff||0)+' 人：Excel枚数を使用し、DB記録の平均倍率で暫定ポイントを算出（未確定）');if(r.food_ready===false)warn.push('完了済み食材の数量またはスタッフに不備があるため食材原資を配分保留：'+Number(diag.invalid_completed_food_handoffs||0)+'件');if(!r.presale_ready)warn.push('前売り券の氏名が全員一致していないため前売原資は配分保留');if(Number(p.unallocated)>0)warn.push('未配分原資：'+yen(p.unallocated));if(diag.unassigned_presale_tickets)warn.push('前売り券の販売者不明 '+diag.unassigned_presale_tickets+'件');if(diag.unassigned_day_tickets)warn.push('当日券の販売者不明 '+diag.unassigned_day_tickets+'件');if(diag.unknown_ticket_type)warn.push('販売期間外・券種/期間の不一致 '+diag.unknown_ticket_type+'件（自動で集計しません）');if(diag.unassigned_inside_orders)warn.push('対象勤務者0人の注文 '+diag.unassigned_inside_orders+'件');$('warnings').textContent=warn.join('／')||'未配分・販売者不明の警告なし';
+const arranged=sortedStaffByPayment(d.staff);
+// 500円刻みで各人を丸める。部門原資自体は変更せず、差額を必ず表示。
+const totalRaw=arranged.reduce((a,s)=>a+Number(s.yen?.total||0),0);
+const totalRounded=arranged.reduce((a,s)=>a+rounded500(s.yen?.total),0);
+const totalPool=Number(d?.settings?.incentive_yen??$('incentive_yen').value)||0;
+const yenDiff=totalPool-totalRounded;
+$('roundingSummary').textContent='支給予定額（500円単位）合計 '+yen(totalRounded)+' ／ 総原資 '+yen(totalPool)+' ／ 未配分・丸め差額 '+yen(yenDiff)+'（＋は残額、－は超過）。丸め前配分合計 '+yen(totalRaw)+'。差額は自動で他の人に振り替えません。';
+$('staffRows').replaceChildren(...arranged.map(s=>{
+ const tr=document.createElement('tr');
+ const vals=[s.name,num(s.presale_quota),num(s.presale_count),num(s.day_count),num(s.db_day_count),num(s.points?.presale),num(s.points?.food),num(s.points?.day_seller),num(s.points?.inside),num(s.original_total_points),num(s.personal_multiplier??1),num(s.adjusted_total_points),yen(s.yen?.presale),yen(s.yen?.food),yen(s.yen?.day_seller),yen(s.yen?.inside),roundedYen(s.yen?.total)];
+ for(let [i,v] of vals.entries()){
+  const td=document.createElement('td');
+  if(i===0){
+   const wrap=document.createElement('div');wrap.className='staff-name-cell';
+   const label=document.createElement('strong');label.textContent=String(v);
+   const inp=document.createElement('input');inp.className='multiplier-inline-input';inp.type='number';inp.min='0';inp.max='1000';inp.step='0.1';inp.inputMode='decimal';inp.value=String(multiplierCache[s.user_id]??s.personal_multiplier??1);inp.setAttribute('aria-label',s.name+'の個人倍率');
+   const btn=document.createElement('button');btn.type='button';btn.className='multiplier-inline-save';btn.textContent='保存';btn.setAttribute('aria-label',s.name+'の倍率を保存');btn.onclick=()=>saveInlineMultiplier(s,inp,btn);
+   inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();btn.click()}});
+   const factor=document.createElement('span');factor.className='multiplier-current';factor.textContent='倍';
+   wrap.append(label,inp,factor,btn);td.append(wrap);
+  }else{td.textContent=String(v)}
+  tr.appendChild(td);
+ }
+ return tr;
+}));$('export').disabled=false;}
+$('export').onclick=()=>{if(!latest)return;let header=['氏名','前売ノルマ','前売枚数','Excel当日枚数','DB当日枚数','前売ポイント','食材ポイント','当日券・売り子ポイント','店内ポイント','総ポイント（補正前）','個人倍率','総ポイント（補正後）','前売配分円','食材配分円','当日配分円','店内配分円','合計円（500円単位）','合計円（丸め前）'];let rows=[header];for(let s of sortedStaffByPayment(latest.staff))rows.push([s.name,s.presale_quota,s.presale_count,s.day_count,s.db_day_count,s.points?.presale,s.points?.food,s.points?.day_seller,s.points?.inside,s.original_total_points,s.personal_multiplier??1,s.adjusted_total_points,s.yen?.presale,s.yen?.food,s.yen?.day_seller,s.yen?.inside,rounded500(s.yen?.total),s.yen?.total]);let csv='\uFEFF'+rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='シグマ祭_新インセンティブ仮計算.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1200)};
+(async()=>{let {data:{user}}=await sb.auth.getUser();if(!user){location.href='home.html';return}await load();await reconcile();await loadMultipliers();await preview()})();
+</script></body></html>
